@@ -124,6 +124,7 @@ class DrawingScreen {
     color:RGB;
     listeners:SingleTouchListener;
     controlHeld:boolean;
+    selectionRect:Array<number>;
 
     constructor(canvas:any, offset:Array<number>, dimensions:Array<number>, bounds:Array<number> = [canvas.width-offset[0], canvas.height-offset[1]])
     {
@@ -198,6 +199,10 @@ class DrawingScreen {
                     queue.push(cur - this.dimensions.first);
             }
         }
+    }
+    highlightSelection()
+    {
+
     }
     handleDraw(event):void
     {
