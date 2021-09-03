@@ -77,6 +77,12 @@ class RGB {
         this.green = g;
         this.blue  = b;
     }
+    copy(color:RGB)
+    {
+        this.red = color.red;
+        this.green = color.green;
+        this.blue  = color.blue;
+    }
     toInt()
     {
         return 255<<24 | this.red<<16 | this.green<<8 | this.blue;
@@ -124,19 +130,25 @@ class DrawingScreen {
     screenBuffer:Array<RGB>;
     color:RGB;
     listeners:SingleTouchListener;
-    controlHeld:boolean;
+    CKeyHeld:boolean;
+    altHeld:boolean;
     selectionRect:Array<number>;
+    pasteRect:Array<number>;
     updatesStack:Array<Array<number>>;
 
     constructor(canvas:any, offset:Array<number>, dimensions:Array<number>, bounds:Array<number> = [canvas.width-offset[0], canvas.height-offset[1]])
     {
         this.canvas = canvas;
         this.updatesStack = new Array<Array<number>>();
+        this.selectionRect = new Array<number>();
+        this.altHeld = false;
+        this.CKeyHeld = false;
         this.offset = new Pair<number>(offset[0], offset[1]);
         this.bounds = new Pair<number>(bounds[0], bounds[1]);
         this.dimensions = new Pair<number>(dimensions[0], dimensions[1]);
         this.screenBuffer = new Array<RGB>();
-        this.selectionRect = new Array();
+        this.selectionRect = [0,0,0,0];
+        this.pasteRect = [0,0,0,0];
         this.color = new RGB(150,34,160);
         //this.screenBuffer.length = dimensions[0] * dimensions[1];
         for(let i = 0; i < dimensions[0] * dimensions[1]; i++)
@@ -144,9 +156,54 @@ class DrawingScreen {
             this.screenBuffer.push(new RGB(0,0,0));
         }
         this.listeners = new SingleTouchListener(canvas, true, true);
+        this.listeners.registerCallBack("touchstart", e => true, e => {
+            this.canvas.focus();
+            if(this.CKeyHeld)
+                this.selectionRect = [e.touchPos[0], e.touchPos[1],0,0];
+            else if(this.altHeld){
+                this.pasteRect = [e.touchPos[0], e.touchPos[1],0,0];
+                this.pasteRect[2] = this.selectionRect[2];
+                this.pasteRect[3] = this.selectionRect[3];
+            }
+        });
         this.listeners.registerCallBack("touchend",e => true, e => this.handleTap(e));
-        this.listeners.registerCallBack("touchmove",e => true, e => this.handleDraw(e));
+        this.listeners.registerCallBack("touchmove",e => true, e => {
+            if(this.CKeyHeld)
+            {
+                this.selectionRect[2] += e.deltaX;
+                this.selectionRect[3] += e.deltaY;
+                this.pasteRect[2] = this.selectionRect[2];
+                this.pasteRect[3] = this.selectionRect[3];
+            }
+            else if(this.altHeld)
+            {
+                this.pasteRect[0] += e.deltaX;
+                this.pasteRect[1] += e.deltaY;
+                this.pasteRect[2] = this.selectionRect[2];
+                this.pasteRect[3] = this.selectionRect[3];
+            }
+            else
+                this.handleDraw(e);
+        });
         
+    }
+    copy()
+    {
+        const source_x:number = Math.floor((this.selectionRect[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
+        const source_y:number = Math.floor((this.selectionRect[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
+        const dest_x:number = Math.floor((this.pasteRect[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
+        const dest_y:number = Math.floor((this.pasteRect[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
+        const width:number = Math.floor((this.selectionRect[2]-this.offset.first)/this.bounds.first*this.dimensions.first);
+        const height:number = Math.floor((this.selectionRect[3]-this.offset.second)/this.bounds.second*this.dimensions.second);
+        const area:number = width * height;
+        for(let i = 0; i < area; i++)
+        {
+            const destIndex:number = dest_x + dest_y*this.dimensions.first + i%width + Math.floor(i/width)*this.dimensions.first;
+            const sourceIndex:number = source_x + source_y*this.dimensions.first + i%width + Math.floor(i/width)*this.dimensions.first;
+            const dest:RGB = this.screenBuffer[destIndex];
+            const source:RGB = this.screenBuffer[sourceIndex];
+            dest.copy(source);
+        }
     }
     handleTap(event):void
     {
@@ -193,13 +250,13 @@ class DrawingScreen {
                 pixelColor.red = this.color.red;
                 pixelColor.green = this.color.green;
                 pixelColor.blue = this.color.blue;
-                //if(!checkedMap[cur+1])
+                if(!checkedMap[cur+1])
                     queue.push(cur+1);
-                //if(!checkedMap[cur-1])
+                if(!checkedMap[cur-1])
                     queue.push(cur-1);
-                //if(!checkedMap[cur + this.dimensions.first])
+                if(!checkedMap[cur + this.dimensions.first])
                     queue.push(cur + this.dimensions.first);
-                //if(!checkedMap[cur - this.dimensions.first])
+                if(!checkedMap[cur - this.dimensions.first])
                     queue.push(cur - this.dimensions.first);
             }
         }
@@ -275,6 +332,15 @@ class DrawingScreen {
                 
             }
         }
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
+        ctx.strokeRect(this.pasteRect[0], this.pasteRect[1], this.pasteRect[2], this.pasteRect[3]);
+        ctx.strokeStyle = "#FF0000";
+        ctx.strokeRect(this.selectionRect[0]+2, this.selectionRect[1]+2, this.selectionRect[2]-4, this.selectionRect[3]-4);
+        ctx.strokeStyle = "#0000FF";
+        ctx.strokeRect(this.pasteRect[0]+2, this.pasteRect[1]+2, this.pasteRect[2]-4, this.pasteRect[3]-4);
+        
     }
 
 };
@@ -729,8 +795,18 @@ async function main()
             pallette.highLightedCell = 9;
             field.color = pallette.calcColor();
             break;
-            case('ControlLeft'):
-            field.controlHeld = true;
+            case('KeyC'):
+            if(!field.CKeyHeld){
+                field.CKeyHeld = true;
+                field.selectionRect = [0,0,0,0];
+                field.pasteRect = [0,0,0,0];
+            }
+            break;
+            case('AltLeft'):
+            field.altHeld = true
+            break;
+            case('KeyV'):
+            field.copy();
             break;
         }
         field.color = pallette.calcColor(); 
@@ -739,8 +815,11 @@ async function main()
         if(e.keyCode == 16/*shift*/) 
             pallette.shiftDown = false; 
             switch(e.code){
-            case('ControlLeft'):
-            field.controlHeld = false;
+            case('KeyC'):
+            field.CKeyHeld = false;
+            break;
+            case('AltLeft'):
+            field.altHeld = false;
             break;
             }
             field.color = pallette.calcColor(); });
