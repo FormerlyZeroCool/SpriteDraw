@@ -133,6 +133,7 @@ class DrawingScreen {
         this.bounds = new Pair<number>(bounds[0], bounds[1]);
         this.dimensions = new Pair<number>(dimensions[0], dimensions[1]);
         this.screenBuffer = new Array<RGB>();
+        this.selectionRect = new Array();
         this.color = new RGB(150,34,160);
         //this.screenBuffer.length = dimensions[0] * dimensions[1];
         for(let i = 0; i < dimensions[0] * dimensions[1]; i++)
@@ -200,7 +201,7 @@ class DrawingScreen {
             }
         }
     }
-    highlightSelection()
+    highlightSelection(event)
     {
 
     }
@@ -669,7 +670,7 @@ async function main()
 {
     const newColor:any = document.getElementById("newColor");
     const field:DrawingScreen = new DrawingScreen(document.getElementById("screen"),[0,0], [64,64]);
-    field.setDim([128,128]);
+    field.setDim([328,228]);
     const pallette:Pallette = new Pallette(document.getElementById("pallette_screen"), newColor);
     const setPalletteColorButton = document.getElementById("setPalletteColorButton");
     const palletteColorButtonListener:SingleTouchListener = new SingleTouchListener(setPalletteColorButton, true, true);
@@ -740,7 +741,7 @@ async function main()
             }
             field.color = pallette.calcColor(); });
    
-    const fps = 15;
+    const fps = 5;
     const goalSleep = 1000/fps;
     while(true)
     {
