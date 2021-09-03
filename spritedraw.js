@@ -93,10 +93,12 @@ class Pair {
 class DrawingScreen {
     constructor(canvas, offset, dimensions, bounds = [canvas.width - offset[0], canvas.height - offset[1]]) {
         this.canvas = canvas;
+        this.updatesStack = new Array();
         this.offset = new Pair(offset[0], offset[1]);
         this.bounds = new Pair(bounds[0], bounds[1]);
         this.dimensions = new Pair(dimensions[0], dimensions[1]);
         this.screenBuffer = new Array();
+        this.selectionRect = new Array();
         this.color = new RGB(150, 34, 160);
         //this.screenBuffer.length = dimensions[0] * dimensions[1];
         for (let i = 0; i < dimensions[0] * dimensions[1]; i++) {
@@ -151,6 +153,8 @@ class DrawingScreen {
                 queue.push(cur - this.dimensions.first);
             }
         }
+    }
+    highlightSelection(event) {
     }
     handleDraw(event) {
         //draw line from current touch pos to the touchpos minus the deltas
@@ -526,7 +530,7 @@ function logToServer(data) {
 async function main() {
     const newColor = document.getElementById("newColor");
     const field = new DrawingScreen(document.getElementById("screen"), [0, 0], [64, 64]);
-    field.setDim([128, 128]);
+    field.setDim([228, 228]);
     const pallette = new Pallette(document.getElementById("pallette_screen"), newColor);
     const setPalletteColorButton = document.getElementById("setPalletteColorButton");
     const palletteColorButtonListener = new SingleTouchListener(setPalletteColorButton, true, true);
@@ -539,52 +543,65 @@ async function main() {
                 pallette.shiftDown = true;
                 break;
         }
+        console.log(document.activeElement);
+        if (document.activeElement === field.canvas)
+            switch (e.code) {
+                case ('Digit1'):
+                    pallette.highLightedCell = 0;
+                    field.color = pallette.calcColor();
+                    break;
+                case ('Digit2'):
+                    pallette.highLightedCell = 1;
+                    field.color = pallette.calcColor();
+                    break;
+                case ('Digit3'):
+                    pallette.highLightedCell = 2;
+                    field.color = pallette.calcColor();
+                    break;
+                case ('Digit4'):
+                    pallette.highLightedCell = 3;
+                    field.color = pallette.calcColor();
+                    break;
+                case ('Digit5'):
+                    pallette.highLightedCell = 4;
+                    field.color = pallette.calcColor();
+                    break;
+                case ('Digit6'):
+                    pallette.highLightedCell = 5;
+                    field.color = pallette.calcColor();
+                    break;
+                case ('Digit7'):
+                    pallette.highLightedCell = 6;
+                    field.color = pallette.calcColor();
+                    break;
+                case ('Digit8'):
+                    pallette.highLightedCell = 7;
+                    field.color = pallette.calcColor();
+                    break;
+                case ('Digit9'):
+                    pallette.highLightedCell = 8;
+                    field.color = pallette.calcColor();
+                    break;
+                case ('Digit0'):
+                    pallette.highLightedCell = 9;
+                    field.color = pallette.calcColor();
+                    break;
+                case ('ControlLeft'):
+                    field.controlHeld = true;
+                    break;
+            }
+        field.color = pallette.calcColor();
+    });
+    document.addEventListener("keyup", e => {
+        if (e.keyCode == 16 /*shift*/)
+            pallette.shiftDown = false;
         switch (e.code) {
-            case ('Digit1'):
-                pallette.highLightedCell = 0;
-                field.color = pallette.calcColor();
-                break;
-            case ('Digit2'):
-                pallette.highLightedCell = 1;
-                field.color = pallette.calcColor();
-                break;
-            case ('Digit3'):
-                pallette.highLightedCell = 2;
-                field.color = pallette.calcColor();
-                break;
-            case ('Digit4'):
-                pallette.highLightedCell = 3;
-                field.color = pallette.calcColor();
-                break;
-            case ('Digit5'):
-                pallette.highLightedCell = 4;
-                field.color = pallette.calcColor();
-                break;
-            case ('Digit6'):
-                pallette.highLightedCell = 5;
-                field.color = pallette.calcColor();
-                break;
-            case ('Digit7'):
-                pallette.highLightedCell = 6;
-                field.color = pallette.calcColor();
-                break;
-            case ('Digit8'):
-                pallette.highLightedCell = 7;
-                field.color = pallette.calcColor();
-                break;
-            case ('Digit9'):
-                pallette.highLightedCell = 8;
-                field.color = pallette.calcColor();
-                break;
-            case ('Digit0'):
-                pallette.highLightedCell = 9;
-                field.color = pallette.calcColor();
+            case ('ControlLeft'):
+                field.controlHeld = false;
                 break;
         }
         field.color = pallette.calcColor();
     });
-    document.addEventListener("keyup", e => { if (e.keyCode == 16 /*shift*/)
-        pallette.shiftDown = false; field.color = pallette.calcColor(); });
     const fps = 15;
     const goalSleep = 1000 / fps;
     while (true) {

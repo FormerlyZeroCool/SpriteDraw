@@ -1,6 +1,7 @@
 function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
+
 class Queue<T> {
     data:Array<T>;
     start:number;
@@ -125,10 +126,12 @@ class DrawingScreen {
     listeners:SingleTouchListener;
     controlHeld:boolean;
     selectionRect:Array<number>;
+    updatesStack:Array<Array<number>>;
 
     constructor(canvas:any, offset:Array<number>, dimensions:Array<number>, bounds:Array<number> = [canvas.width-offset[0], canvas.height-offset[1]])
     {
         this.canvas = canvas;
+        this.updatesStack = new Array<Array<number>>();
         this.offset = new Pair<number>(offset[0], offset[1]);
         this.bounds = new Pair<number>(bounds[0], bounds[1]);
         this.dimensions = new Pair<number>(dimensions[0], dimensions[1]);
@@ -670,7 +673,7 @@ async function main()
 {
     const newColor:any = document.getElementById("newColor");
     const field:DrawingScreen = new DrawingScreen(document.getElementById("screen"),[0,0], [64,64]);
-    field.setDim([328,228]);
+    field.setDim([228,228]);
     const pallette:Pallette = new Pallette(document.getElementById("pallette_screen"), newColor);
     const setPalletteColorButton = document.getElementById("setPalletteColorButton");
     const palletteColorButtonListener:SingleTouchListener = new SingleTouchListener(setPalletteColorButton, true, true);
@@ -683,6 +686,7 @@ async function main()
             pallette.shiftDown = true; 
             break;
         } 
+        if(document.activeElement === document.getElementById("body"))
         switch(e.code)
         {
             case('Digit1'):
@@ -741,7 +745,7 @@ async function main()
             }
             field.color = pallette.calcColor(); });
    
-    const fps = 5;
+    const fps = 15;
     const goalSleep = 1000/fps;
     while(true)
     {
