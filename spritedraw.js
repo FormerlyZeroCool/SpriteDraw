@@ -58,6 +58,9 @@ class RGB {
         this.green = g;
         this.blue = b;
     }
+    compare(color) {
+        return this.red == color.red && this.green == color.green && this.blue == color.blue;
+    }
     copy(color) {
         this.red = color.red;
         this.green = color.green;
@@ -115,6 +118,10 @@ class DrawingScreen {
         }
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
+            //save for undo
+            console.log(this.updatesStack);
+            if (this.updatesStack.length == 0 || this.updatesStack[this.updatesStack.length - 1].length)
+                this.updatesStack.push(new Array());
             this.canvas.focus();
             if (this.CKeyHeld)
                 this.selectionRect = [e.touchPos[0], e.touchPos[1], 0, 0];
@@ -155,6 +162,8 @@ class DrawingScreen {
             const sourceIndex = source_x + source_y * this.dimensions.first + i % width + Math.floor(i / width) * this.dimensions.first;
             const dest = this.screenBuffer[destIndex];
             const source = this.screenBuffer[sourceIndex];
+            if (!dest.compare(source))
+                this.updatesStack[this.updatesStack.length - 1].push(new Pair(destIndex, new RGB(dest.red, dest.green, dest.blue)));
             dest.copy(source);
         }
     }
@@ -165,14 +174,11 @@ class DrawingScreen {
             this.fillArea(new Pair(gx, gy));
         }
         else if (gx < this.dimensions.first && gy < this.dimensions.second) {
-            this.screenBuffer[gx + gy * this.dimensions.first] = new RGB(this.color.red, this.color.green, this.color.blue);
+            const pixel = this.screenBuffer[gx + gy * this.dimensions.first];
+            if (!pixel.compare(this.color))
+                this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red, pixel.green, pixel.blue)));
+            pixel.copy(this.color);
         }
-    }
-    hashP(x, y) {
-        return x + y * this.dimensions.first;
-    }
-    compColor(c1, c2) {
-        return c1.red === c2.red && c1.green === c2.green && c1.blue === c2.blue;
     }
     fillArea(startCoordinate) {
         const queue = new Queue(1024);
@@ -190,9 +196,9 @@ class DrawingScreen {
                 this.compColor(pixelColor, spc))
                 && !checkedMap[cur]) {
                 checkedMap[cur] = true;
-                pixelColor.red = this.color.red;
-                pixelColor.green = this.color.green;
-                pixelColor.blue = this.color.blue;
+                if (!pixelColor.compare(this.color))
+                    this.updatesStack[this.updatesStack.length - 1].push(new Pair(cur, new RGB(pixelColor.red, pixelColor.green, pixelColor.blue)));
+                pixelColor.copy(this.color);
                 if (!checkedMap[cur + 1])
                     queue.push(cur + 1);
                 if (!checkedMap[cur - 1])
@@ -203,8 +209,6 @@ class DrawingScreen {
                     queue.push(cur - this.dimensions.first);
             }
         }
-    }
-    highlightSelection(event) {
     }
     handleDraw(event) {
         //draw line from current touch pos to the touchpos minus the deltas
@@ -221,7 +225,10 @@ class DrawingScreen {
                 const gx = Math.floor((x - this.offset.first) / this.bounds.first * this.dimensions.first);
                 const gy = Math.floor((y - this.offset.second) / this.bounds.second * this.dimensions.second);
                 if (gx < this.dimensions.first && gy < this.dimensions.second) {
-                    this.screenBuffer[gx + gy * this.dimensions.first] = new RGB(this.color.red, this.color.green, this.color.blue);
+                    const pixel = this.screenBuffer[gx + gy * this.dimensions.first];
+                    if (!pixel.compare(this.color))
+                        this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red, pixel.green, pixel.blue)));
+                    pixel.copy(this.color);
                 }
             }
         }
@@ -233,10 +240,25 @@ class DrawingScreen {
                 const gx = Math.floor((x - this.offset.first) / this.bounds.first * this.dimensions.first);
                 const gy = Math.floor((y - this.offset.second) / this.bounds.second * this.dimensions.second);
                 if (gx < this.dimensions.first && gy < this.dimensions.second) {
-                    this.screenBuffer[gx + gy * this.dimensions.first] = new RGB(this.color.red, this.color.green, this.color.blue);
+                    const pixel = this.screenBuffer[gx + gy * this.dimensions.first];
+                    if (!pixel.compare(this.color))
+                        this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red, pixel.green, pixel.blue)));
+                    pixel.copy(this.color);
                 }
             }
         }
+    }
+    undoLast() {
+        const data = this.updatesStack.pop();
+        data.forEach(el => {
+            this.screenBuffer[el.first].copy(el.second);
+        });
+    }
+    hashP(x, y) {
+        return x + y * this.dimensions.first;
+    }
+    compColor(c1, c2) {
+        return c1.red === c2.red && c1.green === c2.green && c1.blue === c2.blue;
     }
     setDim(newDim) {
         if (newDim.length === 2) {
@@ -655,6 +677,9 @@ async function main() {
                     break;
                 case ('KeyV'):
                     field.copy();
+                    break;
+                case ('KeyU'):
+                    field.undoLast();
                     break;
             }
         field.color = pallette.calcColor();

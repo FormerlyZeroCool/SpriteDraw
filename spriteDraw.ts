@@ -77,6 +77,10 @@ class RGB {
         this.green = g;
         this.blue  = b;
     }
+    compare(color:RGB):boolean
+    {
+        return this.red == color.red && this.green == color.green && this.blue == color.blue;
+    }
     copy(color:RGB)
     {
         this.red = color.red;
@@ -112,10 +116,10 @@ class RGB {
         return `#${red}${green}${blue}`
     }
 };
-class Pair<T> {
+class Pair<T,U=T> {
     first:T;
-    second:T;
-    constructor(first, second)
+    second:U;
+    constructor(first:T, second:U)
     {
         this.first = first;
         this.second = second;
@@ -134,12 +138,12 @@ class DrawingScreen {
     altHeld:boolean;
     selectionRect:Array<number>;
     pasteRect:Array<number>;
-    updatesStack:Array<Array<number>>;
+    updatesStack:Array<Array<Pair<number,RGB>>>;
 
     constructor(canvas:any, offset:Array<number>, dimensions:Array<number>, bounds:Array<number> = [canvas.width-offset[0], canvas.height-offset[1]])
     {
         this.canvas = canvas;
-        this.updatesStack = new Array<Array<number>>();
+        this.updatesStack = new Array<Array<Pair<number,RGB>>>();
         this.selectionRect = new Array<number>();
         this.altHeld = false;
         this.CKeyHeld = false;
@@ -157,6 +161,10 @@ class DrawingScreen {
         }
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
+            //save for undo
+            console.log(this.updatesStack);
+            if(this.updatesStack.length == 0 || this.updatesStack[this.updatesStack.length - 1].length)
+                this.updatesStack.push(new Array<Pair<number,RGB>>());
             this.canvas.focus();
             if(this.CKeyHeld)
                 this.selectionRect = [e.touchPos[0], e.touchPos[1],0,0];
@@ -202,6 +210,9 @@ class DrawingScreen {
             const sourceIndex:number = source_x + source_y*this.dimensions.first + i%width + Math.floor(i/width)*this.dimensions.first;
             const dest:RGB = this.screenBuffer[destIndex];
             const source:RGB = this.screenBuffer[sourceIndex];
+            if(!dest.compare(source))
+                this.updatesStack[this.updatesStack.length-1].push(new Pair(destIndex, new RGB(dest.red,dest.green,dest.blue))); 
+
             dest.copy(source);
         }
     }
@@ -215,16 +226,11 @@ class DrawingScreen {
             this.fillArea(new Pair<number>(gx, gy));
         }
         else if(gx < this.dimensions.first && gy < this.dimensions.second){
-            this.screenBuffer[gx + gy*this.dimensions.first] = new RGB(this.color.red, this.color.green, this.color.blue);
+            const pixel:RGB = this.screenBuffer[gx + gy*this.dimensions.first];
+            if(!pixel.compare(this.color))
+                this.updatesStack[this.updatesStack.length-1].push(new Pair(gx + gy*this.dimensions.first, new RGB(pixel.red,pixel.green,pixel.blue)));        
+            pixel.copy(this.color);
         }
-    }
-    hashP(x:number, y:number):number
-    {
-        return x + y*this.dimensions.first;
-    }
-    compColor(c1:RGB, c2:RGB)
-    {
-        return c1.red === c2.red && c1.green === c2.green && c1.blue === c2.blue;
     }
 
     fillArea(startCoordinate:Pair<number>):void
@@ -247,9 +253,9 @@ class DrawingScreen {
             && !checkedMap[cur])
             {
                 checkedMap[cur] = true;
-                pixelColor.red = this.color.red;
-                pixelColor.green = this.color.green;
-                pixelColor.blue = this.color.blue;
+                if(!pixelColor.compare(this.color))
+                        this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red,pixelColor.green,pixelColor.blue)));
+                pixelColor.copy(this.color);
                 if(!checkedMap[cur+1])
                     queue.push(cur+1);
                 if(!checkedMap[cur-1])
@@ -260,10 +266,6 @@ class DrawingScreen {
                     queue.push(cur - this.dimensions.first);
             }
         }
-    }
-    highlightSelection(event)
-    {
-
     }
     handleDraw(event):void
     {
@@ -283,7 +285,10 @@ class DrawingScreen {
                 const gx:number = Math.floor((x-this.offset.first)/this.bounds.first*this.dimensions.first);
                 const gy:number = Math.floor((y-this.offset.second)/this.bounds.second*this.dimensions.second);
                 if(gx < this.dimensions.first && gy < this.dimensions.second){
-                    this.screenBuffer[gx + gy*this.dimensions.first] = new RGB(this.color.red, this.color.green, this.color.blue);
+                    const pixel:RGB = this.screenBuffer[gx + gy*this.dimensions.first];
+                    if(!pixel.compare(this.color))
+                        this.updatesStack[this.updatesStack.length-1].push(new Pair(gx + gy*this.dimensions.first, new RGB(pixel.red,pixel.green,pixel.blue))); 
+                    pixel.copy(this.color);
                 }
             }
         }
@@ -297,10 +302,30 @@ class DrawingScreen {
                 const gx:number = Math.floor((x-this.offset.first)/this.bounds.first*this.dimensions.first);
                 const gy:number = Math.floor((y-this.offset.second)/this.bounds.second*this.dimensions.second);
                 if(gx < this.dimensions.first && gy < this.dimensions.second){
-                    this.screenBuffer[gx + gy*this.dimensions.first] = new RGB(this.color.red, this.color.green, this.color.blue);
+                    const pixel:RGB = this.screenBuffer[gx + gy*this.dimensions.first];
+                    if(!pixel.compare(this.color))
+                        this.updatesStack[this.updatesStack.length-1].push(new Pair(gx + gy*this.dimensions.first, new RGB(pixel.red,pixel.green,pixel.blue))); 
+                    pixel.copy(this.color);
                 }
             }
         }
+    }
+    undoLast()
+    {
+        const data = this.updatesStack.pop();
+        data.forEach(el =>
+            {
+                this.screenBuffer[el.first].copy(el.second);
+            });
+            
+    }
+    hashP(x:number, y:number):number
+    {
+        return x + y*this.dimensions.first;
+    }
+    compColor(c1:RGB, c2:RGB)
+    {
+        return c1.red === c2.red && c1.green === c2.green && c1.blue === c2.blue;
     }
     setDim(newDim:Array<number>)
     {
@@ -807,6 +832,9 @@ async function main()
             break;
             case('KeyV'):
             field.copy();
+            break;
+            case('KeyU'):
+            field.undoLast();
             break;
         }
         field.color = pallette.calcColor(); 
