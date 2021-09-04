@@ -102,6 +102,7 @@ class DrawingScreen {
     constructor(canvas, offset, dimensions, bounds = [canvas.width - offset[0], canvas.height - offset[1]]) {
         this.canvas = canvas;
         this.updatesStack = new Array();
+        this.undoneUpdatesStack = new Array();
         this.selectionRect = new Array();
         this.altHeld = false;
         this.CKeyHeld = false;
@@ -250,8 +251,26 @@ class DrawingScreen {
     }
     undoLast() {
         const data = this.updatesStack.pop();
+        const backedUpFrame = new Array();
+        this.undoneUpdatesStack.push(backedUpFrame);
         data.forEach(el => {
+            backedUpFrame.push(el);
+            const color = new RGB(0, 0, 0);
+            color.copy(this.screenBuffer[el.first]);
             this.screenBuffer[el.first].copy(el.second);
+            el.second.copy(color);
+        });
+    }
+    redoLast() {
+        const data = this.undoneUpdatesStack.pop();
+        const backedUpFrame = new Array();
+        this.updatesStack.push(backedUpFrame);
+        data.forEach(el => {
+            backedUpFrame.push(el);
+            const color = new RGB(0, 0, 0);
+            color.copy(this.screenBuffer[el.first]);
+            this.screenBuffer[el.first].copy(el.second);
+            el.second.copy(color);
         });
     }
     hashP(x, y) {
@@ -680,6 +699,9 @@ async function main() {
                     break;
                 case ('KeyU'):
                     field.undoLast();
+                    break;
+                case ('KeyR'):
+                    field.redoLast();
                     break;
             }
         field.color = pallette.calcColor();

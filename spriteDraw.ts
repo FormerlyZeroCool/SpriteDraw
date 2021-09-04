@@ -139,11 +139,13 @@ class DrawingScreen {
     selectionRect:Array<number>;
     pasteRect:Array<number>;
     updatesStack:Array<Array<Pair<number,RGB>>>;
+    undoneUpdatesStack:Array<Array<Pair<number,RGB>>>;
 
     constructor(canvas:any, offset:Array<number>, dimensions:Array<number>, bounds:Array<number> = [canvas.width-offset[0], canvas.height-offset[1]])
     {
         this.canvas = canvas;
         this.updatesStack = new Array<Array<Pair<number,RGB>>>();
+        this.undoneUpdatesStack = new Array<Array<Pair<number,RGB>>>();
         this.selectionRect = new Array<number>();
         this.altHeld = false;
         this.CKeyHeld = false;
@@ -313,11 +315,29 @@ class DrawingScreen {
     undoLast()
     {
         const data = this.updatesStack.pop();
-        data.forEach(el =>
-            {
+        const backedUpFrame = new Array<Pair<number, RGB>>();
+        this.undoneUpdatesStack.push(backedUpFrame);
+        data.forEach(el => {
+                backedUpFrame.push(el);
+                const color:RGB = new RGB(0,0,0);
+                color.copy(this.screenBuffer[el.first]);
                 this.screenBuffer[el.first].copy(el.second);
+                el.second.copy(color);
             });
             
+    }
+    redoLast()
+    {
+        const data = this.undoneUpdatesStack.pop();
+        const backedUpFrame = new Array<Pair<number, RGB>>();
+        this.updatesStack.push(backedUpFrame);
+        data.forEach(el => {
+                backedUpFrame.push(el);
+                const color:RGB = new RGB(0,0,0);
+                color.copy(this.screenBuffer[el.first]);
+                this.screenBuffer[el.first].copy(el.second);
+                el.second.copy(color);
+            });
     }
     hashP(x:number, y:number):number
     {
@@ -835,6 +855,9 @@ async function main()
             break;
             case('KeyU'):
             field.undoLast();
+            break;
+            case('KeyR'):
+            field.redoLast();
             break;
         }
         field.color = pallette.calcColor(); 
