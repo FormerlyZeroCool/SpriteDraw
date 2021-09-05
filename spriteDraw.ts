@@ -1,7 +1,7 @@
 function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
-
+const dim = [128,128];
 class Queue<T> {
     data:Array<T>;
     start:number;
@@ -68,28 +68,58 @@ class Queue<T> {
     }
 };
 class RGB {
-    red:number;
-    green:number;
-    blue:number;
-    constructor(r, g, b)
+    color:number;
+    constructor(r:number = 0, g:number = 0, b:number, a:number = 0)
     {
-        this.red = r;
-        this.green = g;
-        this.blue  = b;
+        this.color = 0;
+        this.color = r << 24 | g << 16 | b << 8 | a;
     }
     compare(color:RGB):boolean
     {
-        return this.red == color.red && this.green == color.green && this.blue == color.blue;
+        return this.color === color.color;
     }
-    copy(color:RGB)
+    copy(color:RGB):void
     {
-        this.red = color.red;
-        this.green = color.green;
-        this.blue  = color.blue;
+        this.color = color.color;
     }
-    toInt()
+    toInt():number
     {
-        return 255<<24 | this.red<<16 | this.green<<8 | this.blue;
+        return this.color;
+    }
+    toRGBA():Array<number>
+    {
+        return [this.red(), this.green(), this.blue(), this.alpha()]
+    }
+    red():number
+    {
+        return (this.color >> 24) & ((1<<8)-1);
+    }
+    green():number
+    {
+        return (this.color >> 16) & ((1 << 8) - 1);
+    }
+    blue():number
+    {
+        return (this.color >> 8) & ((1 << 8) - 1);
+    }
+    alpha():number
+    {
+        return (this.color) & ((1 << 8) - 1);
+    }
+    setRed(red:number)
+    {
+        this.color &= (1<<24)-1;
+        this.color |= red << 24;
+    }
+    setGreen(green:number)
+    {
+        this.color &= ((1 << 16) - 1) | (((1<<8)-1) << 24);
+        this.color |= green << 16;
+    }
+    setBlue(blue:number)
+    {
+        this.color &= ((1<<8)-1) | (((1<<16)-1) << 16);
+        this.color |= blue << 8;
     }
     loadString(color:string)
     {
@@ -98,25 +128,26 @@ class RGB {
         const b:number = parseInt(color.substring(5,7), 16);
         if(!isNaN(r) && r <= 255 && r >= 0)
         {
-            this.red = r;
+            this.setRed(r);
         }
         if(!isNaN(g) && g <= 255 && g >= 0)
         {
-            this.green = g;
+            this.setGreen(g);
         }
         if(!isNaN(b) && b <= 255 && b >= 0)
         {
-            this.blue = b;
+            this.setBlue(b);
         }
     }
     htmlRBG():string{
-        const red:string = this.red < 16?`0${this.red.toString(16)}`:this.red.toString(16);
-        const green:string = this.green < 16?`0${this.green.toString(16)}`:this.green.toString(16);
-        const blue:string = this.blue < 16?`0${this.blue.toString(16)}`:this.blue.toString(16);
+        const red:string = this.red() < 16?`0${this.red().toString(16)}`:this.red().toString(16);
+        const green:string = this.green() < 16?`0${this.green().toString(16)}`:this.green().toString(16);
+        const blue:string = this.blue() < 16?`0${this.blue().toString(16)}`:this.blue().toString(16);
         return `#${red}${green}${blue}`
     }
 };
-class Pair<T,U=T> {
+
+class Pair<T,U = T> {
     first:T;
     second:U;
     constructor(first:T, second:U)
@@ -134,58 +165,75 @@ class DrawingScreen {
     screenBuffer:Array<RGB>;
     color:RGB;
     listeners:SingleTouchListener;
-    CKeyHeld:boolean;
-    altHeld:boolean;
+    keyboardHandler:KeyboardHandler;
     selectionRect:Array<number>;
     pasteRect:Array<number>;
     updatesStack:Array<Array<Pair<number,RGB>>>;
     undoneUpdatesStack:Array<Array<Pair<number,RGB>>>;
 
-    constructor(canvas:any, offset:Array<number>, dimensions:Array<number>, bounds:Array<number> = [canvas.width-offset[0], canvas.height-offset[1]])
+
+    constructor(canvas:any, keyboardHandler:KeyboardHandler, offset:Array<number>, dimensions:Array<number>, bounds:Array<number> = [canvas.width-offset[0], canvas.height-offset[1]])
     {
         this.canvas = canvas;
+        this.keyboardHandler = keyboardHandler;
         this.updatesStack = new Array<Array<Pair<number,RGB>>>();
         this.undoneUpdatesStack = new Array<Array<Pair<number,RGB>>>();
         this.selectionRect = new Array<number>();
-        this.altHeld = false;
-        this.CKeyHeld = false;
         this.offset = new Pair<number>(offset[0], offset[1]);
         this.bounds = new Pair<number>(bounds[0], bounds[1]);
         this.dimensions = new Pair<number>(dimensions[0], dimensions[1]);
         this.screenBuffer = new Array<RGB>();
         this.selectionRect = [0,0,0,0];
         this.pasteRect = [0,0,0,0];
-        this.color = new RGB(150,34,160);
+        this.color = new RGB(150,34,160,255);
         //this.screenBuffer.length = dimensions[0] * dimensions[1];
         for(let i = 0; i < dimensions[0] * dimensions[1]; i++)
         {
-            this.screenBuffer.push(new RGB(0,0,0));
+            this.screenBuffer.push(new RGB(0,0,0,0));
         }
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
-            console.log(this.updatesStack);
             if(this.updatesStack.length == 0 || this.updatesStack[this.updatesStack.length - 1].length)
                 this.updatesStack.push(new Array<Pair<number,RGB>>());
             this.canvas.focus();
-            if(this.CKeyHeld)
+            if(this.keyboardHandler.keysHeld['KeyC'])
                 this.selectionRect = [e.touchPos[0], e.touchPos[1],0,0];
-            else if(this.altHeld){
+            else if(this.keyboardHandler.keysHeld['AltLeft'] || this.keyboardHandler.keysHeld['AltRight']){
                 this.pasteRect = [e.touchPos[0], e.touchPos[1],0,0];
                 this.pasteRect[2] = this.selectionRect[2];
                 this.pasteRect[3] = this.selectionRect[3];
             }
         });
+        this.keyboardHandler.registerCallBack("keydown", e => true, event => {
+            switch(event.code) {
+                case('KeyC'):
+                if(this.keyboardHandler.keysHeld["KeyC"] === 1) {
+                    this.selectionRect = [0,0,0,0];
+                    this.pasteRect = [0,0,0,0];
+                }
+                break;
+                case('KeyV'):
+                this.copy();
+                break;
+                case('KeyU'):
+                this.undoLast();
+                break;
+                case('KeyR'):
+                this.redoLast();
+                break;
+            }
+        })
         this.listeners.registerCallBack("touchend",e => true, e => this.handleTap(e));
         this.listeners.registerCallBack("touchmove",e => true, e => {
-            if(this.CKeyHeld)
+            if(this.keyboardHandler.keysHeld['KeyC'])
             {
                 this.selectionRect[2] += e.deltaX;
                 this.selectionRect[3] += e.deltaY;
                 this.pasteRect[2] = this.selectionRect[2];
                 this.pasteRect[3] = this.selectionRect[3];
             }
-            else if(this.altHeld)
+            else if(this.keyboardHandler.keysHeld['AltLeft'] || this.keyboardHandler.keysHeld['AltRight'])
             {
                 this.pasteRect[0] += e.deltaX;
                 this.pasteRect[1] += e.deltaY;
@@ -208,14 +256,17 @@ class DrawingScreen {
         const area:number = width * height;
         for(let i = 0; i < area; i++)
         {
-            const destIndex:number = dest_x + dest_y*this.dimensions.first + i%width + Math.floor(i/width)*this.dimensions.first;
-            const sourceIndex:number = source_x + source_y*this.dimensions.first + i%width + Math.floor(i/width)*this.dimensions.first;
+            const copyAreaX:number = i%width;
+            const copyAreaY:number = Math.floor(i/width);
+            const destIndex:number = dest_x + dest_y*this.dimensions.first + copyAreaX + copyAreaY*this.dimensions.first;
+            const sourceIndex:number = source_x + source_y*this.dimensions.first + copyAreaX + copyAreaY*this.dimensions.first;
             const dest:RGB = this.screenBuffer[destIndex];
             const source:RGB = this.screenBuffer[sourceIndex];
-            if(!dest.compare(source))
-                this.updatesStack[this.updatesStack.length-1].push(new Pair(destIndex, new RGB(dest.red,dest.green,dest.blue))); 
-
-            dest.copy(source);
+            if(this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && this.inBufferBounds(source_x + copyAreaX, source_y + copyAreaY) && !dest.compare(source))
+            {
+                this.updatesStack[this.updatesStack.length-1].push(new Pair(destIndex, new RGB(dest.red(),dest.green(),dest.blue(), dest.alpha()))); 
+                dest.copy(source);
+            }
         }
     }
     handleTap(event):void
@@ -230,7 +281,7 @@ class DrawingScreen {
         else if(gx < this.dimensions.first && gy < this.dimensions.second){
             const pixel:RGB = this.screenBuffer[gx + gy*this.dimensions.first];
             if(!pixel.compare(this.color))
-                this.updatesStack[this.updatesStack.length-1].push(new Pair(gx + gy*this.dimensions.first, new RGB(pixel.red,pixel.green,pixel.blue)));        
+                this.updatesStack[this.updatesStack.length-1].push(new Pair(gx + gy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha())));        
             pixel.copy(this.color);
         }
     }
@@ -242,7 +293,7 @@ class DrawingScreen {
         checkedMap = {};
         const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
         const startPixel:RGB = this.screenBuffer[startIndex];
-        const spc:RGB = new RGB(startPixel.red, startPixel.green, startPixel.blue);
+        const spc:RGB = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
         queue.push(startIndex);
         while(queue.length > 0)
         {
@@ -250,14 +301,14 @@ class DrawingScreen {
             const pixelColor:RGB = this.screenBuffer[cur];
             if(
                 cur >= 0 && cur < this.dimensions.first * this.dimensions.second && 
-                (//this.compColor(pixelColor, this.color) || 
-                this.compColor(pixelColor, spc))
+                pixelColor.compare(spc)
             && !checkedMap[cur])
             {
                 checkedMap[cur] = true;
-                if(!pixelColor.compare(this.color))
-                        this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red,pixelColor.green,pixelColor.blue)));
-                pixelColor.copy(this.color);
+                if(!pixelColor.compare(this.color)){
+                    this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
+                    pixelColor.copy(this.color);
+                }
                 if(!checkedMap[cur+1])
                     queue.push(cur+1);
                 if(!checkedMap[cur-1])
@@ -288,8 +339,8 @@ class DrawingScreen {
                 const gy:number = Math.floor((y-this.offset.second)/this.bounds.second*this.dimensions.second);
                 if(gx < this.dimensions.first && gy < this.dimensions.second){
                     const pixel:RGB = this.screenBuffer[gx + gy*this.dimensions.first];
-                    if(!pixel.compare(this.color))
-                        this.updatesStack[this.updatesStack.length-1].push(new Pair(gx + gy*this.dimensions.first, new RGB(pixel.red,pixel.green,pixel.blue))); 
+                    if(pixel && !pixel.compare(this.color))
+                        this.updatesStack[this.updatesStack.length-1].push(new Pair(gx + gy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
                     pixel.copy(this.color);
                 }
             }
@@ -306,7 +357,7 @@ class DrawingScreen {
                 if(gx < this.dimensions.first && gy < this.dimensions.second){
                     const pixel:RGB = this.screenBuffer[gx + gy*this.dimensions.first];
                     if(!pixel.compare(this.color))
-                        this.updatesStack[this.updatesStack.length-1].push(new Pair(gx + gy*this.dimensions.first, new RGB(pixel.red,pixel.green,pixel.blue))); 
+                        this.updatesStack[this.updatesStack.length-1].push(new Pair(gx + gy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
                     pixel.copy(this.color);
                 }
             }
@@ -319,7 +370,7 @@ class DrawingScreen {
         this.undoneUpdatesStack.push(backedUpFrame);
         data.forEach(el => {
                 backedUpFrame.push(el);
-                const color:RGB = new RGB(0,0,0);
+                const color:RGB = new RGB(0,0,0,0);
                 color.copy(this.screenBuffer[el.first]);
                 this.screenBuffer[el.first].copy(el.second);
                 el.second.copy(color);
@@ -333,7 +384,7 @@ class DrawingScreen {
         this.updatesStack.push(backedUpFrame);
         data.forEach(el => {
                 backedUpFrame.push(el);
-                const color:RGB = new RGB(0,0,0);
+                const color:RGB = new RGB(0,0,0,0);
                 color.copy(this.screenBuffer[el.first]);
                 this.screenBuffer[el.first].copy(el.second);
                 el.second.copy(color);
@@ -342,6 +393,10 @@ class DrawingScreen {
     hashP(x:number, y:number):number
     {
         return x + y*this.dimensions.first;
+    }
+    inBufferBounds(x:number, y:number)
+    {
+        return x >= 0 && x < this.dimensions.first && y >= 0 && y < this.dimensions.second;
     }
     compColor(c1:RGB, c2:RGB)
     {
@@ -355,7 +410,7 @@ class DrawingScreen {
             if(this.screenBuffer.length < newDim[0]*newDim[1])
             {
                 for(let i = this.screenBuffer.length; i < newDim[0]*newDim[1]; i++)
-                    this.screenBuffer.push(new RGB(0,0,0));
+                    this.screenBuffer.push(new RGB(0,0,0,0));
             }
         }
     }
@@ -388,6 +443,64 @@ class DrawingScreen {
         
     }
 
+};
+class KeyListenerTypes {
+    keydown:Array<TouchHandler>;
+    keypressed:Array<TouchHandler>;
+    keyup:Array<TouchHandler>;
+    constructor()
+    {
+        this.keydown = new Array<TouchHandler>();
+        this.keypressed = new Array<TouchHandler>();
+        this.keyup = new Array<TouchHandler>();
+    }
+};
+class KeyboardHandler {
+    keysHeld:any;
+    listenerTypeMap:KeyListenerTypes;
+    constructor()
+    {
+        this.keysHeld = {};
+        this.listenerTypeMap = new KeyListenerTypes();
+        document.addEventListener("keyup", e => this.keyUp(e));
+        document.addEventListener("keydown", e => this.keyDown(e));
+        document.addEventListener("keypressed", e => this.keyPressed(e));
+    }
+    registerCallBack(listenerType:string, predicate, callBack):void
+    {
+        this.listenerTypeMap[listenerType].push(new TouchHandler(predicate, callBack));
+    }
+    callHandler(type:string, event):void
+    {
+        const handlers = this.listenerTypeMap[type];
+        handlers.forEach(handler => {
+            if(handler.pred(event))
+            {
+                handler.callBack(event);
+            }
+        });
+    }
+    keyDown(event)
+    {
+        if(this.keysHeld[event.code] === undefined || this.keysHeld[event.code] === null)
+            this.keysHeld[event.code] = 1;
+        else
+            this.keysHeld[event.code]++;
+        event.keysHeld = this.keysHeld;
+        this.callHandler("keydown", event);
+    }
+    keyUp(event)
+    {
+        this.keysHeld[event.code] = 0;
+        event.keysHeld = this.keysHeld;
+        this.callHandler("keyup", event);
+    }
+    keyPressed(event)
+    {
+        event.keysHeld = this.keysHeld;
+        this.callHandler("keypressed", event);
+    }
+    
 };
 class TouchHandler {
     pred:any; 
@@ -590,16 +703,16 @@ class Pallette {
     colors:Array<RGB>;
     canvas:any;
     listeners:SingleTouchListener;
-    shiftDown:boolean;
+    keyboardHandler:KeyboardHandler;
     textBoxColor:any;
     ctx:any;
 
-    constructor(canvas:any, textBoxColor:any, colorCount:number = 10, colors:Array<RGB> = null)
+    constructor(canvas:any, keyboardHandler:KeyboardHandler, textBoxColor:any, colorCount:number = 10, colors:Array<RGB> = null)
     {
         this.canvas = canvas;
+        this.keyboardHandler = keyboardHandler;
         this.ctx = canvas.getContext("2d");
         this.highLightedCell = 0;
-        this.shiftDown = false;
         this.textBoxColor = textBoxColor;
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.colors = new Array<RGB>();
@@ -612,12 +725,11 @@ class Pallette {
             const top = 0;
             const bottom = 1;
             const depth = 0;
-            //pushRect(this.triangleBufferData, i / colorCount * canvas.width, 0, width, height);
         }
         if(colors !== null)
         {
             colors.forEach(el => {
-                this.colors.push(new RGB(el.red, el.green, el.blue));
+                this.colors.push(new RGB(el.red(), el.green(), el.blue(), el.alpha()));
             });
 
         }
@@ -635,7 +747,7 @@ class Pallette {
                 g += ((i % 3 == 1) ? delta : 0);
                 b += ((i % 2 == 1) ? delta : 0);
                 b += ((i % 3 == 2) ? delta : 0);
-                this.colors.push(new RGB(r%256, g%256, b%256));
+                this.colors.push(new RGB(r%256, g%256, b%256, 255));
             }
         }
         this.listeners.registerCallBack("touchstart", e => true, e => this.handleClick(e));
@@ -643,13 +755,13 @@ class Pallette {
     }
     calcColor(i:number = this.highLightedCell):RGB
     {
-        const color = new RGB(this.colors[i].red, this.colors[i].green, this.colors[i].blue);
+        const color = new RGB(this.colors[i].red(), this.colors[i].green(), this.colors[i].blue(), this.colors[i].alpha());
         const scale = 1.6;
-        if(this.shiftDown)
+        if(this.keyboardHandler.keysHeld["ShiftLeft"] || this.keyboardHandler.keysHeld["ShiftRight"])
         {
-            color.red = Math.floor(color.red*scale) < 256 ? Math.floor(color.red*scale) : 255;
-            color.green = Math.floor(color.green*scale) < 256 ? Math.floor(color.green*scale) : 255;
-            color.blue = Math.floor(color.blue*scale) < 256 ? Math.floor(color.blue*scale) : 255;
+            color.setRed(Math.floor(color.red()*scale) < 256 ? Math.floor(color.red()*scale) : 255);
+            color.setGreen(Math.floor(color.green()*scale) < 256 ? Math.floor(color.green()*scale) : 255);
+            color.setBlue(Math.floor(color.blue()*scale) < 256 ? Math.floor(color.blue()*scale) : 255);
         }
         return color;
     }
@@ -667,10 +779,8 @@ class Pallette {
     }
     invertColor(color:RGB):RGB
     {
-        const newc = new RGB(0,0,0);
-        newc.red = 255 - color.blue;
-        newc.green = 255 - color.red;
-        newc.blue = 255 - color.green;
+        const newc = new RGB(0,0,0,0);
+        newc.copy(color);
         return newc;
     }
     draw():void
@@ -691,9 +801,9 @@ class Pallette {
 
             this.ctx.strokeText((i+1)%10,i*width+width*0.5, height/3);
 
-            visibleColor.blue = Math.floor(visibleColor.blue/2);
-            visibleColor.red = Math.floor(visibleColor.red/2);
-            visibleColor.green = Math.floor(visibleColor.green/2);
+            visibleColor.setBlue(Math.floor(visibleColor.blue()/2));
+            visibleColor.setRed(Math.floor(visibleColor.red()/2));
+            visibleColor.setGreen(Math.floor(visibleColor.green()/2));
             this.ctx.fillStyle = visibleColor.htmlRBG();
             this.ctx.fillText((i+1)%10, i*width+width*0.5, height/3);
        
@@ -706,68 +816,52 @@ class Pallette {
         }
     }
 };
-class GLHelper {
-    glctx:any;
-    triangleBufferData:Array<number>;
-    glBufferBuffer:ArrayBuffer;
-    glBuffer:Float32Array;
-    constructor(canvas:any)
+class Sprite {
+    pixels:ImageData;
+    constructor(pixels:Array<RGB>, width:number, height:number)
     {
-        this.glctx = canvas.getContext("webgl");  
-        // Only continue if WebGL is available and working
-        if (this.glctx === null) 
-        {
-            const errorText:string = "Unable to initialize WebGL. Your browser or machine may not support it.";
-            alert(errorText);
-            throw Error(errorText);
-        }
-        // Set clear color to black, fully opaque
-        this.glctx.clearColor(0.0, 0.0, 0.0, 1.0);
-        // Clear the color buffer with specified clear color
-        this.glctx.clear(this.glctx.COLOR_BUFFER_BIT);
+        this.copy(pixels, width, height);
     }
-    genGLBuffer()
+    copy(pixels:Array<RGB>, width:number, height:number):void
     {
-        if(!this.glBuffer && this.triangleBufferData.length * 4 != this.glBufferBuffer.byteLength)
+        if(this.pixels.width * this.pixels.height !== pixels.length)
+            this.pixels = new ImageData(width, height);
+        for(let i = 0; i < this.pixels.data.length; i++)
         {
-            this.glBufferBuffer = new ArrayBuffer(this.triangleBufferData.length * 4);
-            this.glBuffer = new Float32Array(this.glBufferBuffer);
+            this.pixels.data[i<<2] = pixels[i].color;
         }
-        let i = 0;
-        this.triangleBufferData.forEach(element => {
-            this.glBuffer[i++] = element;
-        });
+    }
+    draw(ctx, x:number, y:number, width:number, height:number):void
+    {
+        ctx.drawImage(this.pixels, x, y, width, height);
+    }
+};
+class SpriteAnimation {
+    sprites:Array<Sprite>;
+    x:number;
+    y:number;
+    scale:number;
+    animationIndex:number;
 
-    }
-    pushRect(x, y, width, height)
+    constructor(x:number, y:number, scale:number)
     {
-        const left = x / width;
-        const right = (x + 1) / width;
-        const top = y;
-        const bottom = y + height;
-        const depth = 0;
-        /*t1*/
-        this.triangleBufferData.push(left);
-        this.triangleBufferData.push(bottom);
-        this.triangleBufferData.push(depth);
-        this.triangleBufferData.push(right);
-        this.triangleBufferData.push(bottom);
-        this.triangleBufferData.push(depth);
-        this.triangleBufferData.push(left);
-        this.triangleBufferData.push(top);
-        this.triangleBufferData.push(depth);
-        /*t2*/
-        this.triangleBufferData.push(left);
-        this.triangleBufferData.push(top);
-        this.triangleBufferData.push(depth);
-        this.triangleBufferData.push(right);
-        this.triangleBufferData.push(bottom);
-        this.triangleBufferData.push(depth);
-        this.triangleBufferData.push(right);
-        this.triangleBufferData.push(top);
-        this.triangleBufferData.push(depth);
-        //forward medical records 
+        this.sprites = new Array<Sprite>();
+        this.x = x;
+        this.y = y;
+        this.scale = scale;
+        this.animationIndex = 0;
     }
+    pushSprite(sprite:Sprite):void
+    {
+        this.sprites.push(sprite);
+    }
+    draw(ctx, width, height):void
+    {
+        this.sprites[this.animationIndex++].draw(ctx, this.x, this.y, width, height);
+    }
+};
+class AnimationGroup {
+
 }
 function logToServer(data):void
 {
@@ -783,98 +877,17 @@ function logToServer(data):void
 async function main()
 {
     const newColor:any = document.getElementById("newColor");
-    const field:DrawingScreen = new DrawingScreen(document.getElementById("screen"),[0,0], [64,64]);
-    field.setDim([228,228]);
-    const pallette:Pallette = new Pallette(document.getElementById("pallette_screen"), newColor);
+    const keyboardHandler:KeyboardHandler = new KeyboardHandler();
+    const field:DrawingScreen = new DrawingScreen(document.getElementById("screen"), keyboardHandler,[0,0], dim);
+
+    const pallette:Pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler, newColor);
     const setPalletteColorButton = document.getElementById("setPalletteColorButton");
     const palletteColorButtonListener:SingleTouchListener = new SingleTouchListener(setPalletteColorButton, true, true);
     palletteColorButtonListener.registerCallBack("touchstart", e => true, e => {pallette.setSelectedColor(newColor.value);field.color = pallette.calcColor();});
     pallette.canvas.addEventListener("mouseup", e => { field.color = pallette.calcColor() });
     pallette.listeners.registerCallBack("touchend", e => true,  e => { field.color = pallette.calcColor(); })
-    document.addEventListener("keydown", e => { 
-        switch(e.keyCode){
-            case(16/*shift*/):
-            pallette.shiftDown = true; 
-            break;
-        } 
-        if(document.activeElement === document.getElementById("body"))
-        switch(e.code)
-        {
-            case('Digit1'):
-            pallette.highLightedCell = 0;
-            field.color = pallette.calcColor();
-            break;
-            case('Digit2'):
-            pallette.highLightedCell = 1;
-            field.color = pallette.calcColor();
-            break;
-            case('Digit3'):
-            pallette.highLightedCell = 2;
-            field.color = pallette.calcColor();
-            break;
-            case('Digit4'):
-            pallette.highLightedCell = 3;
-            field.color = pallette.calcColor();
-            break;
-            case('Digit5'):
-            pallette.highLightedCell = 4;
-            field.color = pallette.calcColor();
-            break;
-            case('Digit6'):
-            pallette.highLightedCell = 5;
-            field.color = pallette.calcColor();
-            break;
-            case('Digit7'):
-            pallette.highLightedCell = 6;
-            field.color = pallette.calcColor();
-            break;
-            case('Digit8'):
-            pallette.highLightedCell = 7;
-            field.color = pallette.calcColor();
-            break;
-            case('Digit9'):
-            pallette.highLightedCell = 8;
-            field.color = pallette.calcColor();
-            break;
-            case('Digit0'):
-            pallette.highLightedCell = 9;
-            field.color = pallette.calcColor();
-            break;
-            case('KeyC'):
-            if(!field.CKeyHeld){
-                field.CKeyHeld = true;
-                field.selectionRect = [0,0,0,0];
-                field.pasteRect = [0,0,0,0];
-            }
-            break;
-            case('AltLeft'):
-            field.altHeld = true
-            break;
-            case('KeyV'):
-            field.copy();
-            break;
-            case('KeyU'):
-            field.undoLast();
-            break;
-            case('KeyR'):
-            field.redoLast();
-            break;
-        }
-        field.color = pallette.calcColor(); 
-    });
-    document.addEventListener("keyup", e => { 
-        if(e.keyCode == 16/*shift*/) 
-            pallette.shiftDown = false; 
-            switch(e.code){
-            case('KeyC'):
-            field.CKeyHeld = false;
-            break;
-            case('AltLeft'):
-            field.altHeld = false;
-            break;
-            }
-            field.color = pallette.calcColor(); });
-   
+    
+
     const fps = 15;
     const goalSleep = 1000/fps;
     while(true)

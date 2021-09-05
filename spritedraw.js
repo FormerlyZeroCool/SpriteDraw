@@ -1,6 +1,16 @@
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+const dim = [128, 128];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -53,40 +63,64 @@ class Queue {
 }
 ;
 class RGB {
-    constructor(r, g, b) {
-        this.red = r;
-        this.green = g;
-        this.blue = b;
+    constructor(r = 0, g = 0, b, a = 0) {
+        this.color = 0;
+        this.color = r << 24 | g << 16 | b << 8 | a;
     }
     compare(color) {
-        return this.red == color.red && this.green == color.green && this.blue == color.blue;
+        return this.color === color.color;
     }
     copy(color) {
-        this.red = color.red;
-        this.green = color.green;
-        this.blue = color.blue;
+        this.color = color.color;
     }
     toInt() {
-        return 255 << 24 | this.red << 16 | this.green << 8 | this.blue;
+        return this.color;
+    }
+    toRGBA() {
+        return [this.red(), this.green(), this.blue(), this.alpha()];
+    }
+    red() {
+        return (this.color >> 24) & ((1 << 8) - 1);
+    }
+    green() {
+        return (this.color >> 16) & ((1 << 8) - 1);
+    }
+    blue() {
+        return (this.color >> 8) & ((1 << 8) - 1);
+    }
+    alpha() {
+        return (this.color) & ((1 << 8) - 1);
+    }
+    setRed(red) {
+        this.color &= (1 << 24) - 1;
+        this.color |= red << 24;
+    }
+    setGreen(green) {
+        this.color &= ((1 << 16) - 1) | (((1 << 8) - 1) << 24);
+        this.color |= green << 16;
+    }
+    setBlue(blue) {
+        this.color &= ((1 << 8) - 1) | (((1 << 16) - 1) << 16);
+        this.color |= blue << 8;
     }
     loadString(color) {
         const r = parseInt(color.substring(1, 3), 16);
         const g = parseInt(color.substring(3, 5), 16);
         const b = parseInt(color.substring(5, 7), 16);
         if (!isNaN(r) && r <= 255 && r >= 0) {
-            this.red = r;
+            this.setRed(r);
         }
         if (!isNaN(g) && g <= 255 && g >= 0) {
-            this.green = g;
+            this.setGreen(g);
         }
         if (!isNaN(b) && b <= 255 && b >= 0) {
-            this.blue = b;
+            this.setBlue(b);
         }
     }
     htmlRBG() {
-        const red = this.red < 16 ? `0${this.red.toString(16)}` : this.red.toString(16);
-        const green = this.green < 16 ? `0${this.green.toString(16)}` : this.green.toString(16);
-        const blue = this.blue < 16 ? `0${this.blue.toString(16)}` : this.blue.toString(16);
+        const red = this.red() < 16 ? `0${this.red().toString(16)}` : this.red().toString(16);
+        const green = this.green() < 16 ? `0${this.green().toString(16)}` : this.green().toString(16);
+        const blue = this.blue() < 16 ? `0${this.blue().toString(16)}` : this.blue().toString(16);
         return `#${red}${green}${blue}`;
     }
 }
@@ -99,48 +133,65 @@ class Pair {
 }
 ;
 class DrawingScreen {
-    constructor(canvas, offset, dimensions, bounds = [canvas.width - offset[0], canvas.height - offset[1]]) {
+    constructor(canvas, keyboardHandler, offset, dimensions, bounds = [canvas.width - offset[0], canvas.height - offset[1]]) {
         this.canvas = canvas;
+        this.keyboardHandler = keyboardHandler;
         this.updatesStack = new Array();
         this.undoneUpdatesStack = new Array();
         this.selectionRect = new Array();
-        this.altHeld = false;
-        this.CKeyHeld = false;
         this.offset = new Pair(offset[0], offset[1]);
         this.bounds = new Pair(bounds[0], bounds[1]);
         this.dimensions = new Pair(dimensions[0], dimensions[1]);
         this.screenBuffer = new Array();
         this.selectionRect = [0, 0, 0, 0];
         this.pasteRect = [0, 0, 0, 0];
-        this.color = new RGB(150, 34, 160);
+        this.color = new RGB(150, 34, 160, 255);
         //this.screenBuffer.length = dimensions[0] * dimensions[1];
         for (let i = 0; i < dimensions[0] * dimensions[1]; i++) {
-            this.screenBuffer.push(new RGB(0, 0, 0));
+            this.screenBuffer.push(new RGB(0, 0, 0, 0));
         }
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
-            console.log(this.updatesStack);
             if (this.updatesStack.length == 0 || this.updatesStack[this.updatesStack.length - 1].length)
                 this.updatesStack.push(new Array());
             this.canvas.focus();
-            if (this.CKeyHeld)
+            if (this.keyboardHandler.keysHeld['KeyC'])
                 this.selectionRect = [e.touchPos[0], e.touchPos[1], 0, 0];
-            else if (this.altHeld) {
+            else if (this.keyboardHandler.keysHeld['AltLeft'] || this.keyboardHandler.keysHeld['AltRight']) {
                 this.pasteRect = [e.touchPos[0], e.touchPos[1], 0, 0];
                 this.pasteRect[2] = this.selectionRect[2];
                 this.pasteRect[3] = this.selectionRect[3];
             }
         });
+        this.keyboardHandler.registerCallBack("keydown", e => true, event => {
+            switch (event.code) {
+                case ('KeyC'):
+                    if (this.keyboardHandler.keysHeld["KeyC"] === 1) {
+                        this.selectionRect = [0, 0, 0, 0];
+                        this.pasteRect = [0, 0, 0, 0];
+                    }
+                    break;
+                case ('KeyV'):
+                    this.copy();
+                    break;
+                case ('KeyU'):
+                    this.undoLast();
+                    break;
+                case ('KeyR'):
+                    this.redoLast();
+                    break;
+            }
+        });
         this.listeners.registerCallBack("touchend", e => true, e => this.handleTap(e));
         this.listeners.registerCallBack("touchmove", e => true, e => {
-            if (this.CKeyHeld) {
+            if (this.keyboardHandler.keysHeld['KeyC']) {
                 this.selectionRect[2] += e.deltaX;
                 this.selectionRect[3] += e.deltaY;
                 this.pasteRect[2] = this.selectionRect[2];
                 this.pasteRect[3] = this.selectionRect[3];
             }
-            else if (this.altHeld) {
+            else if (this.keyboardHandler.keysHeld['AltLeft'] || this.keyboardHandler.keysHeld['AltRight']) {
                 this.pasteRect[0] += e.deltaX;
                 this.pasteRect[1] += e.deltaY;
                 this.pasteRect[2] = this.selectionRect[2];
@@ -159,13 +210,16 @@ class DrawingScreen {
         const height = Math.floor((this.selectionRect[3] - this.offset.second) / this.bounds.second * this.dimensions.second);
         const area = width * height;
         for (let i = 0; i < area; i++) {
-            const destIndex = dest_x + dest_y * this.dimensions.first + i % width + Math.floor(i / width) * this.dimensions.first;
-            const sourceIndex = source_x + source_y * this.dimensions.first + i % width + Math.floor(i / width) * this.dimensions.first;
+            const copyAreaX = i % width;
+            const copyAreaY = Math.floor(i / width);
+            const destIndex = dest_x + dest_y * this.dimensions.first + copyAreaX + copyAreaY * this.dimensions.first;
+            const sourceIndex = source_x + source_y * this.dimensions.first + copyAreaX + copyAreaY * this.dimensions.first;
             const dest = this.screenBuffer[destIndex];
             const source = this.screenBuffer[sourceIndex];
-            if (!dest.compare(source))
-                this.updatesStack[this.updatesStack.length - 1].push(new Pair(destIndex, new RGB(dest.red, dest.green, dest.blue)));
-            dest.copy(source);
+            if (this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && this.inBufferBounds(source_x + copyAreaX, source_y + copyAreaY) && !dest.compare(source)) {
+                this.updatesStack[this.updatesStack.length - 1].push(new Pair(destIndex, new RGB(dest.red(), dest.green(), dest.blue(), dest.alpha())));
+                dest.copy(source);
+            }
         }
     }
     handleTap(event) {
@@ -177,7 +231,7 @@ class DrawingScreen {
         else if (gx < this.dimensions.first && gy < this.dimensions.second) {
             const pixel = this.screenBuffer[gx + gy * this.dimensions.first];
             if (!pixel.compare(this.color))
-                this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red, pixel.green, pixel.blue)));
+                this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
             pixel.copy(this.color);
         }
     }
@@ -187,19 +241,19 @@ class DrawingScreen {
         checkedMap = {};
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
         const startPixel = this.screenBuffer[startIndex];
-        const spc = new RGB(startPixel.red, startPixel.green, startPixel.blue);
+        const spc = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
         queue.push(startIndex);
         while (queue.length > 0) {
             const cur = queue.pop();
             const pixelColor = this.screenBuffer[cur];
             if (cur >= 0 && cur < this.dimensions.first * this.dimensions.second &&
-                ( //this.compColor(pixelColor, this.color) || 
-                this.compColor(pixelColor, spc))
+                pixelColor.compare(spc)
                 && !checkedMap[cur]) {
                 checkedMap[cur] = true;
-                if (!pixelColor.compare(this.color))
-                    this.updatesStack[this.updatesStack.length - 1].push(new Pair(cur, new RGB(pixelColor.red, pixelColor.green, pixelColor.blue)));
-                pixelColor.copy(this.color);
+                if (!pixelColor.compare(this.color)) {
+                    this.updatesStack[this.updatesStack.length - 1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
+                    pixelColor.copy(this.color);
+                }
                 if (!checkedMap[cur + 1])
                     queue.push(cur + 1);
                 if (!checkedMap[cur - 1])
@@ -227,8 +281,8 @@ class DrawingScreen {
                 const gy = Math.floor((y - this.offset.second) / this.bounds.second * this.dimensions.second);
                 if (gx < this.dimensions.first && gy < this.dimensions.second) {
                     const pixel = this.screenBuffer[gx + gy * this.dimensions.first];
-                    if (!pixel.compare(this.color))
-                        this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red, pixel.green, pixel.blue)));
+                    if (pixel && !pixel.compare(this.color))
+                        this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
                     pixel.copy(this.color);
                 }
             }
@@ -243,7 +297,7 @@ class DrawingScreen {
                 if (gx < this.dimensions.first && gy < this.dimensions.second) {
                     const pixel = this.screenBuffer[gx + gy * this.dimensions.first];
                     if (!pixel.compare(this.color))
-                        this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red, pixel.green, pixel.blue)));
+                        this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
                     pixel.copy(this.color);
                 }
             }
@@ -255,7 +309,7 @@ class DrawingScreen {
         this.undoneUpdatesStack.push(backedUpFrame);
         data.forEach(el => {
             backedUpFrame.push(el);
-            const color = new RGB(0, 0, 0);
+            const color = new RGB(0, 0, 0, 0);
             color.copy(this.screenBuffer[el.first]);
             this.screenBuffer[el.first].copy(el.second);
             el.second.copy(color);
@@ -267,7 +321,7 @@ class DrawingScreen {
         this.updatesStack.push(backedUpFrame);
         data.forEach(el => {
             backedUpFrame.push(el);
-            const color = new RGB(0, 0, 0);
+            const color = new RGB(0, 0, 0, 0);
             color.copy(this.screenBuffer[el.first]);
             this.screenBuffer[el.first].copy(el.second);
             el.second.copy(color);
@@ -275,6 +329,9 @@ class DrawingScreen {
     }
     hashP(x, y) {
         return x + y * this.dimensions.first;
+    }
+    inBufferBounds(x, y) {
+        return x >= 0 && x < this.dimensions.first && y >= 0 && y < this.dimensions.second;
     }
     compColor(c1, c2) {
         return c1.red === c2.red && c1.green === c2.green && c1.blue === c2.blue;
@@ -284,7 +341,7 @@ class DrawingScreen {
             this.dimensions = new Pair(newDim[0], newDim[1]);
             if (this.screenBuffer.length < newDim[0] * newDim[1]) {
                 for (let i = this.screenBuffer.length; i < newDim[0] * newDim[1]; i++)
-                    this.screenBuffer.push(new RGB(0, 0, 0));
+                    this.screenBuffer.push(new RGB(0, 0, 0, 0));
             }
         }
     }
@@ -310,6 +367,52 @@ class DrawingScreen {
         ctx.strokeRect(this.selectionRect[0] + 2, this.selectionRect[1] + 2, this.selectionRect[2] - 4, this.selectionRect[3] - 4);
         ctx.strokeStyle = "#0000FF";
         ctx.strokeRect(this.pasteRect[0] + 2, this.pasteRect[1] + 2, this.pasteRect[2] - 4, this.pasteRect[3] - 4);
+    }
+}
+;
+class KeyListenerTypes {
+    constructor() {
+        this.keydown = new Array();
+        this.keypressed = new Array();
+        this.keyup = new Array();
+    }
+}
+;
+class KeyboardHandler {
+    constructor() {
+        this.keysHeld = {};
+        this.listenerTypeMap = new KeyListenerTypes();
+        document.addEventListener("keyup", e => this.keyUp(e));
+        document.addEventListener("keydown", e => this.keyDown(e));
+        document.addEventListener("keypressed", e => this.keyPressed(e));
+    }
+    registerCallBack(listenerType, predicate, callBack) {
+        this.listenerTypeMap[listenerType].push(new TouchHandler(predicate, callBack));
+    }
+    callHandler(type, event) {
+        const handlers = this.listenerTypeMap[type];
+        handlers.forEach(handler => {
+            if (handler.pred(event)) {
+                handler.callBack(event);
+            }
+        });
+    }
+    keyDown(event) {
+        if (this.keysHeld[event.code] === undefined || this.keysHeld[event.code] === null)
+            this.keysHeld[event.code] = 1;
+        else
+            this.keysHeld[event.code]++;
+        event.keysHeld = this.keysHeld;
+        this.callHandler("keydown", event);
+    }
+    keyUp(event) {
+        this.keysHeld[event.code] = 0;
+        event.keysHeld = this.keysHeld;
+        this.callHandler("keyup", event);
+    }
+    keyPressed(event) {
+        event.keysHeld = this.keysHeld;
+        this.callHandler("keypressed", event);
     }
 }
 ;
@@ -472,11 +575,11 @@ class SingleTouchListener {
 }
 ;
 class Pallette {
-    constructor(canvas, textBoxColor, colorCount = 10, colors = null) {
+    constructor(canvas, keyboardHandler, textBoxColor, colorCount = 10, colors = null) {
         this.canvas = canvas;
+        this.keyboardHandler = keyboardHandler;
         this.ctx = canvas.getContext("2d");
         this.highLightedCell = 0;
-        this.shiftDown = false;
         this.textBoxColor = textBoxColor;
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.colors = new Array();
@@ -488,11 +591,10 @@ class Pallette {
             const top = 0;
             const bottom = 1;
             const depth = 0;
-            //pushRect(this.triangleBufferData, i / colorCount * canvas.width, 0, width, height);
         }
         if (colors !== null) {
             colors.forEach(el => {
-                this.colors.push(new RGB(el.red, el.green, el.blue));
+                this.colors.push(new RGB(el.red(), el.green(), el.blue(), el.alpha()));
             });
         }
         else {
@@ -506,18 +608,18 @@ class Pallette {
                 g += ((i % 3 == 1) ? delta : 0);
                 b += ((i % 2 == 1) ? delta : 0);
                 b += ((i % 3 == 2) ? delta : 0);
-                this.colors.push(new RGB(r % 256, g % 256, b % 256));
+                this.colors.push(new RGB(r % 256, g % 256, b % 256, 255));
             }
         }
         this.listeners.registerCallBack("touchstart", e => true, e => this.handleClick(e));
     }
     calcColor(i = this.highLightedCell) {
-        const color = new RGB(this.colors[i].red, this.colors[i].green, this.colors[i].blue);
+        const color = new RGB(this.colors[i].red(), this.colors[i].green(), this.colors[i].blue(), this.colors[i].alpha());
         const scale = 1.6;
-        if (this.shiftDown) {
-            color.red = Math.floor(color.red * scale) < 256 ? Math.floor(color.red * scale) : 255;
-            color.green = Math.floor(color.green * scale) < 256 ? Math.floor(color.green * scale) : 255;
-            color.blue = Math.floor(color.blue * scale) < 256 ? Math.floor(color.blue * scale) : 255;
+        if (this.keyboardHandler.keysHeld["ShiftLeft"] || this.keyboardHandler.keysHeld["ShiftRight"]) {
+            color.setRed(Math.floor(color.red() * scale) < 256 ? Math.floor(color.red() * scale) : 255);
+            color.setGreen(Math.floor(color.green() * scale) < 256 ? Math.floor(color.green() * scale) : 255);
+            color.setBlue(Math.floor(color.blue() * scale) < 256 ? Math.floor(color.blue() * scale) : 255);
         }
         return color;
     }
@@ -531,10 +633,8 @@ class Pallette {
         }
     }
     invertColor(color) {
-        const newc = new RGB(0, 0, 0);
-        newc.red = 255 - color.blue;
-        newc.green = 255 - color.red;
-        newc.blue = 255 - color.green;
+        const newc = new RGB(0, 0, 0, 0);
+        newc.copy(color);
         return newc;
     }
     draw() {
@@ -550,9 +650,9 @@ class Pallette {
             const visibleColor = this.invertColor(this.calcColor(i));
             ctx.strokeStyle = visibleColor.htmlRBG();
             this.ctx.strokeText((i + 1) % 10, i * width + width * 0.5, height / 3);
-            visibleColor.blue = Math.floor(visibleColor.blue / 2);
-            visibleColor.red = Math.floor(visibleColor.red / 2);
-            visibleColor.green = Math.floor(visibleColor.green / 2);
+            visibleColor.setBlue(Math.floor(visibleColor.blue() / 2));
+            visibleColor.setRed(Math.floor(visibleColor.red() / 2));
+            visibleColor.setGreen(Math.floor(visibleColor.green() / 2));
             this.ctx.fillStyle = visibleColor.htmlRBG();
             this.ctx.fillText((i + 1) % 10, i * width + width * 0.5, height / 3);
             if (i == this.highLightedCell) {
@@ -564,58 +664,39 @@ class Pallette {
     }
 }
 ;
-class GLHelper {
-    constructor(canvas) {
-        this.glctx = canvas.getContext("webgl");
-        // Only continue if WebGL is available and working
-        if (this.glctx === null) {
-            const errorText = "Unable to initialize WebGL. Your browser or machine may not support it.";
-            alert(errorText);
-            throw Error(errorText);
+class Sprite {
+    constructor(pixels, width, height) {
+        this.copy(pixels, width, height);
+    }
+    copy(pixels, width, height) {
+        if (this.pixels.width * this.pixels.height !== pixels.length)
+            this.pixels = new ImageData(width, height);
+        for (let i = 0; i < this.pixels.data.length; i++) {
+            this.pixels.data[i << 2] = pixels[i].color;
         }
-        // Set clear color to black, fully opaque
-        this.glctx.clearColor(0.0, 0.0, 0.0, 1.0);
-        // Clear the color buffer with specified clear color
-        this.glctx.clear(this.glctx.COLOR_BUFFER_BIT);
     }
-    genGLBuffer() {
-        if (!this.glBuffer && this.triangleBufferData.length * 4 != this.glBufferBuffer.byteLength) {
-            this.glBufferBuffer = new ArrayBuffer(this.triangleBufferData.length * 4);
-            this.glBuffer = new Float32Array(this.glBufferBuffer);
-        }
-        let i = 0;
-        this.triangleBufferData.forEach(element => {
-            this.glBuffer[i++] = element;
-        });
+    draw(ctx, x, y, width, height) {
+        ctx.drawImage(this.pixels, x, y, width, height);
     }
-    pushRect(x, y, width, height) {
-        const left = x / width;
-        const right = (x + 1) / width;
-        const top = y;
-        const bottom = y + height;
-        const depth = 0;
-        /*t1*/
-        this.triangleBufferData.push(left);
-        this.triangleBufferData.push(bottom);
-        this.triangleBufferData.push(depth);
-        this.triangleBufferData.push(right);
-        this.triangleBufferData.push(bottom);
-        this.triangleBufferData.push(depth);
-        this.triangleBufferData.push(left);
-        this.triangleBufferData.push(top);
-        this.triangleBufferData.push(depth);
-        /*t2*/
-        this.triangleBufferData.push(left);
-        this.triangleBufferData.push(top);
-        this.triangleBufferData.push(depth);
-        this.triangleBufferData.push(right);
-        this.triangleBufferData.push(bottom);
-        this.triangleBufferData.push(depth);
-        this.triangleBufferData.push(right);
-        this.triangleBufferData.push(top);
-        this.triangleBufferData.push(depth);
-        //forward medical records 
+}
+;
+class SpriteAnimation {
+    constructor(x, y, scale) {
+        this.sprites = new Array();
+        this.x = x;
+        this.y = y;
+        this.scale = scale;
+        this.animationIndex = 0;
     }
+    pushSprite(sprite) {
+        this.sprites.push(sprite);
+    }
+    draw(ctx, width, height) {
+        this.sprites[this.animationIndex++].draw(ctx, this.x, this.y, width, height);
+    }
+}
+;
+class AnimationGroup {
 }
 function logToServer(data) {
     fetch("/data", {
@@ -626,107 +707,26 @@ function logToServer(data) {
         body: JSON.stringify(data)
     }).then(res => { console.log("Request complete! response:", data); });
 }
-async function main() {
-    const newColor = document.getElementById("newColor");
-    const field = new DrawingScreen(document.getElementById("screen"), [0, 0], [64, 64]);
-    field.setDim([228, 228]);
-    const pallette = new Pallette(document.getElementById("pallette_screen"), newColor);
-    const setPalletteColorButton = document.getElementById("setPalletteColorButton");
-    const palletteColorButtonListener = new SingleTouchListener(setPalletteColorButton, true, true);
-    palletteColorButtonListener.registerCallBack("touchstart", e => true, e => { pallette.setSelectedColor(newColor.value); field.color = pallette.calcColor(); });
-    pallette.canvas.addEventListener("mouseup", e => { field.color = pallette.calcColor(); });
-    pallette.listeners.registerCallBack("touchend", e => true, e => { field.color = pallette.calcColor(); });
-    document.addEventListener("keydown", e => {
-        switch (e.keyCode) {
-            case (16 /*shift*/):
-                pallette.shiftDown = true;
-                break;
+function main() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const newColor = document.getElementById("newColor");
+        const keyboardHandler = new KeyboardHandler();
+        const field = new DrawingScreen(document.getElementById("screen"), keyboardHandler, [0, 0], dim);
+        const pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler, newColor);
+        const setPalletteColorButton = document.getElementById("setPalletteColorButton");
+        const palletteColorButtonListener = new SingleTouchListener(setPalletteColorButton, true, true);
+        palletteColorButtonListener.registerCallBack("touchstart", e => true, e => { pallette.setSelectedColor(newColor.value); field.color = pallette.calcColor(); });
+        pallette.canvas.addEventListener("mouseup", e => { field.color = pallette.calcColor(); });
+        pallette.listeners.registerCallBack("touchend", e => true, e => { field.color = pallette.calcColor(); });
+        const fps = 15;
+        const goalSleep = 1000 / fps;
+        while (true) {
+            const start = Date.now();
+            field.draw();
+            pallette.draw();
+            const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
+            yield sleep(goalSleep - adjustment);
         }
-        if (document.activeElement === document.getElementById("body"))
-            switch (e.code) {
-                case ('Digit1'):
-                    pallette.highLightedCell = 0;
-                    field.color = pallette.calcColor();
-                    break;
-                case ('Digit2'):
-                    pallette.highLightedCell = 1;
-                    field.color = pallette.calcColor();
-                    break;
-                case ('Digit3'):
-                    pallette.highLightedCell = 2;
-                    field.color = pallette.calcColor();
-                    break;
-                case ('Digit4'):
-                    pallette.highLightedCell = 3;
-                    field.color = pallette.calcColor();
-                    break;
-                case ('Digit5'):
-                    pallette.highLightedCell = 4;
-                    field.color = pallette.calcColor();
-                    break;
-                case ('Digit6'):
-                    pallette.highLightedCell = 5;
-                    field.color = pallette.calcColor();
-                    break;
-                case ('Digit7'):
-                    pallette.highLightedCell = 6;
-                    field.color = pallette.calcColor();
-                    break;
-                case ('Digit8'):
-                    pallette.highLightedCell = 7;
-                    field.color = pallette.calcColor();
-                    break;
-                case ('Digit9'):
-                    pallette.highLightedCell = 8;
-                    field.color = pallette.calcColor();
-                    break;
-                case ('Digit0'):
-                    pallette.highLightedCell = 9;
-                    field.color = pallette.calcColor();
-                    break;
-                case ('KeyC'):
-                    if (!field.CKeyHeld) {
-                        field.CKeyHeld = true;
-                        field.selectionRect = [0, 0, 0, 0];
-                        field.pasteRect = [0, 0, 0, 0];
-                    }
-                    break;
-                case ('AltLeft'):
-                    field.altHeld = true;
-                    break;
-                case ('KeyV'):
-                    field.copy();
-                    break;
-                case ('KeyU'):
-                    field.undoLast();
-                    break;
-                case ('KeyR'):
-                    field.redoLast();
-                    break;
-            }
-        field.color = pallette.calcColor();
     });
-    document.addEventListener("keyup", e => {
-        if (e.keyCode == 16 /*shift*/)
-            pallette.shiftDown = false;
-        switch (e.code) {
-            case ('KeyC'):
-                field.CKeyHeld = false;
-                break;
-            case ('AltLeft'):
-                field.altHeld = false;
-                break;
-        }
-        field.color = pallette.calcColor();
-    });
-    const fps = 15;
-    const goalSleep = 1000 / fps;
-    while (true) {
-        const start = Date.now();
-        field.draw();
-        pallette.draw();
-        const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
-        await sleep(goalSleep - adjustment);
-    }
 }
 main();
