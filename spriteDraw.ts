@@ -1,7 +1,7 @@
 function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
-const dim = [128,128];
+const dim = [64,64];
 class Queue<T> {
     data:Array<T>;
     start:number;
@@ -1014,7 +1014,11 @@ class AnimationGroup {
             canvas.width = this.spriteDrawWidth;
             canvas.height = this.spriteDrawHeight;
             const listener:SingleTouchListener = new SingleTouchListener(canvas, false, true);
-            listener.registerCallBack("touchstart", e => true, e => this.selectedAnimation = parseInt(canvas.id.substring(16,canvas.id.length)))
+            listener.registerCallBack("touchstart", e => true, e => {
+                this.selectedAnimation = parseInt(canvas.id.substring(16,canvas.id.length));
+                this.buildSpriteSelectorHTML();
+                this.selectedSprite = 0;
+            });
             this.animationCanvases.push(new Pair(new Pair(canvas, listener), canvas.getContext("2d")));
             this.animationDiv.appendChild(canvas);
             i++;
@@ -1139,7 +1143,7 @@ async function main()
         const start:number = Date.now();
         field.draw();
         pallette.draw();
-        if(counter++ % 2 == 0)
+        if(counter++ % 1 == 0)
             animations.draw();
         const adjustment:number = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);

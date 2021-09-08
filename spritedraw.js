@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [128, 128];
+const dim = [64, 64];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -102,7 +102,6 @@ class RGB {
         this.color |= alpha;
     }
     loadString(color) {
-        console.log(color);
         let r;
         let g;
         let b;
@@ -117,7 +116,6 @@ class RGB {
             const vals = color.split(",");
             vals[0] = vals[0].substring(5);
             vals[3] = vals[3].substring(0, vals[3].length - 1);
-            console.log(vals);
             r = parseInt(vals[0], 10);
             g = parseInt(vals[1], 10);
             b = parseInt(vals[2], 10);
@@ -498,9 +496,7 @@ class SingleTouchListener {
         });
     }
     touchStartHandler(event) {
-        console.log("HEHE");
         this.registeredTouch = true;
-        console.log(this.registeredTouch);
         event.timeSinceLastTouch = Date.now() - (this.lastTouchTime ? this.lastTouchTime : 0);
         this.lastTouchTime = Date.now();
         this.touchStart = event.changedTouches.item(0);
@@ -555,7 +551,6 @@ class SingleTouchListener {
         return true;
     }
     touchEndHandler(event) {
-        console.log(this.registeredTouch);
         if (this.registeredTouch) {
             let touchEnd = event.changedTouches.item(0);
             for (let i = 0; i < event.changedTouches["length"]; i++) {
@@ -781,7 +776,6 @@ class AnimationGroup {
     pushAnimation(animation) {
         this.animations.push(animation);
         this.selectedAnimation = this.animations.length - 1;
-        console.log(this.selectedAnimation, this.animations.length);
         this.pushSpriteToAnimation(this.animations[this.selectedAnimation]);
         this.buildAnimationHTML();
     }
@@ -795,7 +789,6 @@ class AnimationGroup {
     }
     pushSprite() {
         if (this.selectedAnimation >= this.animations.length) {
-            console.log("hiii");
             this.pushAnimation(new SpriteAnimation(0, 0, this.spriteDrawWidth, this.spriteDrawHeight));
         }
         else {
@@ -818,7 +811,11 @@ class AnimationGroup {
             canvas.width = this.spriteDrawWidth;
             canvas.height = this.spriteDrawHeight;
             const listener = new SingleTouchListener(canvas, false, true);
-            listener.registerCallBack("touchstart", e => true, e => this.selectedAnimation = parseInt(canvas.id.substring(16, canvas.id.length)));
+            listener.registerCallBack("touchstart", e => true, e => {
+                this.selectedAnimation = parseInt(canvas.id.substring(16, canvas.id.length));
+                this.buildSpriteSelectorHTML();
+                this.selectedSprite = 0;
+            });
             this.animationCanvases.push(new Pair(new Pair(canvas, listener), canvas.getContext("2d")));
             this.animationDiv.appendChild(canvas);
             i++;
@@ -872,7 +869,6 @@ class AnimationGroup {
                 sprite.draw(this.spriteCanvases[spriteCanvasIndex].second, i % this.spritesPerCanvas * this.spriteDrawWidth, 0, this.spriteDrawWidth, this.spriteDrawHeight);
             }
             const spriteCanvasIndex = Math.floor(this.selectedSprite / this.spritesPerCanvas);
-            console.log(spriteCanvasIndex);
             this.spriteCanvases[spriteCanvasIndex].second.strokeStyle = "#000000";
             this.spriteCanvases[spriteCanvasIndex].second.lineWidth = 3;
             this.spriteCanvases[spriteCanvasIndex].second.strokeRect(this.spriteCanvases[spriteCanvasIndex].first.width / this.spritesPerCanvas * (this.selectedSprite % this.spritesPerCanvas) + 1, 1, this.spriteCanvases[spriteCanvasIndex].first.width / this.spritesPerCanvas - 2, this.spriteCanvases[spriteCanvasIndex].first.height - 10);
@@ -921,7 +917,7 @@ async function main() {
         const start = Date.now();
         field.draw();
         pallette.draw();
-        if (counter++ % 2 == 0)
+        if (counter++ % 1 == 0)
             animations.draw();
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
