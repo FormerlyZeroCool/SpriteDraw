@@ -848,7 +848,6 @@ class AnimationGroup {
                 const clickedSprite = Math.floor(e.touchPos[0] / canvas.width * this.spritesPerCanvas) + this.spritesPerCanvas * parseInt(canvas.id.substring(13, canvas.id.length));
                 if (clickedSprite < this.animations[this.selectedAnimation].sprites.length) {
                     const startSprite = Math.floor((e.touchPos[0] - e.deltaX) / canvas.width * this.spritesPerCanvas) + this.spritesPerCanvas * (parseInt(canvas.id.substring(13, canvas.id.length)) - Math.floor(e.deltaY / this.spriteDrawHeight + 0.5));
-                    console.log(clickedSprite, startSprite);
                     const screen = this.drawingField.screenBuffer;
                     const sprite = this.animations[this.selectedAnimation].sprites[clickedSprite];
                     const spriteDataStart = this.animations[this.selectedAnimation].sprites[startSprite];
@@ -873,9 +872,10 @@ class AnimationGroup {
                 sprite.draw(this.spriteCanvases[spriteCanvasIndex].second, i % this.spritesPerCanvas * this.spriteDrawWidth, 0, this.spriteDrawWidth, this.spriteDrawHeight);
             }
             const spriteCanvasIndex = Math.floor(this.selectedSprite / this.spritesPerCanvas);
+            console.log(spriteCanvasIndex);
             this.spriteCanvases[spriteCanvasIndex].second.strokeStyle = "#000000";
             this.spriteCanvases[spriteCanvasIndex].second.lineWidth = 3;
-            this.spriteCanvases[spriteCanvasIndex].second.strokeRect(this.spriteCanvases[spriteCanvasIndex].first.width / this.spritesPerCanvas * this.selectedSprite + 1, 1, this.spriteCanvases[spriteCanvasIndex].first.width / this.spritesPerCanvas - 2, this.spriteCanvases[spriteCanvasIndex].first.height - 10);
+            this.spriteCanvases[spriteCanvasIndex].second.strokeRect(this.spriteCanvases[spriteCanvasIndex].first.width / this.spritesPerCanvas * (this.selectedSprite % this.spritesPerCanvas) + 1, 1, this.spriteCanvases[spriteCanvasIndex].first.width / this.spritesPerCanvas - 2, this.spriteCanvases[spriteCanvasIndex].first.height - 10);
             this.animationCanvases[this.selectedAnimation].second.strokeStyle = "#000000";
             this.animationCanvases[this.selectedAnimation].second.lineWidth = 3;
             this.animationCanvases[this.selectedAnimation].second.strokeRect(1, 1, this.animationCanvases[this.selectedAnimation].first.first.width - 2, this.animationCanvases[this.selectedAnimation].first.first.height - 2);
