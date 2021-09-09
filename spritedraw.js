@@ -931,6 +931,10 @@ async function main() {
     save_serverButton.addEventListener("mousedown", e => logToServer({ animation: animations.animations[animations.selectedAnimation] }));
     keyboardHandler.registerCallBack("keydown", e => true, e => {
         field.color.copy(pallette.calcColor());
+        if (e.code.substring(0, "Digit".length) === "Digit") {
+            const numTyped = e.code.substring("Digit".length, e.code.length);
+            pallette.highLightedCell = parseInt(numTyped);
+        }
     });
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
