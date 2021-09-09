@@ -1062,7 +1062,11 @@ async function main() {
     const pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler, newColor);
     const setPalletteColorButton = document.getElementById("setPalletteColorButton");
     const palletteColorButtonListener = new SingleTouchListener(setPalletteColorButton, true, true);
-    palletteColorButtonListener.registerCallBack("touchstart", e => true, e => { pallette.setSelectedColor(newColor.value); field.color = pallette.calcColor(); });
+    palletteColorButtonListener.registerCallBack("touchstart", e => true, e => {
+        pallette.setSelectedColor(newColor.value);
+        field.color = pallette.calcColor();
+        newColor.blur();
+    });
     pallette.canvas.addEventListener("mouseup", e => { field.color = pallette.calcColor(); });
     pallette.listeners.registerCallBack("touchend", e => true, e => { field.color = pallette.calcColor(); });
     const animations = new AnimationGroup(field, "animations", "sprites", Math.floor(field.canvas.width / dim[0] + 0.5), dim[0], dim[1]);
