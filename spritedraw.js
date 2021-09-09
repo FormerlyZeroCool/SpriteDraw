@@ -524,6 +524,7 @@ class DrawingScreen {
             if (!touchStart[0]) {
                 touchStart = [this.listeners.touchStart["clientX"], this.listeners.touchStart["clientY"]];
             }
+            ctx.lineWidth = Math.floor(cellWidth + 0.5);
             ctx.beginPath();
             ctx.strokeStyle = this.color.htmlRBGA();
             ctx.moveTo(touchStart[0], touchStart[1]);
@@ -1085,6 +1086,7 @@ async function main() {
         if (document.getElementById('body') === document.activeElement && e.code.substring(0, "Digit".length) === "Digit") {
             const numTyped = e.code.substring("Digit".length, e.code.length);
             pallette.highLightedCell = (parseInt(numTyped) + 9) % 10;
+            newColor.value = pallette.calcColor().htmlRBGA();
         }
     });
     keyboardHandler.registerCallBack("keyup", e => true, e => {
