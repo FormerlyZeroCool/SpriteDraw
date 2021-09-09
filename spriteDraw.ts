@@ -203,10 +203,26 @@ class ToolSelector {
     selectedTool:number;
     imgWidth:number;
     imgHeight:number;
-    constructor(imgWidth:number = 50, imgHeight:number = 50)
+    keyboardHandler:KeyboardHandler;
+    constructor(keyboardHandler:KeyboardHandler, imgWidth:number = 50, imgHeight:number = 50)
     {
         this.imgWidth = imgWidth;
         this.imgHeight = imgHeight;
+        this.selectedTool = 0;
+        this.keyboardHandler = keyboardHandler;
+        this.keyboardHandler.registerCallBack("keydown", e => e.code === "ArrowUp" || e.code === "ArrowDown",
+            e => {
+                e.preventDefault();
+                if(e.code === "ArrowUp")
+                    if(this.selectedTool !== 0)    
+                        this.selectedTool--;
+                    else
+                        this.selectedTool = this.toolArray.length - 1;
+                else{
+                    this.selectedTool++;
+                    this.selectedTool %= this.toolArray.length;
+                }
+            });
         fetchImage("images/penSprite.png").then(img => { 
             this.penTool = img;
             this.toolArray.push(new Pair("pen", this.penTool));
@@ -229,7 +245,6 @@ class ToolSelector {
         });
         this.toolArray = new Array<Pair<string, HTMLImageElement> >();
         this.canvas = <HTMLCanvasElement> document.getElementById("tool_selector_screen");
-        this.selectedTool = 0;
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             const clicked:number = Math.floor(e.touchPos[1] / this.imgHeight);
@@ -284,7 +299,7 @@ class DrawingScreen {
         this.canvas = canvas;
         this.clipBoardBuffer = new Array<Pair<RGB, number>>();
         this.keyboardHandler = keyboardHandler;
-        this.toolSelector = new ToolSelector();
+        this.toolSelector = new ToolSelector(keyboardHandler);
         this.updatesStack = new Array<Array<Pair<number,RGB>>>();
         this.undoneUpdatesStack = new Array<Array<Pair<number,RGB>>>();
         this.selectionRect = new Array<number>();

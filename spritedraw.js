@@ -153,9 +153,23 @@ class Pair {
 }
 ;
 class ToolSelector {
-    constructor(imgWidth = 50, imgHeight = 50) {
+    constructor(keyboardHandler, imgWidth = 50, imgHeight = 50) {
         this.imgWidth = imgWidth;
         this.imgHeight = imgHeight;
+        this.selectedTool = 0;
+        this.keyboardHandler = keyboardHandler;
+        this.keyboardHandler.registerCallBack("keydown", e => e.code === "ArrowUp" || e.code === "ArrowDown", e => {
+            e.preventDefault();
+            if (e.code === "ArrowUp")
+                if (this.selectedTool !== 0)
+                    this.selectedTool--;
+                else
+                    this.selectedTool = this.toolArray.length - 1;
+            else {
+                this.selectedTool++;
+                this.selectedTool %= this.toolArray.length;
+            }
+        });
         fetchImage("images/penSprite.png").then(img => {
             this.penTool = img;
             this.toolArray.push(new Pair("pen", this.penTool));
@@ -178,7 +192,6 @@ class ToolSelector {
         });
         this.toolArray = new Array();
         this.canvas = document.getElementById("tool_selector_screen");
-        this.selectedTool = 0;
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             const clicked = Math.floor(e.touchPos[1] / this.imgHeight);
@@ -211,7 +224,7 @@ class DrawingScreen {
         this.canvas = canvas;
         this.clipBoardBuffer = new Array();
         this.keyboardHandler = keyboardHandler;
-        this.toolSelector = new ToolSelector();
+        this.toolSelector = new ToolSelector(keyboardHandler);
         this.updatesStack = new Array();
         this.undoneUpdatesStack = new Array();
         this.selectionRect = new Array();
@@ -1058,7 +1071,6 @@ async function main() {
         field.color.copy(pallette.calcColor());
         if (document.getElementById('body') === document.activeElement && e.code.substring(0, "Digit".length) === "Digit") {
             const numTyped = e.code.substring("Digit".length, e.code.length);
-            console.log(numTyped);
             pallette.highLightedCell = (parseInt(numTyped) + 9) % 10;
         }
     });
