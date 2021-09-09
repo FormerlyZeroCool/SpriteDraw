@@ -1168,7 +1168,7 @@ async function main()
     
     keyboardHandler.registerCallBack("keydown", e=> true, e => {
         field.color.copy(pallette.calcColor());
-        if(e.code.substring(0,"Digit".length) === "Digit"){
+        if(document.getElementById('body') === document.activeElement && e.code.substring(0,"Digit".length) === "Digit"){
             const numTyped:string = e.code.substring("Digit".length, e.code.length);
             pallette.highLightedCell = parseInt(numTyped);
         }
