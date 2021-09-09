@@ -13,7 +13,7 @@ class Queue {
     push(val) {
         if (this.length == this.data.length) {
             const newData = [];
-            newData.length = this.data.length * 2;
+            newData.length = this.data.length << 1;
             for (let i = 0; i < this.data.length; i++) {
                 newData[i] = this.data[(i + this.start) % this.data.length];
             }
@@ -152,10 +152,66 @@ class Pair {
     }
 }
 ;
+class ToolSelector {
+    constructor(imgWidth = 50, imgHeight = 50) {
+        this.imgWidth = imgWidth;
+        this.imgHeight = imgHeight;
+        fetchImage("images/penSprite.png").then(img => {
+            this.penTool = img;
+            this.toolArray.push(new Pair("pen", this.penTool));
+        });
+        fetchImage("images/fillSprite.png").then(img => {
+            this.fillTool = img;
+            this.toolArray.push(new Pair("fill", this.fillTool));
+        });
+        fetchImage("images/LineDrawSprite.png").then(img => {
+            this.lineTool = img;
+            this.toolArray.push(new Pair("line", this.lineTool));
+        });
+        fetchImage("images/copySprite.png").then(img => {
+            this.copyTool = img;
+            this.toolArray.push(new Pair("copy", this.copyTool));
+        });
+        fetchImage("images/pasteSprite.png").then(img => {
+            this.pasteTool = img;
+            this.toolArray.push(new Pair("paste", this.pasteTool));
+        });
+        this.toolArray = new Array();
+        this.canvas = document.getElementById("tool_selector_screen");
+        this.selectedTool = 0;
+        this.touchListener = new SingleTouchListener(this.canvas, true, true);
+        this.touchListener.registerCallBack("touchstart", e => true, e => {
+            const clicked = Math.floor(e.touchPos[1] / this.imgHeight);
+            if (clicked < this.toolArray.length) {
+                this.selectedTool = clicked;
+            }
+        });
+        this.ctx = this.canvas.getContext("2d");
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeStyle = "#000000";
+        this.ctx.fillStyle = "#FFFFFF";
+    }
+    draw() {
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        for (let i = 0; i < this.toolArray.length; i++) {
+            const toolImage = this.toolArray[i].second;
+            if (toolImage)
+                this.ctx.drawImage(toolImage, 0, i * this.penTool.height);
+        }
+        if (this.penTool)
+            this.ctx.strokeRect(0, this.selectedTool * this.imgHeight, this.imgWidth, this.imgHeight);
+    }
+    selectedToolName() {
+        return this.toolArray[this.selectedTool].first;
+    }
+}
+;
 class DrawingScreen {
     constructor(canvas, keyboardHandler, offset, dimensions, bounds = [canvas.width - offset[0], canvas.height - offset[1]]) {
         this.canvas = canvas;
+        this.clipBoardBuffer = new Array();
         this.keyboardHandler = keyboardHandler;
+        this.toolSelector = new ToolSelector();
         this.updatesStack = new Array();
         this.undoneUpdatesStack = new Array();
         this.selectionRect = new Array();
@@ -175,12 +231,25 @@ class DrawingScreen {
             if (this.updatesStack.length == 0 || this.updatesStack[this.updatesStack.length - 1].length)
                 this.updatesStack.push(new Array());
             this.canvas.focus();
-            if (this.keyboardHandler.keysHeld['KeyC'])
-                this.selectionRect = [e.touchPos[0], e.touchPos[1], 0, 0];
-            else if (this.keyboardHandler.keysHeld['AltLeft'] || this.keyboardHandler.keysHeld['AltRight']) {
-                this.pasteRect = [e.touchPos[0], e.touchPos[1], 0, 0];
-                this.pasteRect[2] = this.selectionRect[2];
-                this.pasteRect[3] = this.selectionRect[3];
+            switch (this.toolSelector.selectedToolName()) {
+                case ("pen"):
+                    this.selectionRect = [0, 0, 0, 0];
+                    this.pasteRect = [0, 0, 0, 0];
+                    break;
+                case ("fill"):
+                    this.selectionRect = [0, 0, 0, 0];
+                    this.pasteRect = [0, 0, 0, 0];
+                    break;
+                case ("line"):
+                    this.selectionRect = [0, 0, 0, 0];
+                    this.pasteRect = [0, 0, 0, 0];
+                    break;
+                case ("copy"):
+                    this.selectionRect = [e.touchPos[0], e.touchPos[1], 0, 0];
+                    break;
+                case ("paste"):
+                    this.pasteRect = [e.touchPos[0], e.touchPos[1], this.pasteRect[2], this.pasteRect[3]];
+                    break;
             }
         });
         this.keyboardHandler.registerCallBack("keydown", e => true, event => {
@@ -202,31 +271,75 @@ class DrawingScreen {
                     break;
             }
         });
-        this.listeners.registerCallBack("touchend", e => true, e => this.handleTap(e));
-        this.listeners.registerCallBack("touchmove", e => true, e => {
-            if (this.keyboardHandler.keysHeld['KeyC']) {
-                this.selectionRect[2] += e.deltaX;
-                this.selectionRect[3] += e.deltaY;
-                this.pasteRect[2] = this.selectionRect[2];
-                this.pasteRect[3] = this.selectionRect[3];
+        this.listeners.registerCallBack("touchend", e => true, e => {
+            switch (this.toolSelector.selectedToolName()) {
+                case ("pen"):
+                    this.handleTap(e);
+                    break;
+                case ("fill"):
+                    const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
+                    const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
+                    this.fillArea(new Pair(gx, gy));
+                    break;
+                case ("line"):
+                    this.handleTap(e);
+                    this.handleDraw(e);
+                    break;
+                case ("copy"):
+                    this.saveToBuffer(this.selectionRect, this.clipBoardBuffer);
+                    this.selectionRect = [0, 0, 0, 0];
+                    break;
+                case ("paste"):
+                    this.copy();
+                    break;
             }
-            else if (this.keyboardHandler.keysHeld['AltLeft'] || this.keyboardHandler.keysHeld['AltRight']) {
-                this.pasteRect[0] += e.deltaX;
-                this.pasteRect[1] += e.deltaY;
-                this.pasteRect[2] = this.selectionRect[2];
-                this.pasteRect[3] = this.selectionRect[3];
-            }
-            else
-                this.handleDraw(e);
         });
+        this.listeners.registerCallBack("touchmove", e => true, e => {
+            switch (this.toolSelector.selectedToolName()) {
+                case ("pen"):
+                    this.handleDraw(e);
+                    break;
+                case ("fill"):
+                    break;
+                case ("line"):
+                    break;
+                case ("copy"):
+                    this.selectionRect[2] += e.deltaX;
+                    this.selectionRect[3] += e.deltaY;
+                    this.pasteRect[2] = this.selectionRect[2];
+                    this.pasteRect[3] = this.selectionRect[3];
+                    break;
+                case ("paste"):
+                    this.pasteRect[0] += e.deltaX;
+                    this.pasteRect[1] += e.deltaY;
+                    break;
+            }
+        });
+    }
+    saveToBuffer(selectionRect, buffer) {
+        buffer.length = 0;
+        const source_x = Math.floor((selectionRect[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
+        const source_y = Math.floor((selectionRect[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
+        const width = Math.floor((selectionRect[2] - this.offset.first) / this.bounds.first * this.dimensions.first);
+        const height = Math.floor((selectionRect[3] - this.offset.second) / this.bounds.second * this.dimensions.second);
+        const area = width * height;
+        for (let i = 0; i < area; i++) {
+            const copyAreaX = i % width;
+            const copyAreaY = Math.floor(i / width);
+            const sourceIndex = source_x + source_y * this.dimensions.first + copyAreaX + copyAreaY * this.dimensions.first;
+            if (this.inBufferBounds(source_x + copyAreaX, source_y + copyAreaY)) {
+                const pixel = this.screenBuffer[sourceIndex];
+                buffer.push(new Pair(new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()), sourceIndex));
+            }
+        }
     }
     copy() {
         const source_x = Math.floor((this.selectionRect[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
         const source_y = Math.floor((this.selectionRect[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
         const dest_x = Math.floor((this.pasteRect[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
         const dest_y = Math.floor((this.pasteRect[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
-        const width = Math.floor((this.selectionRect[2] - this.offset.first) / this.bounds.first * this.dimensions.first);
-        const height = Math.floor((this.selectionRect[3] - this.offset.second) / this.bounds.second * this.dimensions.second);
+        const width = Math.floor((this.pasteRect[2] - this.offset.first) / this.bounds.first * this.dimensions.first);
+        const height = Math.floor((this.pasteRect[3] - this.offset.second) / this.bounds.second * this.dimensions.second);
         const area = width * height;
         for (let i = 0; i < area; i++) {
             const copyAreaX = i % width;
@@ -234,7 +347,7 @@ class DrawingScreen {
             const destIndex = dest_x + dest_y * this.dimensions.first + copyAreaX + copyAreaY * this.dimensions.first;
             const sourceIndex = source_x + source_y * this.dimensions.first + copyAreaX + copyAreaY * this.dimensions.first;
             const dest = this.screenBuffer[destIndex];
-            const source = this.screenBuffer[sourceIndex];
+            const source = this.clipBoardBuffer[i].first;
             if (this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && this.inBufferBounds(source_x + copyAreaX, source_y + copyAreaY) && !dest.compare(source)) {
                 this.updatesStack[this.updatesStack.length - 1].push(new Pair(destIndex, new RGB(dest.red(), dest.green(), dest.blue(), dest.alpha())));
                 dest.copy(source);
@@ -244,10 +357,7 @@ class DrawingScreen {
     handleTap(event) {
         const gx = Math.floor((event.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
         const gy = Math.floor((event.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
-        if (event.timeDelayFromStartToEnd < 300) {
-            this.fillArea(new Pair(gx, gy));
-        }
-        else if (gx < this.dimensions.first && gy < this.dimensions.second) {
+        if (gx < this.dimensions.first && gy < this.dimensions.second) {
             const pixel = this.screenBuffer[gx + gy * this.dimensions.first];
             if (!pixel.compare(this.color))
                 this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
@@ -376,16 +486,25 @@ class DrawingScreen {
         const imageData = image.data;
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        const cellHeight = this.bounds.second / this.dimensions.second;
+        const cellWidth = this.bounds.first / this.dimensions.first;
+        const prX = Math.floor(this.pasteRect[0] / cellWidth + 0.5);
+        const prY = Math.floor(this.pasteRect[1] / cellHeight + 0.5);
+        const prEndX = Math.floor((this.pasteRect[0] + this.pasteRect[2]) / cellWidth);
+        const prEndY = Math.floor((this.pasteRect[1] + this.pasteRect[3]) / cellHeight);
         for (let y = 0; y < this.dimensions.second; y++) {
             for (let x = 0; x < this.dimensions.first; x++) {
-                const cellHeight = this.bounds.second / this.dimensions.second;
-                const cellWidth = this.bounds.first / this.dimensions.first;
                 const sy = this.offset.second + y * cellHeight;
                 const sx = this.offset.first + x * cellWidth;
-                ctx.fillStyle = this.screenBuffer[x + y * this.dimensions.first].htmlRBGA();
+                if (this.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)] && x >= prX && x < prEndX && y >= prY && y < prEndY) {
+                    ctx.fillStyle = this.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)].first.htmlRBGA();
+                }
+                else
+                    ctx.fillStyle = this.screenBuffer[x + y * this.dimensions.first].htmlRBGA();
                 ctx.fillRect(sx, sy, cellWidth + 1, cellHeight + 1);
             }
         }
+        this.toolSelector.draw();
         ctx.lineWidth = 3;
         ctx.strokeStyle = "#FFFFFF";
         ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
@@ -895,6 +1014,12 @@ class AnimationGroup {
         }
     }
 }
+;
+async function fetchImage(url) {
+    const img = new Image();
+    img.src = URL.createObjectURL(await (await fetch(url)).blob());
+    return img;
+}
 function logToServer(data) {
     fetch("/data", {
         method: "POST",
@@ -928,7 +1053,8 @@ async function main() {
         animations.spriteSelector.pushSelectedToCanvas();
     });
     const save_serverButton = document.getElementById("save_server");
-    save_serverButton.addEventListener("mousedown", e => logToServer({ animation: animations.animations[animations.selectedAnimation] }));
+    if (save_serverButton)
+        save_serverButton.addEventListener("mousedown", e => logToServer({ animation: animations.animations[animations.selectedAnimation] }));
     keyboardHandler.registerCallBack("keydown", e => true, e => {
         field.color.copy(pallette.calcColor());
         if (document.getElementById('body') === document.activeElement && e.code.substring(0, "Digit".length) === "Digit") {
