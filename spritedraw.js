@@ -236,7 +236,6 @@ class DrawingScreen {
         this.screenBuffer = new Array();
         this.selectionRect = [0, 0, 0, 0];
         this.pasteRect = [0, 0, 0, 0];
-        this.color = new RGB(150, 34, 160, 255);
         for (let i = 0; i < dimensions[0] * dimensions[1]; i++) {
             this.screenBuffer.push(new RGB(0, 0, 0, 0));
         }
@@ -330,6 +329,7 @@ class DrawingScreen {
                     break;
             }
         });
+        this.color = new RGB(0, 0, 0, 255);
     }
     saveToBuffer(selectionRect, buffer) {
         buffer.length = 0;
@@ -522,7 +522,7 @@ class DrawingScreen {
         if (this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line") {
             let touchStart = [this.listeners.touchStart["offsetX"], this.listeners.touchStart["offsetY"]];
             if (!touchStart[0]) {
-                touchStart = [this.listeners.touchStart["clientX"], this.listeners.touchStart["clientY"]];
+                touchStart = [this.listeners.touchStart["clientX"] - this.canvas.getBoundingClientRect().left, this.listeners.touchStart["clientY"] - this.canvas.getBoundingClientRect().top];
             }
             ctx.lineWidth = Math.floor(cellWidth + 0.5);
             ctx.beginPath();
@@ -607,6 +607,7 @@ class SingleTouchListener {
     constructor(component, preventDefault, mouseEmulation) {
         this.lastTouchTime = Date.now();
         this.offset = [];
+        this.component = component;
         this.preventDefault = preventDefault;
         this.touchStart = null;
         this.registeredTouch = false;
@@ -648,7 +649,7 @@ class SingleTouchListener {
         this.touchStart = event.changedTouches.item(0);
         this.touchPos = [this.touchStart["offsetX"], this.touchStart["offsetY"]];
         if (!this.touchPos[0]) {
-            this.touchPos = [this.touchStart["clientX"], this.touchStart["clientY"]];
+            this.touchPos = [this.touchStart["clientX"] - this.component.getBoundingClientRect().left, this.touchStart["clientY"] - this.component.getBoundingClientRect().top];
         }
         event.touchPos = this.touchPos;
         this.touchVelocity = 0;
@@ -669,8 +670,8 @@ class SingleTouchListener {
         }
         if (touchMove) {
             if (!touchMove["offsetY"]) {
-                touchMove.offsetX = touchMove["clientX"];
-                touchMove.offsetY = touchMove["clientY"];
+                touchMove.offsetX = touchMove["clientX"] - this.component.getBoundingClientRect().left;
+                touchMove.offsetY = touchMove["clientY"] - this.component.getBoundingClientRect().top;
             }
             const deltaY = touchMove["offsetY"] - this.touchPos[1];
             const deltaX = touchMove["offsetX"] - this.touchPos[0];
@@ -706,8 +707,8 @@ class SingleTouchListener {
             }
             if (touchEnd) {
                 if (!touchEnd["offsetY"]) {
-                    touchEnd.offsetX = touchEnd["clientX"];
-                    touchEnd.offsetY = touchEnd["clientY"];
+                    touchEnd.offsetX = touchEnd["clientX"] - this.component.getBoundingClientRect().left;
+                    touchEnd.offsetY = touchEnd["clientY"] - this.component.getBoundingClientRect().top;
                 }
                 const deltaY = touchEnd["offsetY"] - this.touchStart["offsetY"];
                 const deltaX = touchEnd["offsetX"] - this.touchStart["offsetX"];
@@ -890,7 +891,6 @@ class SpriteAnimation {
         this.sprites.push(sprite);
     }
     draw(ctx) {
-        //ctx.putImageData(this.sprites[this.animationIndex++].pixels, this.x, this.y, this.width, this.height);
         if (this.sprites.length) {
             this.sprites[this.animationIndex++].draw(ctx, this.x, this.y, this.width, this.height);
             this.animationIndex %= this.sprites.length;
