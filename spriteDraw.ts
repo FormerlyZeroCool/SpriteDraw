@@ -791,7 +791,7 @@ class Pallette {
             }
         }
         this.listeners.registerCallBack("touchstart", e => true, e => this.handleClick(e));
-        
+        this.keyboardHandler
     }
     calcColor(i:number = this.highLightedCell):RGB
     {
@@ -1165,6 +1165,14 @@ async function main()
     });
     const save_serverButton = document.getElementById("save_server");
     save_serverButton.addEventListener("mousedown", e => logToServer({animation:animations.animations[animations.selectedAnimation]}))
+    
+    keyboardHandler.registerCallBack("keydown", e=> true, e => {
+        field.color.copy(pallette.calcColor());
+    });
+    keyboardHandler.registerCallBack("keyup", e=> true, e => {
+        field.color.copy(pallette.calcColor());
+    });
+    
     const fps = 15;
     const goalSleep = 1000/fps;
     let counter = 0;
