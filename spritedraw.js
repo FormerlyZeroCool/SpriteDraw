@@ -758,7 +758,6 @@ class Pallette {
             }
         }
         this.listeners.registerCallBack("touchstart", e => true, e => this.handleClick(e));
-        this.keyboardHandler;
     }
     calcColor(i = this.highLightedCell) {
         const color = new RGB(this.colors[i].red(), this.colors[i].green(), this.colors[i].blue(), this.colors[i].alpha());
@@ -1059,7 +1058,8 @@ async function main() {
         field.color.copy(pallette.calcColor());
         if (document.getElementById('body') === document.activeElement && e.code.substring(0, "Digit".length) === "Digit") {
             const numTyped = e.code.substring("Digit".length, e.code.length);
-            pallette.highLightedCell = parseInt(numTyped);
+            console.log(numTyped);
+            pallette.highLightedCell = (parseInt(numTyped) + 9) % 10;
         }
     });
     keyboardHandler.registerCallBack("keyup", e => true, e => {

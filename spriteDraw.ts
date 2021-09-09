@@ -951,7 +951,7 @@ class Pallette {
             }
         }
         this.listeners.registerCallBack("touchstart", e => true, e => this.handleClick(e));
-        this.keyboardHandler
+
     }
     calcColor(i:number = this.highLightedCell):RGB
     {
@@ -1338,7 +1338,7 @@ async function main()
         field.color.copy(pallette.calcColor());
         if(document.getElementById('body') === document.activeElement && e.code.substring(0,"Digit".length) === "Digit"){
             const numTyped:string = e.code.substring("Digit".length, e.code.length);
-            pallette.highLightedCell = parseInt(numTyped);
+            pallette.highLightedCell = (parseInt(numTyped) + 9) % 10;
         }
     });
     keyboardHandler.registerCallBack("keyup", e=> true, e => {
