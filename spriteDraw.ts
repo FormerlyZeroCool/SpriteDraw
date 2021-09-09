@@ -650,8 +650,6 @@ class DrawingScreen {
         }
         if(this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line")
         {
-            console.log(this.listeners.touchStart, this.listeners.touchPos);
-
             let touchStart = [this.listeners.touchStart["offsetX"], this.listeners.touchStart["offsetY"]];
             if (!touchStart[0]) {
                 touchStart = [this.listeners.touchStart["clientX"], this.listeners.touchStart["clientY"]];
