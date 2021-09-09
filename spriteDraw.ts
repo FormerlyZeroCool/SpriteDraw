@@ -1022,7 +1022,7 @@ class SpriteSelector {
     pushSelectedToCanvas()
     {
         if(this.selectedSpriteVal())
-            this.selectedSpriteVal().copyToBuffer(this.drawingField.screenBuffer);
+            this.selectedSpriteVal().copy(this.drawingField.screenBuffer, this.spriteWidth, this.spriteHeight);
     }
     selectedSpriteVal():Sprite
     {
@@ -1161,9 +1161,10 @@ async function main()
 
     const save_spriteButton = document.getElementById("save_sprite");
     save_spriteButton.addEventListener("mousedown", e => {
-        animations.spriteSelector.loadSprite();
+        animations.spriteSelector.pushSelectedToCanvas();
     });
-
+    const save_serverButton = document.getElementById("save_server");
+    save_serverButton.addEventListener("mousedown", e => logToServer({animation:animations.animations[animations.selectedAnimation]}))
     const fps = 15;
     const goalSleep = 1000/fps;
     let counter = 0;
