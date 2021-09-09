@@ -272,7 +272,9 @@ class ToolSelector {
     }
     selectedToolName():string
     {
-        return this.toolArray[this.selectedTool].first;
+        if(this.toolArray[this.selectedTool])
+            return this.toolArray[this.selectedTool].first;
+        return null;
     }
 
 };
@@ -645,6 +647,20 @@ class DrawingScreen {
                 ctx.fillRect(sx, sy, cellWidth+1, cellHeight+1);
                 
             }
+        }
+        if(this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line")
+        {
+            console.log(this.listeners.touchStart, this.listeners.touchPos);
+
+            let touchStart = [this.listeners.touchStart["offsetX"], this.listeners.touchStart["offsetY"]];
+            if (!touchStart[0]) {
+                touchStart = [this.listeners.touchStart["clientX"], this.listeners.touchStart["clientY"]];
+            }
+            ctx.beginPath();
+            ctx.strokeStyle = this.color.htmlRBGA();
+            ctx.moveTo(touchStart[0], touchStart[1]);
+            ctx.lineTo(this.listeners.touchPos[0], this.listeners.touchPos[1]);
+            ctx.stroke();
         }
         this.toolSelector.draw();
         ctx.lineWidth = 3;
