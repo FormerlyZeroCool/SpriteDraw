@@ -240,6 +240,7 @@ class ToolSelector {
 class DrawingScreen {
     constructor(canvas, keyboardHandler, offset, dimensions, bounds = [canvas.width - offset[0], canvas.height - offset[1]]) {
         this.canvas = canvas;
+        this.canvas.offScreenCanvas;
         this.clipBoardBuffer = new Array();
         this.keyboardHandler = keyboardHandler;
         this.toolSelector = new ToolSelector(keyboardHandler);
@@ -250,10 +251,12 @@ class DrawingScreen {
         this.bounds = new Pair(bounds[0], bounds[1]);
         this.dimensions = new Pair(dimensions[0], dimensions[1]);
         this.screenBuffer = new Array();
+        this.screenLastBuffer = new Array();
         this.selectionRect = [0, 0, 0, 0];
         this.pasteRect = [0, 0, 0, 0];
         for (let i = 0; i < dimensions[0] * dimensions[1]; i++) {
             this.screenBuffer.push(new RGB(0, 0, 0, 0));
+            this.screenLastBuffer.push(new RGB(1, 0, 0, 0));
         }
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
@@ -519,10 +522,9 @@ class DrawingScreen {
             this.undoneUpdatesStack.push(backedUpFrame);
             data.forEach(el => {
                 backedUpFrame.push(el);
-                const color = new RGB(0, 0, 0, 0);
-                color.copy(this.screenBuffer[el.first]);
+                const color = (this.screenBuffer[el.first]).color;
                 this.screenBuffer[el.first].copy(el.second);
-                el.second.copy(color);
+                el.second.color = color;
             });
         }
         else {
@@ -536,10 +538,9 @@ class DrawingScreen {
             this.updatesStack.push(backedUpFrame);
             data.forEach(el => {
                 backedUpFrame.push(el);
-                const color = new RGB(0, 0, 0, 0);
-                color.copy(this.screenBuffer[el.first]);
+                const color = this.screenBuffer[el.first].color;
                 this.screenBuffer[el.first].copy(el.second);
-                el.second.copy(color);
+                el.second.color = color;
             });
         }
         else {
@@ -565,24 +566,29 @@ class DrawingScreen {
         const ctx = this.canvas.getContext("2d");
         const image = ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
         const imageData = image.data;
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        const cellHeight = this.bounds.second / this.dimensions.second;
-        const cellWidth = this.bounds.first / this.dimensions.first;
+        //ctx.fillStyle = "#FFFFFF";
+        //ctx.fillRect(0,0,this.canvas.width, this.canvas.height);
+        const cellHeight = Math.floor(this.bounds.second / this.dimensions.second + 0.5);
+        const cellWidth = Math.floor(this.bounds.first / this.dimensions.first + 0.5);
         const prX = Math.floor(this.pasteRect[0] / cellWidth + 0.5);
         const prY = Math.floor(this.pasteRect[1] / cellHeight + 0.5);
         const prEndX = Math.floor((this.pasteRect[0] + this.pasteRect[2]) / cellWidth);
         const prEndY = Math.floor((this.pasteRect[1] + this.pasteRect[3]) / cellHeight);
         for (let y = 0; y < this.dimensions.second; y++) {
             for (let x = 0; x < this.dimensions.first; x++) {
-                const sy = this.offset.second + y * cellHeight;
-                const sx = this.offset.first + x * cellWidth;
-                if (this.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)] && x >= prX && x < prEndX && y >= prY && y < prEndY) {
-                    ctx.fillStyle = this.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)].first.htmlRBGA();
+                const sy = Math.floor(this.offset.second + y * cellHeight);
+                const sx = Math.floor(this.offset.first + x * cellWidth);
+                if (this.screenLastBuffer[x + y * this.dimensions.first].color != this.screenBuffer[x + y * this.dimensions.first].color) {
+                    ctx.fillStyle = "rgba(255,255,255,1)";
+                    ctx.fillRect(sx, sy, cellWidth + 1, cellHeight + 1);
+                    if (this.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)] && x >= prX && x < prEndX && y >= prY && y < prEndY) {
+                        ctx.fillStyle = this.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)].first.htmlRBGA();
+                    }
+                    else
+                        ctx.fillStyle = this.screenBuffer[x + y * this.dimensions.first].htmlRBGA();
+                    ctx.fillRect(sx, sy, cellWidth + 1, cellHeight + 1);
+                    this.screenLastBuffer[x + y * this.dimensions.first].color = this.screenBuffer[x + y * this.dimensions.first].color;
                 }
-                else
-                    ctx.fillStyle = this.screenBuffer[x + y * this.dimensions.first].htmlRBGA();
-                ctx.fillRect(sx, sy, cellWidth + 1, cellHeight + 1);
             }
         }
         if (this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line") {
