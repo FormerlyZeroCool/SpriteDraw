@@ -194,6 +194,14 @@ class ToolSelector {
             this.pasteTool = img;
             this.toolArray.push(new Pair("paste", this.pasteTool));
         });
+        fetchImage("images/redoSprite.png").then(img => {
+            this.undoTool = img;
+            this.toolArray.push(new Pair("redo", this.undoTool));
+        });
+        fetchImage("images/undoSprite.png").then(img => {
+            this.redoTool = img;
+            this.toolArray.push(new Pair("undo", this.redoTool));
+        });
         this.toolArray = new Array();
         this.canvas = document.getElementById("tool_selector_screen");
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
@@ -268,6 +276,13 @@ class DrawingScreen {
                     break;
                 case ("paste"):
                     this.pasteRect = [e.touchPos[0], e.touchPos[1], this.pasteRect[2], this.pasteRect[3]];
+                    break;
+                case ("undo"):
+                    this.undoLast();
+                    this.undoLast();
+                    break;
+                case ("redo"):
+                    this.redoLast();
                     break;
             }
         });

@@ -197,6 +197,8 @@ class ToolSelector {
     rectTool:HTMLImageElement;
     copyTool:HTMLImageElement;
     pasteTool:HTMLImageElement;
+    redoTool:HTMLImageElement;
+    undoTool:HTMLImageElement;
 
     toolArray:Array<Pair<string,HTMLImageElement> >;
     canvas:HTMLCanvasElement;
@@ -248,6 +250,14 @@ class ToolSelector {
         fetchImage("images/pasteSprite.png").then(img => { 
             this.pasteTool = img;
             this.toolArray.push(new Pair("paste", this.pasteTool));
+        });
+        fetchImage("images/redoSprite.png").then(img => { 
+            this.undoTool = img;
+            this.toolArray.push(new Pair("redo", this.undoTool));
+        });
+        fetchImage("images/undoSprite.png").then(img => { 
+            this.redoTool = img;
+            this.toolArray.push(new Pair("undo", this.redoTool));
         });
         this.toolArray = new Array<Pair<string, HTMLImageElement> >();
         this.canvas = <HTMLCanvasElement> document.getElementById("tool_selector_screen");
@@ -352,6 +362,13 @@ class DrawingScreen {
                 break;
                 case("paste"):                
                 this.pasteRect = [e.touchPos[0], e.touchPos[1],this.pasteRect[2],this.pasteRect[3]];
+                break;
+                case("undo"):               
+                this.undoLast();
+                this.undoLast();
+                break;
+                case("redo"):                
+                this.redoLast();
                 break;
             }
         });
