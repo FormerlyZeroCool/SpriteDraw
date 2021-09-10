@@ -335,8 +335,10 @@ class DrawingScreen {
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
             if(this.updatesStack.length == 0 || this.updatesStack[this.updatesStack.length - 1].length)
+            {
+                if(this.toolSelector.selectedToolName() !== "redo" && this.toolSelector.selectedToolName() !== "undo")
                 this.updatesStack.push(new Array<Pair<number,RGB>>());
-            
+            }
             this.canvas.focus();
             switch (this.toolSelector.selectedToolName())
             {
@@ -364,7 +366,6 @@ class DrawingScreen {
                 this.pasteRect = [e.touchPos[0], e.touchPos[1],this.pasteRect[2],this.pasteRect[3]];
                 break;
                 case("undo"):               
-                this.undoLast();
                 this.undoLast();
                 break;
                 case("redo"):                
