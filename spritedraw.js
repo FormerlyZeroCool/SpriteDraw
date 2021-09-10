@@ -276,6 +276,7 @@ class DrawingScreen {
                     this.selectionRect = [0, 0, 0, 0];
                     this.pasteRect = [0, 0, 0, 0];
                     break;
+                case ("oval"):
                 case ("rect"):
                 case ("copy"):
                     this.selectionRect = [e.touchPos[0], e.touchPos[1], 0, 0];
@@ -314,6 +315,7 @@ class DrawingScreen {
             switch (this.toolSelector.selectedToolName()) {
                 case ("oval"):
                     this.handleEllipse(e);
+                    this.selectionRect = [0, 0, 0, 0];
                     break;
                 case ("pen"):
                     this.handleTap(e);
@@ -347,6 +349,7 @@ class DrawingScreen {
                     break;
                 case ("fill"):
                     break;
+                case ("oval"):
                 case ("rect"):
                     this.selectionRect[2] += e.deltaX;
                     this.selectionRect[3] += e.deltaY;
