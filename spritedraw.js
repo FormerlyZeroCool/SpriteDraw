@@ -240,7 +240,10 @@ class ToolSelector {
 class DrawingScreen {
     constructor(canvas, keyboardHandler, offset, dimensions, bounds = [canvas.width - offset[0], canvas.height - offset[1]]) {
         this.canvas = canvas;
-        this.canvas.offScreenCanvas;
+        this.canvas.offScreenCanvas = document.createElement('canvas');
+        this.canvas.offScreenCanvas.width = this.canvas.width;
+        this.canvas.offScreenCanvas.height = this.canvas.height;
+        this.canvas.offScreenCanvas.ctx = this.canvas.offScreenCanvas.getContext("2d");
         this.clipBoardBuffer = new Array();
         this.keyboardHandler = keyboardHandler;
         this.toolSelector = new ToolSelector(keyboardHandler);
@@ -400,7 +403,6 @@ class DrawingScreen {
             const copyAreaX = i % width;
             const copyAreaY = Math.floor(i / width);
             const destIndex = dest_x + dest_y * this.dimensions.first + copyAreaX + copyAreaY * this.dimensions.first;
-            const sourceIndex = source_x + source_y * this.dimensions.first + copyAreaX + copyAreaY * this.dimensions.first;
             const dest = this.screenBuffer[destIndex];
             const source = this.clipBoardBuffer[i].first;
             if (this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && this.inBufferBounds(source_x + copyAreaX, source_y + copyAreaY) && !dest.compare(source)) {
@@ -420,15 +422,15 @@ class DrawingScreen {
         }
     }
     fillArea(startCoordinate) {
-        const queue = new Queue(1024);
+        const stack = new Array(1024);
         let checkedMap = {};
         checkedMap = {};
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
         const startPixel = this.screenBuffer[startIndex];
         const spc = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
-        queue.push(startIndex);
-        while (queue.length > 0) {
-            const cur = queue.pop();
+        stack.push(startIndex);
+        while (stack.length > 0) {
+            const cur = stack.pop();
             const pixelColor = this.screenBuffer[cur];
             if (cur >= 0 && cur < this.dimensions.first * this.dimensions.second &&
                 pixelColor.compare(spc) && !checkedMap[cur]) {
@@ -438,13 +440,13 @@ class DrawingScreen {
                     pixelColor.copy(this.color);
                 }
                 if (!checkedMap[cur + 1])
-                    queue.push(cur + 1);
+                    stack.push(cur + 1);
                 if (!checkedMap[cur - 1])
-                    queue.push(cur - 1);
+                    stack.push(cur - 1);
                 if (!checkedMap[cur + this.dimensions.first])
-                    queue.push(cur + this.dimensions.first);
+                    stack.push(cur + this.dimensions.first);
                 if (!checkedMap[cur - this.dimensions.first])
-                    queue.push(cur - this.dimensions.first);
+                    stack.push(cur - this.dimensions.first);
             }
         }
     }
@@ -564,10 +566,6 @@ class DrawingScreen {
     }
     draw() {
         const ctx = this.canvas.getContext("2d");
-        const image = ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-        const imageData = image.data;
-        //ctx.fillStyle = "#FFFFFF";
-        //ctx.fillRect(0,0,this.canvas.width, this.canvas.height);
         const cellHeight = Math.floor(this.bounds.second / this.dimensions.second + 0.5);
         const cellWidth = Math.floor(this.bounds.first / this.dimensions.first + 0.5);
         const prX = Math.floor(this.pasteRect[0] / cellWidth + 0.5);
@@ -579,18 +577,19 @@ class DrawingScreen {
                 const sy = Math.floor(this.offset.second + y * cellHeight);
                 const sx = Math.floor(this.offset.first + x * cellWidth);
                 if (this.screenLastBuffer[x + y * this.dimensions.first].color != this.screenBuffer[x + y * this.dimensions.first].color) {
-                    ctx.fillStyle = "rgba(255,255,255,1)";
-                    ctx.fillRect(sx, sy, cellWidth + 1, cellHeight + 1);
+                    this.canvas.offScreenCanvas.ctx.fillStyle = "rgba(255,255,255,1)";
+                    this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth + 1, cellHeight + 1);
                     if (this.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)] && x >= prX && x < prEndX && y >= prY && y < prEndY) {
-                        ctx.fillStyle = this.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)].first.htmlRBGA();
+                        this.canvas.offScreenCanvas.ctx.fillStyle = this.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)].first.htmlRBGA();
                     }
                     else
-                        ctx.fillStyle = this.screenBuffer[x + y * this.dimensions.first].htmlRBGA();
-                    ctx.fillRect(sx, sy, cellWidth + 1, cellHeight + 1);
+                        this.canvas.offScreenCanvas.ctx.fillStyle = this.screenBuffer[x + y * this.dimensions.first].htmlRBGA();
+                    this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth + 1, cellHeight + 1);
                     this.screenLastBuffer[x + y * this.dimensions.first].color = this.screenBuffer[x + y * this.dimensions.first].color;
                 }
             }
         }
+        ctx.drawImage(this.canvas.offScreenCanvas, 0, 0);
         if (this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line") {
             let touchStart = [this.listeners.touchStart["offsetX"], this.listeners.touchStart["offsetY"]];
             if (!touchStart[0]) {
@@ -1181,6 +1180,7 @@ async function main() {
         if (counter++ % 1 == 0)
             animations.draw();
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
+        console.log(Date.now() - start);
         await sleep(goalSleep - adjustment);
     }
 }
