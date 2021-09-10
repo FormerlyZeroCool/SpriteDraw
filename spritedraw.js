@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [128, 128];
+const dim = [50, 50];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -182,6 +182,10 @@ class ToolSelector {
             this.lineTool = img;
             this.toolArray.push(new Pair("line", this.lineTool));
         });
+        fetchImage("images/rectSprite.png").then(img => {
+            this.rectTool = img;
+            this.toolArray.push(new Pair("rect", this.rectTool));
+        });
         fetchImage("images/copySprite.png").then(img => {
             this.copyTool = img;
             this.toolArray.push(new Pair("copy", this.copyTool));
@@ -258,6 +262,7 @@ class DrawingScreen {
                     this.selectionRect = [0, 0, 0, 0];
                     this.pasteRect = [0, 0, 0, 0];
                     break;
+                case ("rect"):
                 case ("copy"):
                     this.selectionRect = [e.touchPos[0], e.touchPos[1], 0, 0];
                     break;
@@ -306,6 +311,10 @@ class DrawingScreen {
                 case ("paste"):
                     this.copy();
                     break;
+                case ("rect"):
+                    this.drawRect([this.selectionRect[0], this.selectionRect[1]], [this.selectionRect[0] + this.selectionRect[2], this.selectionRect[1] + this.selectionRect[3]]);
+                    this.selectionRect = [0, 0, 0, 0];
+                    break;
             }
         });
         this.listeners.registerCallBack("touchmove", e => true, e => {
@@ -315,7 +324,9 @@ class DrawingScreen {
                     break;
                 case ("fill"):
                     break;
-                case ("line"):
+                case ("rect"):
+                    this.selectionRect[2] += e.deltaX;
+                    this.selectionRect[3] += e.deltaY;
                     break;
                 case ("copy"):
                     this.selectionRect[2] += e.deltaX;
@@ -407,6 +418,19 @@ class DrawingScreen {
                     queue.push(cur - this.dimensions.first);
             }
         }
+    }
+    drawRect(start, end) {
+        this.drawLine(start, [start[0], end[1]]);
+        this.drawLine(start, [end[0], start[1]]);
+        this.drawLine([start[0], end[1]], end);
+        this.drawLine([end[0], start[1]], end);
+    }
+    drawLine(start, end) {
+        const event = {};
+        event.touchPos = end;
+        event.deltaX = end[0] - start[0];
+        event.deltaY = end[1] - start[1];
+        this.handleDraw(event);
     }
     handleDraw(event) {
         //draw line from current touch pos to the touchpos minus the deltas
@@ -1087,7 +1111,7 @@ async function main() {
         save_serverButton.addEventListener("mousedown", e => logToServer({ animation: animations.animations[animations.selectedAnimation] }));
     keyboardHandler.registerCallBack("keydown", e => true, e => {
         field.color.copy(pallette.calcColor());
-        if (document.getElementById('body') === document.activeElement && e.code.substring(0, "Digit".length) === "Digit") {
+        if ((document.getElementById('body') === document.activeElement || document.getElementById('screen') === document.activeElement) && e.code.substring(0, "Digit".length) === "Digit") {
             const numTyped = e.code.substring("Digit".length, e.code.length);
             pallette.highLightedCell = (parseInt(numTyped) + 9) % 10;
             newColor.value = pallette.calcColor().htmlRBGA();
