@@ -1111,15 +1111,18 @@ async function main() {
     pallette.listeners.registerCallBack("touchend", e => true, e => { field.color = pallette.calcColor(); });
     const animations = new AnimationGroup(field, "animations", "sprites", Math.floor(field.canvas.width / dim[0] + 0.5), dim[0], dim[1]);
     const add_animationButton = document.getElementById("add_animation");
-    add_animationButton.addEventListener("mousedown", e => {
+    const add_animationTouchListener = new SingleTouchListener(add_animationButton, false, true);
+    add_animationTouchListener.registerCallBack("touchstart", e => true, e => {
         animations.pushAnimation(new SpriteAnimation(0, 0, dim[0], dim[1]));
     });
     const add_spriteButton = document.getElementById("add_sprite");
-    add_spriteButton.addEventListener("mousedown", e => {
+    const add_spriteButtonTouchListener = new SingleTouchListener(add_spriteButton, false, true);
+    add_spriteButtonTouchListener.registerCallBack("touchstart", e => true, e => {
         animations.pushSprite();
     });
     const save_spriteButton = document.getElementById("save_sprite");
-    save_spriteButton.addEventListener("mousedown", e => {
+    const save_spriteButtonTouchListener = new SingleTouchListener(save_spriteButton, false, true);
+    save_spriteButtonTouchListener.registerCallBack("touchstart", e => true, e => {
         animations.spriteSelector.pushSelectedToCanvas();
     });
     const save_serverButton = document.getElementById("save_server");

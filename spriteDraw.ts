@@ -1388,25 +1388,30 @@ async function main()
     const pallette:Pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler, newColor);
     const setPalletteColorButton = document.getElementById("setPalletteColorButton");
     const palletteColorButtonListener:SingleTouchListener = new SingleTouchListener(setPalletteColorButton, true, true);
-    palletteColorButtonListener.registerCallBack("touchstart", e => true, e => {pallette.setSelectedColor(newColor.value);field.color = pallette.calcColor();
-        newColor.blur();});
+    palletteColorButtonListener.registerCallBack("touchstart", e => true, e => {
+        pallette.setSelectedColor(newColor.value);field.color = pallette.calcColor();
+        newColor.blur();
+    });
     pallette.canvas.addEventListener("mouseup", e => { field.color = pallette.calcColor() });
     pallette.listeners.registerCallBack("touchend", e => true,  e => { field.color = pallette.calcColor(); })
     
     const animations:AnimationGroup = new AnimationGroup(field, "animations", "sprites", Math.floor(field.canvas.width/dim[0]+0.5), dim[0], dim[1]);
 
     const add_animationButton = document.getElementById("add_animation");
-    add_animationButton.addEventListener("mousedown", e => {
+    const add_animationTouchListener:SingleTouchListener = new SingleTouchListener(add_animationButton, false, true);
+    add_animationTouchListener.registerCallBack("touchstart", e => true, e => {
         animations.pushAnimation(new SpriteAnimation(0, 0, dim[0], dim[1]));
     });
 
     const add_spriteButton = document.getElementById("add_sprite");
-    add_spriteButton.addEventListener("mousedown", e => {
+    const add_spriteButtonTouchListener:SingleTouchListener = new SingleTouchListener(add_spriteButton, false, true);
+    add_spriteButtonTouchListener.registerCallBack("touchstart", e => true, e => {
         animations.pushSprite();
     });
 
     const save_spriteButton = document.getElementById("save_sprite");
-    save_spriteButton.addEventListener("mousedown", e => {
+    const save_spriteButtonTouchListener:SingleTouchListener = new SingleTouchListener(save_spriteButton, false, true);
+    save_spriteButtonTouchListener.registerCallBack("touchstart", e => true, e => {
         animations.spriteSelector.pushSelectedToCanvas();
     });
     const save_serverButton = document.getElementById("save_server");
