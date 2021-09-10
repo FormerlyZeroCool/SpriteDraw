@@ -1180,7 +1180,6 @@ async function main() {
         if (counter++ % 1 == 0)
             animations.draw();
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
-        console.log(Date.now() - start);
         await sleep(goalSleep - adjustment);
     }
 }
