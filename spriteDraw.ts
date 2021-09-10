@@ -195,6 +195,7 @@ class ToolSelector {
     fillTool:HTMLImageElement;
     lineTool:HTMLImageElement;
     rectTool:HTMLImageElement;
+    ovalTool:HTMLImageElement;
     copyTool:HTMLImageElement;
     pasteTool:HTMLImageElement;
     redoTool:HTMLImageElement;
@@ -242,6 +243,10 @@ class ToolSelector {
         fetchImage("images/rectSprite.png").then(img => { 
             this.rectTool = img;
             this.toolArray.push(new Pair("rect", this.rectTool));
+        });
+        fetchImage("images/ovalSprite.png").then(img => { 
+            this.ovalTool = img;
+            this.toolArray.push(new Pair("oval", this.ovalTool));
         });
         fetchImage("images/copySprite.png").then(img => { 
             this.copyTool = img;
@@ -395,6 +400,9 @@ class DrawingScreen {
         this.listeners.registerCallBack("touchend",e => true, e => {
             switch (this.toolSelector.selectedToolName())
             {
+                case("oval"):
+                this.handleEllipse(e);
+                break;
                 case("pen"):
                 this.handleTap(e);
 
@@ -605,6 +613,25 @@ class DrawingScreen {
                     pixel.copy(this.color);
                 }
             }
+        }
+    }
+    handleEllipse(event):void
+    {
+        const start_x:number = Math.min(event.touchPos[0] - event.deltaX, event.touchPos[0]);
+        const end_x:number = Math.max(event.touchPos[0] - event.deltaX, event.touchPos[0]);
+        const min_y:number = Math.min(event.touchPos[1] - event.deltaY, event.touchPos[1]);
+        const max_y:number = Math.max(event.touchPos[1] - event.deltaY, event.touchPos[1]);
+        const height:number = (max_y - min_y) / 2;
+        const width:number = (end_x - start_x) / 2;
+        const h:number = start_x + (end_x - start_x) / 2;
+        const k:number = min_y + (max_y - min_y) / 2;
+
+        let last:Array<number> = [h + width*Math.cos(0), k + height*Math.sin(0)];
+        for(let x = 0.05; x < 2*Math.PI; x += 0.05)
+        { 
+            const cur = [h + width*Math.cos(x), k + height*Math.sin(x)];
+            this.drawLine([last[0], last[1]], [cur[0], cur[1]]);
+            last = cur;
         }
     }
     undoLast()
