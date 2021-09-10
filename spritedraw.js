@@ -493,9 +493,6 @@ class DrawingScreen {
             }
         }
     }
-    toDeg(rad) {
-        return rad * (180 / Math.PI);
-    }
     handleEllipse(event) {
         const start_x = Math.min(event.touchPos[0] - event.deltaX, event.touchPos[0]);
         const end_x = Math.max(event.touchPos[0] - event.deltaX, event.touchPos[0]);
@@ -508,10 +505,7 @@ class DrawingScreen {
         let last = [h + width * Math.cos(0), k + height * Math.sin(0)];
         for (let x = 0.05; x < 2 * Math.PI; x += 0.05) {
             const cur = [h + width * Math.cos(x), k + height * Math.sin(x)];
-            console.log("w:", width, "H:", height);
-            console.log([last[0], last[1]], [cur[0], cur[1]]);
             this.drawLine([last[0], last[1]], [cur[0], cur[1]]);
-            //this.drawLine([last[0], last[2]] , [cur[0], cur[2]]);
             last = cur;
         }
     }
