@@ -299,7 +299,79 @@ class ToolSelector {
     }
 
 };
+class ClipBoard {
+    canvas:HTMLCanvasElement;
+    offscreenCanvas:HTMLCanvasElement;
+    currentDim:Array<number>;
+    pixelWidth:number;
+    pixelHeight:number;
+    pixelCountY:number;
+    pixelCountX:number;
+    innerWidth:number;
+    innerHeight:number;
+    centerX:number;
+    centerY:number;
+    clipBoardBuffer:Array<Pair<RGB, number>>;
+    constructor(canvas:HTMLCanvasElement, maxWidth:number, maxHeight:number, pixelWidth:number, pixelHeight:number, pixelCountX:number, pixelCountY:number)
+    {
+        this.canvas = canvas;
+        this.currentDim = [0,0];
+        this.pixelCountX = pixelCountX;
+        this.pixelCountY = pixelCountY;
+        this.offscreenCanvas = document.createElement("canvas");
+        this.clipBoardBuffer = new Array<Pair<RGB, number>>();
+        this.canvas.width = maxWidth / 4;
+        this.canvas.height = maxHeight / 4;
+        this.offscreenCanvas.width = maxWidth;
+        this.offscreenCanvas.height = maxHeight;
+        this.pixelWidth = Math.floor(pixelWidth+0.5);
+        console.log(pixelHeight)
+        this.pixelHeight = Math.floor(pixelHeight);
+        this.centerX = Math.floor(maxWidth / 8);
+        this.centerY = Math.floor(maxHeight / 8);
+        console.log("cx:",this.centerX,"cy:",this.centerY, this.pixelCountX);
+        this.innerWidth = 0;
+        this.innerHeight = 0;
+    }
+    //copies array of rgb values to canvas offscreen, centered within the canvas
+    refreshImageFromBuffer(width:number, height:number):void
+    {
+        this.currentDim = [width, height];
+        width = Math.floor(width + 0.5);
+        height = Math.floor(height + 0.5);
+        this.innerWidth = width * this.pixelWidth;
+        this.innerHeight = height * this.pixelHeight;
+        const ctx = this.offscreenCanvas.getContext("2d");
+        this.offscreenCanvas.width = this.canvas.width;
+        this.offscreenCanvas.height = this.canvas.height;
+        ctx.fillStyle = "rgba(255,255,255,1)";
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        let start_x:number = Math.floor(this.centerX / this.canvas.width * this.pixelCountX) - (width * (this.pixelWidth/4)/2);
+        //start_x = 0
+        let start_y:number = Math.floor(this.centerY / this.canvas.height * this.pixelCountY) - (height * (this.pixelHeight/4)/2);
+        //start_y = 0;
+        for(let y = 0; y < height; y++)
+        {
+            for(let x = 0; x < width; x++)
+            {
+                
+                ctx.fillStyle = this.clipBoardBuffer[Math.floor(x + y * width)].first.htmlRBGA();
 
+                const sx:number = Math.floor((x + start_x) * this.pixelWidth/4);
+                const sy:number = Math.floor((y + start_y) * this.pixelHeight/4);
+                ctx.fillRect(sx, sy, this.pixelWidth/4, this.pixelHeight/4);
+            }
+        }
+    }
+
+    draw(canvas:HTMLCanvasElement = this.canvas)
+    {
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "rgba(255,255,255,1)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(this.offscreenCanvas, 0, 0);
+    }
+}
 class DrawingScreen {
     offset:Pair<number>;
     bounds:Pair<number>;
@@ -307,7 +379,7 @@ class DrawingScreen {
     canvas:any;
     screenBuffer:Array<RGB>;
     screenLastBuffer:Array<RGB>;
-    clipBoardBuffer:Array<Pair<RGB, number>>;
+    clipBoard:ClipBoard;
     color:RGB;
     listeners:SingleTouchListener;
     keyboardHandler:KeyboardHandler;
@@ -325,7 +397,6 @@ class DrawingScreen {
         this.canvas.offScreenCanvas.width = this.canvas.width;
         this.canvas.offScreenCanvas.height = this.canvas.height;
         this.canvas.offScreenCanvas.ctx = this.canvas.offScreenCanvas.getContext("2d");
-        this.clipBoardBuffer = new Array<Pair<RGB, number>>();
         this.keyboardHandler = keyboardHandler;
         this.toolSelector = new ToolSelector(keyboardHandler);
         this.updatesStack = new Array<Array<Pair<number,RGB>>>();
@@ -338,6 +409,7 @@ class DrawingScreen {
         this.screenLastBuffer = new Array<RGB>();
         this.selectionRect = [0,0,0,0];
         this.pasteRect = [0,0,0,0];
+        this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
         for(let i = 0; i < dimensions[0] * dimensions[1]; i++)
         {
             this.screenBuffer.push(new RGB(0,0,0,0));
@@ -427,7 +499,8 @@ class DrawingScreen {
 
                 break;
                 case("copy"):
-                    this.saveToBuffer(this.selectionRect, this.clipBoardBuffer);
+                    const bounds:Pair<number> = this.saveToBuffer(this.selectionRect, this.clipBoard.clipBoardBuffer);
+                    this.clipBoard.refreshImageFromBuffer(bounds.first, bounds.second);
                     this.selectionRect = [0,0,0,0];
 
                 break;
@@ -476,7 +549,7 @@ class DrawingScreen {
         this.color = new RGB(0,0,0,255);
         
     }
-    saveToBuffer(selectionRect:Array<number>, buffer:Array<Pair<RGB, number>>)
+    saveToBuffer(selectionRect:Array<number>, buffer:Array<Pair<RGB, number>>):Pair<number>
     {
         buffer.length = 0;
         const source_x:number = Math.floor((selectionRect[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
@@ -496,26 +569,26 @@ class DrawingScreen {
                 buffer.push(new Pair(new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()), sourceIndex));
             }
         }
-
+        return new Pair(width, height);
     }
 
     copy()
     {
-        const source_x:number = Math.floor((this.selectionRect[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
-        const source_y:number = Math.floor((this.selectionRect[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
+        
         const dest_x:number = Math.floor((this.pasteRect[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
         const dest_y:number = Math.floor((this.pasteRect[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
-        const width:number = Math.floor((this.pasteRect[2]-this.offset.first)/this.bounds.first*this.dimensions.first);
-        const height:number = Math.floor((this.pasteRect[3]-this.offset.second)/this.bounds.second*this.dimensions.second);
+        const width:number = this.clipBoard.currentDim[0];
+        const height:number = this.clipBoard.currentDim[1];
         const area:number = width * height;
-        for(let i = 0; i < area; i++)
+        const initialIndex:number = dest_x + dest_y*this.dimensions.first;
+        for(let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++)
         {
             const copyAreaX:number = i%width;
             const copyAreaY:number = Math.floor(i/width);
-            const destIndex:number = dest_x + dest_y*this.dimensions.first + copyAreaX + copyAreaY*this.dimensions.first;
+            const destIndex:number = initialIndex + copyAreaX + copyAreaY*this.dimensions.first;
             const dest:RGB = this.screenBuffer[destIndex];
-            const source:RGB = this.clipBoardBuffer[i].first;
-            if(this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && this.inBufferBounds(source_x + copyAreaX, source_y + copyAreaY) && !dest.compare(source))
+            const source:RGB = this.clipBoard.clipBoardBuffer[i].first;
+            if(this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && !dest.compare(source))
             {
                 this.updatesStack[this.updatesStack.length-1].push(new Pair(destIndex, new RGB(dest.red(),dest.green(),dest.blue(), dest.alpha()))); 
                 dest.copy(source);
@@ -702,6 +775,7 @@ class DrawingScreen {
     }
     draw():void
     {
+        this.clipBoard.draw();
         const ctx:any = this.canvas.getContext("2d");
         const cellHeight:number = Math.floor(this.bounds.second / this.dimensions.second  + 0.5);
         const cellWidth:number = Math.floor(this.bounds.first / this.dimensions.first + 0.5);
@@ -718,14 +792,14 @@ class DrawingScreen {
                 if(this.screenLastBuffer[x + y*this.dimensions.first].color != this.screenBuffer[x + y*this.dimensions.first].color)
                 {
                     this.canvas.offScreenCanvas.ctx.fillStyle = "rgba(255,255,255,1)";
-                    this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth+1, cellHeight+1);
-                    if(this.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)] && x >= prX && x < prEndX && y >= prY && y < prEndY)
+                    this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
+                    /*if(this.clipBoard.clipBoardBuffer[(x - prX) + (y - prY) * this.clipBoard.pixelCountX] && x >= prX && x < prEndX && y >= prY && y < prEndY)
                     {
-                        this.canvas.offScreenCanvas.ctx.fillStyle = this.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)].first.htmlRBGA();
+                        this.canvas.offScreenCanvas.ctx.fillStyle = this.clipBoard.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)].first.htmlRBGA();
                     }
-                    else
-                    this.canvas.offScreenCanvas.ctx.fillStyle = this.screenBuffer[x + y*this.dimensions.first].htmlRBGA();
-                    this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth+1, cellHeight+1);
+                    else*/
+                        this.canvas.offScreenCanvas.ctx.fillStyle = this.screenBuffer[x + y*this.dimensions.first].htmlRBGA();
+                    this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
                     this.screenLastBuffer[x + y*this.dimensions.first].color = this.screenBuffer[x + y*this.dimensions.first].color;
                 }
                 
