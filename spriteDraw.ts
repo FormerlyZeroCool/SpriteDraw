@@ -424,21 +424,24 @@ class DrawingScreen {
                 this.updatesStack.push(new Array<Pair<number,RGB>>());
             }
             this.canvas.focus();
+            if(this.toolSelector.selectedToolName() != "paste")
+            {
+                this.selectionRect = [0,0,0,0];
+                this.pasteRect = [0,0,0,0];
+            }
+            else
+            {
+                this.pasteRect = [e.touchPos[0] , e.touchPos[1], this.clipBoard.currentDim[0] * (bounds[0] / dimensions[0]),this.clipBoard.currentDim[1] * (bounds[1] / dimensions[1])];
+            }
+
             switch (this.toolSelector.selectedToolName())
             {
                 case("pen"):
-                this.selectionRect = [0,0,0,0];
-                this.pasteRect = [0,0,0,0];
 
                 break;
                 case("fill"):
-                this.selectionRect = [0,0,0,0];
-                this.pasteRect = [0,0,0,0];
-
                 break;
                 case("line"):
-                this.selectionRect = [0,0,0,0];
-                this.pasteRect = [0,0,0,0];
 
                 break;
                 case("oval"):
@@ -1552,6 +1555,7 @@ async function main()
         if(counter++ % 1 == 0)
             animations.draw();
         const adjustment:number = Date.now() - start <= 30 ? Date.now() - start : 30;
+        console.log(Date.now() - start)
         await sleep(goalSleep - adjustment);
     }
 }
