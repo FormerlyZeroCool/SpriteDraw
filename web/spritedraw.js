@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [128, 128];
+const dim = [256, 256];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -556,6 +556,14 @@ class DrawingScreen {
                     stack.push(cur + this.dimensions.first);
                 if (!checkedMap[cur - this.dimensions.first])
                     stack.push(cur - this.dimensions.first);
+                if (!checkedMap[cur + this.dimensions.first - 1])
+                    stack.push(cur + this.dimensions.first - 1);
+                if (!checkedMap[cur + this.dimensions.first + 1])
+                    stack.push(cur + this.dimensions.first + 1);
+                if (!checkedMap[cur - this.dimensions.first - 1])
+                    stack.push(cur - this.dimensions.first - 1);
+                if (!checkedMap[cur - this.dimensions.first + 1])
+                    stack.push(cur - this.dimensions.first + 1);
             }
         }
         return new Pair(new Pair(0, 0), data);
