@@ -1,0 +1,49 @@
+<html>
+<body id="body">
+    <h2 id="site_name">Sprite Draw</h2>
+
+    <div style="display: inline-block;">
+        <canvas id="screen" width="500" height="500"
+        style="border:1px solid #c3c3c3;">
+    </canvas>
+    <canvas id="tool_selector_screen" width="50" height="500"
+    style="border:1px solid #c3c3c3;">
+</canvas>
+    <canvas id="clipboard_canvas" width="128" height="128"
+    style="border:1px solid #c3c3c3;">
+    </canvas>
+
+    <div id="post-drawing-field" style="display: inline-block;">
+
+    <h3>Options:</h3>
+    <div>
+        <button id="setPalletteColorButton" style="font-size : 30px; width: 100px; height: 40px">set:</button> 
+        <input type="text" id="newColor" style="width: 160px;"><br><br>
+    </div>
+    <div id="animations_group" style="display: inline-block;">
+        <button id="add_animation">Add Animation</button><br>
+        <div id="animations" style="display: inline-block;"></div>
+    </div>
+    </div>
+    </div>
+    <div>
+        <canvas id="pallette_screen" width="500" height="50"
+        style="border:1px solid #c3c3c3;">
+        </canvas>
+    </div>
+
+    <div id="sprites_group" style="display: inline;">
+        <button id="add_sprite">Add Sprite</button>
+        <button id="save_sprite">Save Sprite</button><br>
+        <!--<button id="save_server">Save To Server</button><br>!-->
+        <div id="sprites" style="display: inline-block;">
+            <canvas id="sprites-canvas" width="500" height="100"
+            style="border:1px solid #c3c3c3;">
+        </div>
+    </div>
+    <br>
+
+    <script src="spritedraw.js"></script>
+</body>
+
+</html>
