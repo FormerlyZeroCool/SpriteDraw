@@ -198,6 +198,10 @@ class ToolSelector {
             this.pasteTool = img;
             this.toolArray.push(new Pair("paste", this.pasteTool));
         });
+        fetchImage("images/dragSprite.png").then(img => {
+            this.dragTool = img;
+            this.toolArray.push(new Pair("drag", this.dragTool));
+        });
         fetchImage("images/redoSprite.png").then(img => {
             this.undoTool = img;
             this.toolArray.push(new Pair("redo", this.undoTool));
@@ -292,6 +296,7 @@ class ClipBoard {
 class DrawingScreen {
     constructor(canvas, keyboardHandler, offset, dimensions, bounds = [canvas.width - offset[0], canvas.height - offset[1]]) {
         this.canvas = canvas;
+        this.dragData = null;
         this.canvas.offScreenCanvas = document.createElement('canvas');
         this.canvas.offScreenCanvas.width = this.canvas.width;
         this.canvas.offScreenCanvas.height = this.canvas.height;
@@ -322,7 +327,6 @@ class DrawingScreen {
             }
             this.canvas.focus();
             if (this.toolSelector.selectedToolName() != "paste") {
-                this.selectionRect = [0, 0, 0, 0];
                 this.pasteRect = [0, 0, 0, 0];
             }
             else {
@@ -334,6 +338,11 @@ class DrawingScreen {
                 case ("fill"):
                     break;
                 case ("line"):
+                    break;
+                case ("drag"):
+                    const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
+                    const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
+                    this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy));
                     break;
                 case ("oval"):
                 case ("rect"):
@@ -379,6 +388,10 @@ class DrawingScreen {
                 case ("pen"):
                     this.handleTap(e);
                     break;
+                case ("drag"):
+                    this.saveDragDataToScreen();
+                    this.dragData = null;
+                    break;
                 case ("fill"):
                     const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
                     const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
@@ -406,6 +419,12 @@ class DrawingScreen {
             switch (this.toolSelector.selectedToolName()) {
                 case ("pen"):
                     this.handleDraw(e);
+                    break;
+                case ("drag"):
+                    //const gx:number = Math.floor((e.touchPos[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
+                    //const gy:number = Math.floor((e.touchPos[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
+                    this.dragData.first.first += (e.deltaX / this.bounds.first) * this.dimensions.first;
+                    this.dragData.first.second += (e.deltaY / this.bounds.second) * this.dimensions.second;
                     break;
                 case ("fill"):
                     break;
@@ -511,6 +530,35 @@ class DrawingScreen {
                     stack.push(cur - this.dimensions.first);
             }
         }
+    }
+    //Pair<offset point>, Map of colors encoded as numbers by location>
+    getSelectedPixelGroup(startCoordinate) {
+        const stack = new Array(1024);
+        const data = new Map();
+        let checkedMap = {};
+        checkedMap = {};
+        const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
+        stack.push(startIndex);
+        while (stack.length > 0) {
+            const cur = stack.pop();
+            const pixelColor = this.screenBuffer[cur];
+            if (cur >= 0 && cur < this.dimensions.first * this.dimensions.second &&
+                pixelColor.alpha() !== 0 && !checkedMap[cur]) {
+                checkedMap[cur] = true;
+                //this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
+                data.set(cur, pixelColor.color);
+                pixelColor.color = 0;
+                if (!checkedMap[cur + 1])
+                    stack.push(cur + 1);
+                if (!checkedMap[cur - 1])
+                    stack.push(cur - 1);
+                if (!checkedMap[cur + this.dimensions.first])
+                    stack.push(cur + this.dimensions.first);
+                if (!checkedMap[cur - this.dimensions.first])
+                    stack.push(cur - this.dimensions.first);
+            }
+        }
+        return new Pair(new Pair(0, 0), data);
     }
     drawRect(start, end) {
         this.drawLine(start, [start[0], end[1]]);
@@ -626,7 +674,19 @@ class DrawingScreen {
             }
         }
     }
+    saveDragDataToScreen() {
+        if (this.dragData) {
+            for (const el of this.dragData.second.entries()) {
+                const x = Math.floor(el[0] % this.dimensions.first + this.dragData.first.first);
+                const y = Math.floor(Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second);
+                if (this.screenBuffer[x + y * this.dimensions.first])
+                    this.screenBuffer[x + y * this.dimensions.first].color = el[1];
+            }
+            ;
+        }
+    }
     draw() {
+        const reassignableColor = new RGB(0, 0, 0, 0);
         this.clipBoard.draw();
         const ctx = this.canvas.getContext("2d");
         const cellHeight = Math.floor(this.bounds.second / this.dimensions.second + 0.5);
@@ -642,11 +702,6 @@ class DrawingScreen {
                 if (this.screenLastBuffer[x + y * this.dimensions.first].color != this.screenBuffer[x + y * this.dimensions.first].color) {
                     this.canvas.offScreenCanvas.ctx.fillStyle = "rgba(255,255,255,1)";
                     this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
-                    /*if(this.clipBoard.clipBoardBuffer[(x - prX) + (y - prY) * this.clipBoard.pixelCountX] && x >= prX && x < prEndX && y >= prY && y < prEndY)
-                    {
-                        this.canvas.offScreenCanvas.ctx.fillStyle = this.clipBoard.clipBoardBuffer[(x - prX) + (y - prY) * (prEndX - prX)].first.htmlRBGA();
-                    }
-                    else*/
                     this.canvas.offScreenCanvas.ctx.fillStyle = this.screenBuffer[x + y * this.dimensions.first].htmlRBGA();
                     this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
                     this.screenLastBuffer[x + y * this.dimensions.first].color = this.screenBuffer[x + y * this.dimensions.first].color;
@@ -654,6 +709,17 @@ class DrawingScreen {
             }
         }
         ctx.drawImage(this.canvas.offScreenCanvas, 0, 0);
+        if (this.dragData) {
+            const offset = (Math.floor(this.dragData.first.first) + Math.floor(this.dragData.first.second) * this.dimensions.first);
+            for (const el of this.dragData.second.entries()) {
+                const sx = (el[0] % this.dimensions.first + this.dragData.first.first) * cellWidth;
+                const sy = (Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second) * cellHeight;
+                reassignableColor.color = el[1];
+                ctx.fillStyle = reassignableColor.htmlRBGA();
+                ctx.fillRect(sx, sy, cellWidth, cellHeight);
+            }
+            ;
+        }
         if (this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line") {
             let touchStart = [this.listeners.touchStart["offsetX"], this.listeners.touchStart["offsetY"]];
             if (!touchStart[0]) {
