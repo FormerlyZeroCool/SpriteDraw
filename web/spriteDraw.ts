@@ -689,7 +689,7 @@ class DrawingScreen {
                 pixelColor.alpha() !== 0 && !checkedMap[cur])
             {
                 checkedMap[cur] = true;
-                //this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
+                this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                 data.set(cur, pixelColor.color);
                 pixelColor.color = defaultColor.color;
                 if(!checkedMap[cur+1])
@@ -859,9 +859,16 @@ class DrawingScreen {
         {
             for(const el of this.dragData.second.entries()){
                 const x:number = Math.floor(el[0] % this.dimensions.first + this.dragData.first.first);
-                const y:number = Math.floor(Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second) % this.dimensions.second;
-                if(this.screenBuffer[x + y * this.dimensions.first])
+                let y:number = Math.floor(Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second) % this.dimensions.second;
+                if( y < 0)
+                {
+                    y = this.dimensions.second + y;
+                }
+                if(this.screenBuffer[x + y * this.dimensions.first]){
+                    const pixelColor:RGB = this.screenBuffer[x + y * this.dimensions.first];
+                    this.updatesStack[this.updatesStack.length-1].push(new Pair(x + y * this.dimensions.first, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                     this.screenBuffer[x + y * this.dimensions.first].color = el[1];
+                }
             };
         }
     }

@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [128, 128];
+const dim = [512, 512];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -547,7 +547,7 @@ class DrawingScreen {
             if (cur >= 0 && cur < this.dimensions.first * this.dimensions.second &&
                 pixelColor.alpha() !== 0 && !checkedMap[cur]) {
                 checkedMap[cur] = true;
-                //this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
+                this.updatesStack[this.updatesStack.length - 1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                 data.set(cur, pixelColor.color);
                 pixelColor.color = defaultColor.color;
                 if (!checkedMap[cur + 1])
@@ -694,9 +694,15 @@ class DrawingScreen {
         if (this.dragData) {
             for (const el of this.dragData.second.entries()) {
                 const x = Math.floor(el[0] % this.dimensions.first + this.dragData.first.first);
-                const y = Math.floor(Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second) % this.dimensions.second;
-                if (this.screenBuffer[x + y * this.dimensions.first])
+                let y = Math.floor(Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second) % this.dimensions.second;
+                if (y < 0) {
+                    y = this.dimensions.second + y;
+                }
+                if (this.screenBuffer[x + y * this.dimensions.first]) {
+                    const pixelColor = this.screenBuffer[x + y * this.dimensions.first];
+                    this.updatesStack[this.updatesStack.length - 1].push(new Pair(x + y * this.dimensions.first, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                     this.screenBuffer[x + y * this.dimensions.first].color = el[1];
+                }
             }
             ;
         }
