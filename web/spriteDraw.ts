@@ -330,11 +330,9 @@ class ClipBoard {
         this.offscreenCanvas.width = maxWidth;
         this.offscreenCanvas.height = maxHeight;
         this.pixelWidth = Math.floor(pixelWidth+0.5);
-        console.log(pixelHeight)
         this.pixelHeight = Math.floor(pixelHeight);
         this.centerX = Math.floor(maxWidth / 8);
         this.centerY = Math.floor(maxHeight / 8);
-        console.log("cx:",this.centerX,"cy:",this.centerY, this.pixelCountX);
         this.innerWidth = 0;
         this.innerHeight = 0;
     }
@@ -426,7 +424,6 @@ class DrawingScreen {
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
-            console.log(e.touchPos)
             if(this.updatesStack.length == 0 || this.updatesStack[this.updatesStack.length - 1].length)
             {
                 if(this.toolSelector.selectedToolName() !== "redo" && this.toolSelector.selectedToolName() !== "undo")
@@ -632,10 +629,8 @@ class DrawingScreen {
     }
     handleTap(event):void
     {
-        console.log("offset:",this.offset, "touchPos:",event.touchPos, "bounds:",this.bounds, "gdim:",this.dimensions)
         const gx:number = Math.floor((event.touchPos[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
         const gy:number = Math.floor((event.touchPos[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
-        console.log("loc:",gx,gy);
         if(gx < this.dimensions.first && gy < this.dimensions.second){
             const pixel:RGB = this.screenBuffer[gx + gy*this.dimensions.first];
             if(!pixel.compare(this.color))
