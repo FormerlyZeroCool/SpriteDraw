@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [128, 128];
+const dim = [256, 256];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -294,7 +294,10 @@ class ClipBoard {
     }
 }
 class DrawingScreen {
-    constructor(canvas, keyboardHandler, offset, dimensions, bounds = [canvas.width - offset[0], canvas.height - offset[1]]) {
+    constructor(canvas, keyboardHandler, offset, dimensions) {
+        const bounds = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
+        canvas.width = bounds[0];
+        canvas.height = bounds[1];
         this.canvas = canvas;
         this.dragData = null;
         this.canvas.offScreenCanvas = document.createElement('canvas');
@@ -315,12 +318,13 @@ class DrawingScreen {
         this.pasteRect = [0, 0, 0, 0];
         this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
         for (let i = 0; i < dimensions[0] * dimensions[1]; i++) {
-            this.screenBuffer.push(new RGB(0, 0, 0, 0));
+            this.screenBuffer.push(new RGB(255, 255, 255, 0));
             this.screenLastBuffer.push(new RGB(1, 0, 0, 0));
         }
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
+            console.log(e.touchPos);
             if (this.updatesStack.length == 0 || this.updatesStack[this.updatesStack.length - 1].length) {
                 if (this.toolSelector.selectedToolName() !== "redo" && this.toolSelector.selectedToolName() !== "undo")
                     this.updatesStack.push(new Array());
@@ -493,8 +497,10 @@ class DrawingScreen {
         }
     }
     handleTap(event) {
+        console.log("offset:", this.offset, "touchPos:", event.touchPos, "bounds:", this.bounds, "gdim:", this.dimensions);
         const gx = Math.floor((event.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
         const gy = Math.floor((event.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
+        console.log("loc:", gx, gy);
         if (gx < this.dimensions.first && gy < this.dimensions.second) {
             const pixel = this.screenBuffer[gx + gy * this.dimensions.first];
             if (!pixel.compare(this.color))
@@ -535,6 +541,7 @@ class DrawingScreen {
     getSelectedPixelGroup(startCoordinate) {
         const stack = new Array(1024);
         const data = new Map();
+        const defaultColor = new RGB(255, 255, 255, 0);
         let checkedMap = {};
         checkedMap = {};
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
@@ -547,7 +554,7 @@ class DrawingScreen {
                 checkedMap[cur] = true;
                 //this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                 data.set(cur, pixelColor.color);
-                pixelColor.color = 0;
+                pixelColor.color = defaultColor.color;
                 if (!checkedMap[cur + 1])
                     stack.push(cur + 1);
                 if (!checkedMap[cur - 1])
@@ -612,9 +619,10 @@ class DrawingScreen {
                 const gy = Math.floor((y - this.offset.second) / this.bounds.second * this.dimensions.second);
                 if (gx < this.dimensions.first && gy < this.dimensions.second) {
                     const pixel = this.screenBuffer[gx + gy * this.dimensions.first];
-                    if (!pixel.compare(this.color))
+                    if (!pixel.compare(this.color)) {
                         this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
-                    pixel.copy(this.color);
+                        pixel.copy(this.color);
+                    }
                 }
             }
         }
@@ -675,10 +683,15 @@ class DrawingScreen {
     }
     setDim(newDim) {
         if (newDim.length === 2) {
+            this.bounds.first = Math.ceil(this.canvas.width / dim[0]) * dim[0];
+            this.bounds.second = Math.ceil(this.canvas.height / dim[1]) * dim[1];
+            const bounds = [Math.ceil(this.canvas.width / dim[0]), Math.ceil(this.canvas.height / dim[1])];
+            this.canvas.width = bounds[0];
+            this.canvas.height = bounds[1];
             this.dimensions = new Pair(newDim[0], newDim[1]);
             if (this.screenBuffer.length < newDim[0] * newDim[1]) {
                 for (let i = this.screenBuffer.length; i < newDim[0] * newDim[1]; i++)
-                    this.screenBuffer.push(new RGB(0, 0, 0, 0));
+                    this.screenBuffer.push(new RGB(255, 255, 255, 0));
             }
         }
     }
@@ -686,7 +699,7 @@ class DrawingScreen {
         if (this.dragData) {
             for (const el of this.dragData.second.entries()) {
                 const x = Math.floor(el[0] % this.dimensions.first + this.dragData.first.first);
-                const y = Math.floor(Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second);
+                const y = Math.floor(Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second) % this.dimensions.second;
                 if (this.screenBuffer[x + y * this.dimensions.first])
                     this.screenBuffer[x + y * this.dimensions.first].color = el[1];
             }
@@ -694,28 +707,22 @@ class DrawingScreen {
         }
     }
     draw() {
-        const reassignableColor = new RGB(0, 0, 0, 0);
         this.clipBoard.draw();
         const ctx = this.canvas.getContext("2d");
-        const cellHeight = Math.floor(this.bounds.second / this.dimensions.second + 0.5);
-        const cellWidth = Math.floor(this.bounds.first / this.dimensions.first + 0.5);
-        const prX = Math.floor(this.pasteRect[0] / cellWidth + 0.5);
-        const prY = Math.floor(this.pasteRect[1] / cellHeight + 0.5);
-        const prEndX = Math.floor((this.pasteRect[0] + this.pasteRect[2]) / cellWidth);
-        const prEndY = Math.floor((this.pasteRect[1] + this.pasteRect[3]) / cellHeight);
+        const cellHeight = (this.bounds.second / this.dimensions.second);
+        const cellWidth = (this.bounds.first / this.dimensions.first);
         for (let y = 0; y < this.dimensions.second; y++) {
             for (let x = 0; x < this.dimensions.first; x++) {
-                const sy = Math.floor(this.offset.second + y * cellHeight);
-                const sx = Math.floor(this.offset.first + x * cellWidth);
+                const sy = (this.offset.second + y * cellHeight);
+                const sx = (this.offset.first + x * cellWidth);
                 if (this.screenLastBuffer[x + y * this.dimensions.first].color != this.screenBuffer[x + y * this.dimensions.first].color) {
-                    this.canvas.offScreenCanvas.ctx.fillStyle = "rgba(255,255,255,1)";
-                    this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
-                    this.canvas.offScreenCanvas.ctx.fillStyle = this.screenBuffer[x + y * this.dimensions.first].htmlRBGA();
+                    this.canvas.offScreenCanvas.ctx.fillStyle = this.screenBuffer[x + y * this.dimensions.first].htmlRBG();
                     this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
                     this.screenLastBuffer[x + y * this.dimensions.first].color = this.screenBuffer[x + y * this.dimensions.first].color;
                 }
             }
         }
+        const reassignableColor = new RGB(0, 0, 0, 0);
         ctx.drawImage(this.canvas.offScreenCanvas, 0, 0);
         if (this.dragData) {
             const offset = (Math.floor(this.dragData.first.first) + Math.floor(this.dragData.first.second) * this.dimensions.first);
@@ -1318,7 +1325,7 @@ async function main() {
         if (counter++ % 1 == 0)
             animations.draw();
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
-        console.log(Date.now() - start);
+        //console.log(Date.now() - start)
         await sleep(goalSleep - adjustment);
     }
 }
