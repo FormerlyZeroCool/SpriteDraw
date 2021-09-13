@@ -1,7 +1,7 @@
 function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
-const dim = [526,526];
+const dim = [128,128];
 class Queue<T> {
     data:Array<T>;
     start:number;
