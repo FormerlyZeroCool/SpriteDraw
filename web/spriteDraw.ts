@@ -881,7 +881,9 @@ class DrawingScreen {
                 
                 if(this.screenLastBuffer[x + y*this.dimensions.first].color != this.screenBuffer[x + y*this.dimensions.first].color)
                 {
-                    this.canvas.offScreenCanvas.ctx.fillStyle = this.screenBuffer[x + y*this.dimensions.first].htmlRBG();
+                    this.canvas.offScreenCanvas.ctx.fillStyle = "FFFFFF";
+                    this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
+                    this.canvas.offScreenCanvas.ctx.fillStyle = this.screenBuffer[x + y*this.dimensions.first].htmlRBGA();
                     this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
                     this.screenLastBuffer[x + y*this.dimensions.first].color = this.screenBuffer[x + y*this.dimensions.first].color;
                 }
