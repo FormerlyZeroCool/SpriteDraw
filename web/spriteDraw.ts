@@ -1,7 +1,7 @@
 function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
-const dim = [128,128];
+const dim = [526,526];
 class Queue<T> {
     data:Array<T>;
     start:number;
@@ -783,7 +783,7 @@ class DrawingScreen {
         const k:number = min_y + (max_y - min_y) / 2;
 
         let last:Array<number> = [h + width*Math.cos(0), k + height*Math.sin(0)];
-        for(let x = 0.05; x < 2*Math.PI; x += 0.05)
+        for(let x = -0.1; x < 2*Math.PI; x += 0.05)
         { 
             const cur = [h + width*Math.cos(x), k + height*Math.sin(x)];
             this.drawLine([last[0], last[1]], [cur[0], cur[1]]);
