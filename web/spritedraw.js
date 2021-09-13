@@ -711,7 +711,7 @@ class DrawingScreen {
                 const sy = (this.offset.second + y * cellHeight);
                 const sx = (this.offset.first + x * cellWidth);
                 if (this.screenLastBuffer[x + y * this.dimensions.first].color != this.screenBuffer[x + y * this.dimensions.first].color) {
-                    this.canvas.offScreenCanvas.ctx.fillStyle = "FFFFFF";
+                    this.canvas.offScreenCanvas.ctx.fillStyle = "#FFFFFF";
                     this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
                     this.canvas.offScreenCanvas.ctx.fillStyle = this.screenBuffer[x + y * this.dimensions.first].htmlRBGA();
                     this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
