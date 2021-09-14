@@ -1,10 +1,23 @@
 # SpriteDraw
 A small sprite drawing web app with fill tools, and pallette selector for easy color selection
 <br>
+<h2>Animations</h2>
+Animations are groups of sprites(small images, for more see below) that make up a single small flip book like cartoon<br>
+You can add new animations at any time by pressing the "Add Animation" button, or when you haven't created one yet by pressing the "Add Sprite" button.<br>
+both will take the contents of the drawing screen, and save them to a new sprite, and save that sprite within a new animation.<br>
+You can switch between animations by clicking on them, and the aniamtion's sprites will show up in the sprite selector so you can update, or add to them.
+<br>
+<h2>Sprite Selector</h2>
+This is a tool used to manage existing sprites, and save new ones to animations<br>
+To add a new sprite press the "Add Sprite" button, which will create a new sprite with the image on the drawing screen, and add it to the currently selected animation<br>
+To update an existing sprite simply press the "Save Sprite" button, and whatever is on the drawing screen will be saved to the currently selected sprite.<br>
+If you drag the mouse while holding down the left button and start on one sprite, and end on another the sprite selector will copy<br>
+the sprite where the mouse was when it was clicked to the screen, but select the sprite the mouse was lifted on so it can be saved, and updated to the other sprite.
+<br>
 <h2>Color Pallete</h2>
 A simple tool found underneath the main drawing screen to select the color used for drawing.<br>
 You can either click on the color you wish to use to select the color, or select it by pressing one of the number keys 0-9.<br>
-If you select a color you may notice it's red green blue, and transparency values popup in the text box next to the set button,<br>
+If you select a color you may notice it's red green blue, and transparency values popup in the text box next to the set button,
 you can change on of these values and press set to save the new color to the pallete
 <br>
 <h2>Tools:</h2>
