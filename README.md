@@ -2,7 +2,7 @@
 A small sprite drawing web app with fill tools, and pallette selector for easy color selection
 <br>
 <h2>Animations</h2>
-Animations are groups of sprites(small images, for more see below) that make up a single small flip book like cartoon<br>
+Animations are groups of sprites(small images, for more see below) that make up a single small flip book of sprites, or frames.<br>
 You can add new animations at any time by pressing the "Add Animation" button, or when you haven't created one yet by pressing the "Add Sprite" button.<br>
 both will take the contents of the drawing screen, and save them to a new sprite, and save that sprite within a new animation.<br>
 You can switch between animations by clicking on them, and the aniamtion's sprites will show up in the sprite selector so you can update, or add to them.
