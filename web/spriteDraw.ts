@@ -317,7 +317,9 @@ class ClipBoard {
     centerY:number;
     clipBoardBuffer:Array<Pair<RGB, number>>;
     currentDim:Array<number>;
-    constructor(canvas:HTMLCanvasElement, maxWidth:number, maxHeight:number, pixelWidth:number, pixelHeight:number, pixelCountX:number, pixelCountY:number)
+    touchListener:SingleTouchListener;
+    angle:number;
+    constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, maxWidth:number, maxHeight:number, pixelWidth:number, pixelHeight:number, pixelCountX:number, pixelCountY:number)
     {
         this.canvas = canvas;
         this.currentDim = [0,0];
@@ -335,7 +337,39 @@ class ClipBoard {
         this.centerY = Math.floor(maxHeight / 8);
         this.innerWidth = 0;
         this.innerHeight = 0;
+        this.angle = 0;
+        this.touchListener = new SingleTouchListener(canvas, true, true);
+        this.touchListener.registerCallBack("touchmove", e => true, e =>{
+
+            if(this.clipBoardBuffer.length)
+            {
+                this.angle += e.deltaY >= 0.0? 0.05 : - 0.05;
+                if(this.angle >= 1){
+                    this.rotate(Math.PI / 2);
+                    this.angle = 0;
+                }
+            }
+        });
     }
+    //only really works for rotation by pi/2
+    rotate(theta:number):void
+    {
+        for(const rec of this.clipBoardBuffer.entries())
+        {
+            let x:number = rec[1].second % this.pixelCountX;
+            let y:number = Math.floor((rec[1].second) / this.pixelCountX);
+            const oldX = x;
+            const oldY = y;
+            x = (oldX*Math.cos(theta) - oldY*Math.sin(theta));
+            y = (oldX*Math.sin(theta) + oldY*Math.cos(theta));
+            x = Math.floor(x);
+            y = Math.floor(y);
+            rec[1].second = Math.floor((x) + (y) * this.pixelCountX);
+        }
+        this.clipBoardBuffer.sort((a, b) => a.second - b.second);
+        this.refreshImageFromBuffer(this.currentDim[1], this.currentDim[0]);
+    }
+    
     //copies array of rgb values to canvas offscreen, centered within the canvas
     refreshImageFromBuffer(width:number, height:number):void
     {
@@ -415,7 +449,7 @@ class DrawingScreen {
         this.screenLastBuffer = new Array<RGB>();
         this.selectionRect = [0,0,0,0];
         this.pasteRect = [0,0,0,0];
-        this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
+        this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
         for(let i = 0; i < dimensions[0] * dimensions[1]; i++)
         {
             this.screenBuffer.push(new RGB(255,255,255,0));
@@ -452,8 +486,11 @@ class DrawingScreen {
                 case("drag"):
                 const gx:number = Math.floor((e.touchPos[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
                 const gy:number = Math.floor((e.touchPos[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
-
-                this.dragData = this.getSelectedPixelGroup(new Pair<number>(gx,gy));
+                this.saveDragDataToScreen();
+                if(this.keyboardHandler.keysHeld["AltLeft"])
+                    this.dragData = this.getSelectedPixelGroup(new Pair<number>(gx,gy), true);
+                else
+                    this.dragData = this.getSelectedPixelGroup(new Pair<number>(gx,gy), false);
                 break;
                 case("oval"):
                 case("rect"):
@@ -540,10 +577,9 @@ class DrawingScreen {
 
                 break;
                 case("drag"):
-                //const gx:number = Math.floor((e.touchPos[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
-                //const gy:number = Math.floor((e.touchPos[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
                 this.dragData.first.first += (e.deltaX / this.bounds.first) * this.dimensions.first;
                 this.dragData.first.second += (e.deltaY / this.bounds.second) * this.dimensions.second;
+                
                 break;
                 case("fill"):
 
@@ -611,7 +647,6 @@ class DrawingScreen {
         const dest_y:number = Math.floor((this.pasteRect[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
         const width:number = this.clipBoard.currentDim[0];
         const height:number = this.clipBoard.currentDim[1];
-        const area:number = width * height;
         const initialIndex:number = dest_x + dest_y*this.dimensions.first;
         for(let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++)
         {
@@ -633,12 +668,12 @@ class DrawingScreen {
         const gy:number = Math.floor((event.touchPos[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
         if(gx < this.dimensions.first && gy < this.dimensions.second){
             const pixel:RGB = this.screenBuffer[gx + gy*this.dimensions.first];
-            if(!pixel.compare(this.color))
+            if(!pixel.compare(this.color)){
                 this.updatesStack[this.updatesStack.length-1].push(new Pair(gx + gy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha())));        
-            pixel.copy(this.color);
+                pixel.copy(this.color);
+            }
         }
     }
-
     fillArea(startCoordinate:Pair<number>):void
     {
         const stack:Array<number> = new Array<number>(1024);
@@ -672,7 +707,7 @@ class DrawingScreen {
         }
     }
     //Pair<offset point>, Map of colors encoded as numbers by location>
-    getSelectedPixelGroup(startCoordinate:Pair<number>):Pair<Pair<number>, Map<number, number> >
+    getSelectedPixelGroup(startCoordinate:Pair<number>, countColor:boolean):Pair<Pair<number>, Map<number, number> >
     {
         const stack:Array<number> = new Array<number>(1024);
         const data:Map<number,number> = new Map<number, number>();
@@ -680,13 +715,15 @@ class DrawingScreen {
         let checkedMap:any = {};
         checkedMap = {};
         const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
+        const startPixel:RGB = this.screenBuffer[startIndex];
+        const spc:RGB = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
         stack.push(startIndex);
         while(stack.length > 0)
         {
             const cur:number = stack.pop();
             const pixelColor:RGB = this.screenBuffer[cur];
             if(cur >= 0 && cur < this.dimensions.first * this.dimensions.second && 
-                pixelColor.alpha() !== 0 && !checkedMap[cur])
+                (pixelColor.alpha() !== 0 && (!countColor || pixelColor.color === spc.color)) && !checkedMap[cur])
             {
                 checkedMap[cur] = true;
                 this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
@@ -746,9 +783,10 @@ class DrawingScreen {
                 const gy:number = Math.floor((y-this.offset.second)/this.bounds.second*this.dimensions.second);
                 if(gx < this.dimensions.first && gy < this.dimensions.second){
                     const pixel:RGB = this.screenBuffer[gx + gy*this.dimensions.first];
-                    if(pixel && !pixel.compare(this.color))
+                    if(pixel && !pixel.compare(this.color)){
                         this.updatesStack[this.updatesStack.length-1].push(new Pair(gx + gy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
-                    pixel.copy(this.color);
+                        pixel.copy(this.color);
+                    }
                 }
             }
         }
