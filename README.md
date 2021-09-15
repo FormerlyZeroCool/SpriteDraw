@@ -1,5 +1,5 @@
 # SpriteDraw
-A small sprite drawing web app with fill tools, and pallette selector for easy color selection
+A small sprite drawing web app with fill tools, and palette selector for easy color selection
 <br>
 <h2>Animations</h2>
 Animations are groups of sprites(small images, for more see below) that make up a single small flip book of sprites, or frames.<br>
@@ -23,24 +23,24 @@ you can change on of these values and press set to save the new color to the pal
 <h2>Tools:</h2>
 *note you can switch tools by clicking on them, or by pressing the up and down arrow keys.
 <h3>Pen tool:</h3>
-Used to draw curved lines of the color selected in the color pallette, like a pen on pixelated paper.<br>
+Used to draw curved lines of the color selected in the color palette, like a pen on pixelated paper.<br>
 To draw click, if the mouse is dragged while the left mouse button is held down it will act like dragging a pen across paper.
 <br>
 <h3>Fill Tool</h3>
-Used to change all adjacent pixels of one color to the color selected in the color pallette.<br>
-Click on a pixel, and all adjacent pixels of the same color will change to the selected color on the color pallette.
+Used to change all adjacent pixels of one color to the color selected in the color palette.<br>
+Click on a pixel, and all adjacent pixels of the same color will change to the selected color on the color palette.
 <br>
 <h3>Line Draw Tool</h3>
 Used to draw straight lines on the screen.<br>
 Press, and hold mouse, drag, and you'll see a preview of the line that will be drawn, release to draw.
 <br>
 <h3>Rectangle Tool</h3>
-Used to draw a rectangle of the color selected in the color pallette.<br>
+Used to draw a rectangle of the color selected in the color palette.<br>
 To draw press, and hold the mouse where you want one corner of the rectangle to begin, drag till the preview of the rectangle is the size you wish<br>
 while keeping the mouse held, and release the mouse to draw the rectangle previewed to the screen.
 <br>
 <h3>Oval Tool</h3>
-Used to draw a oval of the color selected in the color pallette.<br>
+Used to draw a oval of the color selected in the color palette.<br>
 To draw press, and hold the mouse where you want one portion of the oval to begin, drag till the preview rectangle is the size you wish<br>
 while keeping the mouse held, and release the mouse to draw an oval within the rectangle previewed to the screen.
 <br>
