@@ -53,7 +53,8 @@ completely surrounding the area you wish to copy while keeping the mouse held, a
 <br>
 <h3>7.) Paste Tool</h3>
 Used to paste pixels saved to the clip board to the screen.<br>
-To use simply click where you wish to paste on the screen, a rectangle will show exactly where the contents of the clipboard will be copied.
+To use simply click where you wish to paste on the screen, a rectangle will show exactly where the contents of the clipboard will be copied.<br>
+By default the paste feature will blend colors pasted according to transparency, but if alt is held it will ignore transparency.
 <br>
 <h3>8.) Drag Tool</h3>
 Used to drag groups of pixels around the screen once they have already been drawn.<br>
