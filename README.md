@@ -20,6 +20,7 @@ You can either click on the color you wish to use to select the color, or select
 If you select a color you may notice it's red green blue, and transparency values popup in the text box next to the set button,
 you can change on of these values and press set to save the new color to the pallete
 <br>
+
 <h2>Tools:</h2>
 *note you can switch tools by clicking on them, or by pressing the up and down arrow keys.
 
@@ -69,3 +70,12 @@ Simply click on the screen to redo the last action you have undone.<br>
 Simply click on the screen to undo the last action you performed.<br>
 *You can also always (with any tool selected) press the u key on the keyboard to undo.
 <br>
+<h3>Notes on the clipboard viewer</h3>
+1.) The clip board viewer can be found directly to the right of the toolbar, and is contained in a blue rectangle.<br>
+2.) If you drag the mouse over the clipboard its contents will rotate.<br>
+3.) Its contents will be filled by using the copy tool, and it shows a preview of what will be pasted with the paste tool<br>
+<h2>To run your own instance locally</h2>
+1.) cd to webserver directory<br>
+2.) run npm install<br>
+3.) run node app.js<br>
+4.) navigate to 127.0.0.1:5000 to see running app
