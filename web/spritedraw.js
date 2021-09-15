@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [128, 128];
+const dim = [528, 528];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -271,9 +271,10 @@ class ClipBoard {
             }
         });
     }
+    //only really works for rotation by pi/2
     rotate(theta) {
         for (const rec of this.clipBoardBuffer.entries()) {
-            let x = (rec[1].second) % this.pixelCountX;
+            let x = rec[1].second % this.pixelCountX;
             let y = Math.floor((rec[1].second) / this.pixelCountX);
             const oldX = x;
             const oldY = y;
@@ -283,7 +284,9 @@ class ClipBoard {
             y = Math.floor(y);
             rec[1].second = Math.floor((x) + (y) * this.pixelCountX);
         }
+        const start = Date.now();
         this.clipBoardBuffer.sort((a, b) => a.second - b.second);
+        console.log("Time to sort", this.clipBoardBuffer.length, "elements:", Date.now() - start);
         this.refreshImageFromBuffer(this.currentDim[1], this.currentDim[0]);
     }
     //copies array of rgb values to canvas offscreen, centered within the canvas
@@ -298,12 +301,12 @@ class ClipBoard {
         this.offscreenCanvas.height = this.canvas.height;
         ctx.fillStyle = "rgba(255,255,255,1)";
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        const start_x = Math.floor(this.centerX / this.canvas.width * this.pixelCountX) - (width * (this.pixelWidth / 4) / 2);
-        const start_y = Math.floor(this.centerY / this.canvas.height * this.pixelCountY) - (height * (this.pixelHeight / 4) / 2);
+        const start_x = (this.centerX / this.canvas.width * this.pixelCountX) - (width * (this.pixelWidth / 4) / 2);
+        const start_y = (this.centerY / this.canvas.height * this.pixelCountY) - (height * (this.pixelHeight / 4) / 2);
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                const sx = Math.floor((x + start_x) * this.pixelWidth / 4);
-                const sy = Math.floor((y + start_y) * this.pixelHeight / 4);
+                const sx = ((x + start_x) * this.pixelWidth / 4);
+                const sy = ((y + start_y) * this.pixelHeight / 4);
                 ctx.fillStyle = this.clipBoardBuffer[Math.floor(x + y * width)].first.htmlRBGA();
                 ctx.fillRect(sx, sy, this.pixelWidth / 4, this.pixelHeight / 4);
             }

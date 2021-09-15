@@ -343,7 +343,7 @@ class ClipBoard {
 
             if(this.clipBoardBuffer.length)
             {
-                this.angle += e.deltaY >= 0.0? 0.05 : - 0.05;
+                this.angle += 0.05;
                 if(this.angle >= 1){
                     this.rotate(Math.PI / 2);
                     this.angle = 0;
@@ -383,15 +383,15 @@ class ClipBoard {
         this.offscreenCanvas.height = this.canvas.height;
         ctx.fillStyle = "rgba(255,255,255,1)";
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        const start_x:number = Math.floor(this.centerX / this.canvas.width * this.pixelCountX) - (width * (this.pixelWidth/4)/2);
-        const start_y:number = Math.floor(this.centerY / this.canvas.height * this.pixelCountY) - (height * (this.pixelHeight/4)/2);
+        const start_x:number = (this.centerX / this.canvas.width * this.pixelCountX) - (width * (this.pixelWidth/4)/2);
+        const start_y:number = (this.centerY / this.canvas.height * this.pixelCountY) - (height * (this.pixelHeight/4)/2);
 
         for(let y = 0; y < height; y++)
         {
             for(let x = 0; x < width; x++)
             {
-                const sx:number = Math.floor((x + start_x) * this.pixelWidth/4);
-                const sy:number = Math.floor((y + start_y) * this.pixelHeight/4);
+                const sx:number = ((x + start_x) * this.pixelWidth/4);
+                const sy:number = ((y + start_y) * this.pixelHeight/4);
                 ctx.fillStyle = this.clipBoardBuffer[Math.floor(x + y * width)].first.htmlRBGA();
                 ctx.fillRect(sx, sy, this.pixelWidth/4, this.pixelHeight/4);
             }
