@@ -58,6 +58,15 @@ class RGB {
         this.color = 0;
         this.color = r << 24 | g << 16 | b << 8 | a;
     }
+    blendAlphaCopy(color) {
+        const alphant = this.alphaNormal();
+        const alphanc = color.alphaNormal();
+        const a0 = 1 / (alphant + alphanc * (1 - alphant));
+        this.setRed(alphant * this.red() + alphanc * color.red() * (1 - alphant) * a0);
+        this.setBlue(alphant * this.blue() + alphanc * color.blue() * (1 - alphant) * a0);
+        this.setGreen(alphant * this.green() + alphanc * color.green() * (1 - alphant) * a0);
+        this.setAlpha(a0 * 255);
+    }
     compare(color) {
         return this.color === color.color;
     }
@@ -509,6 +518,7 @@ class DrawingScreen {
         const width = this.clipBoard.currentDim[0];
         const height = this.clipBoard.currentDim[1];
         const initialIndex = dest_x + dest_y * this.dimensions.first;
+        const altHeld = this.keyboardHandler.keysHeld["AltLeft"];
         for (let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++) {
             const copyAreaX = i % width;
             const copyAreaY = Math.floor(i / width);
@@ -517,7 +527,10 @@ class DrawingScreen {
             const source = this.clipBoard.clipBoardBuffer[i].first;
             if (this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && !dest.compare(source)) {
                 this.updatesStack[this.updatesStack.length - 1].push(new Pair(destIndex, new RGB(dest.red(), dest.green(), dest.blue(), dest.alpha())));
-                dest.copy(source);
+                if (altHeld)
+                    dest.copy(source);
+                else
+                    dest.blendAlphaCopy(source);
             }
         }
     }
