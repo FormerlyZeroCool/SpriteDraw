@@ -518,7 +518,7 @@ class DrawingScreen {
         const width = this.clipBoard.currentDim[0];
         const height = this.clipBoard.currentDim[1];
         const initialIndex = dest_x + dest_y * this.dimensions.first;
-        const altHeld = this.keyboardHandler.keysHeld["AltLeft"];
+        const altHeld = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
         for (let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++) {
             const copyAreaX = i % width;
             const copyAreaY = Math.floor(i / width);
