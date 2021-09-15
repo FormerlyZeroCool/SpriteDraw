@@ -11,8 +11,8 @@ You can switch between animations by clicking on them, and the aniamtion's sprit
 This is a tool used to manage existing sprites, and save new ones to animations<br>
 To add a new sprite press the "Add Sprite" button, which will create a new sprite with the image on the drawing screen, and add it to the currently selected animation<br>
 To update an existing sprite simply press the "Save Sprite" button, and whatever is on the drawing screen will be saved to the currently selected sprite.<br>
-If you drag the mouse while holding down the left button and start on one sprite, and end on another the sprite selector will copy<br>
-the sprite where the mouse was when it was clicked to the screen, but select the sprite the mouse was lifted on so it can be saved, and updated to the other sprite.
+If you drag the cursor while holding down the left button and start on one sprite, and end on another the sprite selector will copy<br>
+the sprite where the cursor was when it was clicked to the screen, but select the sprite the mouse was lifted on so it can be saved, and updated to the other sprite.
 <br>
 <h2>Color Pallete</h2>
 A simple tool found underneath the main drawing screen to select the color used for drawing.<br>
