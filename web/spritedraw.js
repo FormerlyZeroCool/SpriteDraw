@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [528, 528];
+const dim = [128, 128];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -263,7 +263,7 @@ class ClipBoard {
         this.touchListener = new SingleTouchListener(canvas, true, true);
         this.touchListener.registerCallBack("touchmove", e => true, e => {
             if (this.clipBoardBuffer.length) {
-                this.angle += e.deltaY >= 0.0 ? 0.05 : -0.05;
+                this.angle += 0.05;
                 if (this.angle >= 1) {
                     this.rotate(Math.PI / 2);
                     this.angle = 0;
@@ -284,9 +284,7 @@ class ClipBoard {
             y = Math.floor(y);
             rec[1].second = Math.floor((x) + (y) * this.pixelCountX);
         }
-        const start = Date.now();
         this.clipBoardBuffer.sort((a, b) => a.second - b.second);
-        console.log("Time to sort", this.clipBoardBuffer.length, "elements:", Date.now() - start);
         this.refreshImageFromBuffer(this.currentDim[1], this.currentDim[0]);
     }
     //copies array of rgb values to canvas offscreen, centered within the canvas
