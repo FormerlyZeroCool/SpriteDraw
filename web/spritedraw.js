@@ -264,14 +264,14 @@ class ClipBoard {
         this.touchListener.registerCallBack("touchmove", e => true, e => {
             if (this.clipBoardBuffer.length) {
                 this.angle += 0.1;
-                this.rotate(Math.floor(this.angle) * Math.PI / 2);
-                if (this.angle >= 1)
+                if (this.angle >= 1) {
+                    this.rotate(Math.PI / 2);
                     this.angle = 0;
+                }
             }
         });
     }
     rotate(theta) {
-        console.log(this.clipBoardBuffer);
         for (const rec of this.clipBoardBuffer.entries()) {
             let x = (rec[1].second) % this.pixelCountX;
             let y = Math.floor((rec[1].second) / this.pixelCountX);
@@ -283,7 +283,8 @@ class ClipBoard {
             y = Math.floor(y);
             rec[1].second = Math.floor((x) + (y) * this.pixelCountX);
         }
-        this.refreshImageFromBuffer(this.currentDim[0], this.currentDim[1]);
+        this.clipBoardBuffer.sort((a, b) => a.second - b.second);
+        this.refreshImageFromBuffer(this.currentDim[1], this.currentDim[0]);
     }
     //copies array of rgb values to canvas offscreen, centered within the canvas
     refreshImageFromBuffer(width, height) {
