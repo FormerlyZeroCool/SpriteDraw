@@ -263,7 +263,7 @@ class ClipBoard {
         this.touchListener = new SingleTouchListener(canvas, true, true);
         this.touchListener.registerCallBack("touchmove", e => true, e => {
             if (this.clipBoardBuffer.length) {
-                this.angle += 0.1;
+                this.angle += e.deltaY >= 0.0 ? 0.05 : -0.05;
                 if (this.angle >= 1) {
                     this.rotate(Math.PI / 2);
                     this.angle = 0;
