@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [128, 128];
+const dim = [50, 50];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -179,6 +179,7 @@ class ToolSelector {
                 this.selectedTool %= this.toolArray.length;
             }
         });
+        this.toolArray = new Array();
         fetchImage("images/penSprite.png").then(img => {
             this.penTool = img;
             this.toolArray.push(new Pair("pen", this.penTool));
@@ -219,11 +220,17 @@ class ToolSelector {
             this.redoTool = img;
             this.toolArray.push(new Pair("undo", this.redoTool));
         });
-        this.toolArray = new Array();
+        fetchImage("images/colorPickerSprite.png").then(img => {
+            this.colorPickerTool = img;
+            this.toolArray.push(new Pair("colorPicker", this.colorPickerTool));
+        });
         this.canvas = document.getElementById("tool_selector_screen");
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
         this.touchListener.registerCallBack("touchstart", e => true, e => {
-            const clicked = Math.floor(e.touchPos[1] / this.imgHeight);
+            const imgPerColumn = (this.canvas.height / this.imgHeight);
+            const y = Math.floor(e.touchPos[1] / this.imgHeight);
+            const x = Math.floor(e.touchPos[0] / this.imgWidth);
+            const clicked = y + x * imgPerColumn;
             if (clicked < this.toolArray.length) {
                 this.selectedTool = clicked;
             }
@@ -234,14 +241,21 @@ class ToolSelector {
         this.ctx.fillStyle = "#FFFFFF";
     }
     draw() {
+        const imgPerColumn = (this.canvas.height / this.imgHeight);
+        const imgPerRow = (this.canvas.width / this.imgWidth);
+        if (this.toolArray.length > imgPerColumn * imgPerRow) {
+            this.canvas.width += this.imgWidth;
+            this.ctx = this.canvas.getContext("2d");
+            this.ctx.fillStyle = "#FFFFFF";
+        }
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         for (let i = 0; i < this.toolArray.length; i++) {
             const toolImage = this.toolArray[i].second;
             if (toolImage)
-                this.ctx.drawImage(toolImage, 0, i * this.penTool.height);
+                this.ctx.drawImage(toolImage, Math.floor(i / imgPerColumn) * this.imgWidth, i * this.penTool.height % (imgPerColumn * this.imgHeight));
         }
         if (this.penTool)
-            this.ctx.strokeRect(0, this.selectedTool * this.imgHeight, this.imgWidth, this.imgHeight);
+            this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
     }
     selectedToolName() {
         if (this.toolArray[this.selectedTool])
@@ -328,7 +342,7 @@ class ClipBoard {
     }
 }
 class DrawingScreen {
-    constructor(canvas, keyboardHandler, offset, dimensions) {
+    constructor(canvas, keyboardHandler, offset, dimensions, newColorTextBox) {
         const bounds = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         canvas.width = bounds[0];
         canvas.height = bounds[1];
@@ -369,6 +383,8 @@ class DrawingScreen {
             else {
                 this.pasteRect = [e.touchPos[0], e.touchPos[1], this.clipBoard.currentDim[0] * (bounds[0] / dimensions[0]), this.clipBoard.currentDim[1] * (bounds[1] / dimensions[1])];
             }
+            const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
+            const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
             switch (this.toolSelector.selectedToolName()) {
                 case ("pen"):
                     break;
@@ -377,8 +393,6 @@ class DrawingScreen {
                 case ("line"):
                     break;
                 case ("drag"):
-                    const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
-                    const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
                     this.saveDragDataToScreen();
                     if (this.keyboardHandler.keysHeld["AltLeft"])
                         this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), true);
@@ -398,6 +412,10 @@ class DrawingScreen {
                     break;
                 case ("redo"):
                     this.redoLast();
+                    break;
+                case ("colorPicker"):
+                    this.color.copy(this.screenBuffer[gx + gy * this.dimensions.first]);
+                    newColorTextBox.value = this.color.htmlRBGA();
                     break;
             }
         });
@@ -1324,7 +1342,7 @@ function logToServer(data) {
 async function main() {
     const newColor = document.getElementById("newColor");
     const keyboardHandler = new KeyboardHandler();
-    const field = new DrawingScreen(document.getElementById("screen"), keyboardHandler, [0, 0], dim);
+    const field = new DrawingScreen(document.getElementById("screen"), keyboardHandler, [0, 0], dim, newColor);
     const pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler, newColor);
     const setPalletteColorButton = document.getElementById("setPalletteColorButton");
     const palletteColorButtonListener = new SingleTouchListener(setPalletteColorButton, true, true);
@@ -1372,7 +1390,7 @@ async function main() {
         const start = Date.now();
         field.draw();
         pallette.draw();
-        if (counter++ % 1 == 0)
+        if (counter++ % 2 == 0)
             animations.draw();
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
         //console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
