@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [128, 128];
+const dim = [528, 528];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -61,11 +61,11 @@ class RGB {
     blendAlphaCopy(color) {
         const alphant = this.alphaNormal();
         const alphanc = color.alphaNormal();
-        const a0 = 1 / (alphant + alphanc * (1 - alphant));
-        this.setRed(alphant * this.red() + alphanc * color.red() * (1 - alphant) * a0);
-        this.setBlue(alphant * this.blue() + alphanc * color.blue() * (1 - alphant) * a0);
-        this.setGreen(alphant * this.green() + alphanc * color.green() * (1 - alphant) * a0);
-        this.setAlpha(a0 * 255);
+        const a0 = 1 / (alphanc + alphant * (1 - alphanc));
+        this.setRed((alphanc * color.red() + alphant * this.red() * (1 - alphanc)) * a0);
+        this.setBlue((alphanc * color.blue() + alphant * this.blue() * (1 - alphanc)) * a0);
+        this.setGreen((alphanc * color.green() + alphant * this.green() * (1 - alphanc)) * a0);
+        this.setAlpha(1 / a0 * 255);
     }
     compare(color) {
         return this.color === color.color;
@@ -525,7 +525,7 @@ class DrawingScreen {
             const destIndex = initialIndex + copyAreaX + copyAreaY * this.dimensions.first;
             const dest = this.screenBuffer[destIndex];
             const source = this.clipBoard.clipBoardBuffer[i].first;
-            if (this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && !dest.compare(source)) {
+            if (this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && (!dest.compare(source) || source.alpha() != 255)) {
                 this.updatesStack[this.updatesStack.length - 1].push(new Pair(destIndex, new RGB(dest.red(), dest.green(), dest.blue(), dest.alpha())));
                 if (altHeld)
                     dest.copy(source);
@@ -737,6 +737,7 @@ class DrawingScreen {
     }
     saveDragDataToScreen() {
         if (this.dragData) {
+            const color = new RGB(0, 0, 0, 0);
             for (const el of this.dragData.second.entries()) {
                 const x = Math.floor(el[0] % this.dimensions.first + this.dragData.first.first);
                 let y = Math.floor(Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second) % this.dimensions.second;
@@ -746,7 +747,8 @@ class DrawingScreen {
                 if (this.screenBuffer[x + y * this.dimensions.first]) {
                     const pixelColor = this.screenBuffer[x + y * this.dimensions.first];
                     this.updatesStack[this.updatesStack.length - 1].push(new Pair(x + y * this.dimensions.first, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
-                    this.screenBuffer[x + y * this.dimensions.first].color = el[1];
+                    color.color = el[1];
+                    this.screenBuffer[x + y * this.dimensions.first].blendAlphaCopy(color);
                 }
             }
             ;
@@ -1363,7 +1365,7 @@ async function main() {
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    const fps = 15;
+    const fps = 200;
     const goalSleep = 1000 / fps;
     let counter = 0;
     while (true) {
@@ -1373,7 +1375,7 @@ async function main() {
         if (counter++ % 1 == 0)
             animations.draw();
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
-        //console.log(Date.now() - start)
+        //console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
         await sleep(goalSleep - adjustment);
     }
 }
