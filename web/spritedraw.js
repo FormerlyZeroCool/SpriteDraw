@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [528, 528];
+const dim = [128, 128];
 class Queue {
     constructor(size) {
         this.data = [];
