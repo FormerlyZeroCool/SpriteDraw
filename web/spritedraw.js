@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [128, 128];
+const dim = [528, 528];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -348,6 +348,7 @@ class DrawingScreen {
         canvas.height = bounds[1];
         this.canvas = canvas;
         this.dragData = null;
+        this.lineWidth = dimensions[0] / bounds[0] * 4;
         this.canvas.offScreenCanvas = document.createElement('canvas');
         this.canvas.offScreenCanvas.width = this.canvas.width;
         this.canvas.offScreenCanvas.height = this.canvas.height;
@@ -458,7 +459,9 @@ class DrawingScreen {
                     break;
                 case ("line"):
                     this.handleTap(e);
-                    this.handleDraw(e);
+                    const x1 = e.touchPos[0] - e.deltaX;
+                    const y1 = e.touchPos[1] - e.deltaY;
+                    this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                     break;
                 case ("copy"):
                     const bounds = this.saveToBuffer(this.selectionRect, this.clipBoard.clipBoardBuffer);
@@ -477,7 +480,9 @@ class DrawingScreen {
         this.listeners.registerCallBack("touchmove", e => true, e => {
             switch (this.toolSelector.selectedToolName()) {
                 case ("pen"):
-                    this.handleDraw(e);
+                    const x1 = e.touchPos[0] - e.deltaX;
+                    const y1 = e.touchPos[1] - e.deltaY;
+                    this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                     break;
                 case ("drag"):
                     this.dragData.first.first += (e.deltaX / this.bounds.first) * this.dimensions.first;
@@ -556,10 +561,16 @@ class DrawingScreen {
         const gx = Math.floor((event.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
         const gy = Math.floor((event.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
         if (gx < this.dimensions.first && gy < this.dimensions.second) {
-            const pixel = this.screenBuffer[gx + gy * this.dimensions.first];
-            if (!pixel.compare(this.color)) {
-                this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
-                pixel.copy(this.color);
+            for (let i = -0.5 * this.lineWidth; i < this.lineWidth * 0.5; i += 0.5) {
+                for (let j = -0.5 * this.lineWidth; j < this.lineWidth * 0.5; j += 0.5) {
+                    const ngx = gx + Math.floor(j + 0.5);
+                    const ngy = (gy + Math.floor(i + 0.5));
+                    const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
+                    if (pixel && !pixel.compare(this.color)) {
+                        this.updatesStack[this.updatesStack.length - 1].push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
+                        pixel.copy(this.color);
+                    }
+                }
             }
         }
     }
@@ -639,47 +650,55 @@ class DrawingScreen {
         this.drawLine([end[0], start[1]], end);
     }
     drawLine(start, end) {
-        const event = {};
-        event.touchPos = end;
-        event.deltaX = end[0] - start[0];
-        event.deltaY = end[1] - start[1];
-        this.handleDraw(event);
+        this.handleDraw(start[0], end[0], start[1], end[1]);
     }
-    handleDraw(event) {
+    handleDraw(x1, x2, y1, y2) {
         //draw line from current touch pos to the touchpos minus the deltas
         //calc equation for line
-        const x1 = event.touchPos[0] - event.deltaX;
-        const y1 = event.touchPos[1] - event.deltaY;
-        const m = event.deltaY / event.deltaX;
-        const b = event.touchPos[1] - m * event.touchPos[0];
-        if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
-            const min = Math.min(x1, event.touchPos[0]);
-            const max = Math.max(x1, event.touchPos[0]);
+        const deltaY = y2 - y1;
+        const deltaX = x2 - x1;
+        const m = deltaY / deltaX;
+        const b = y2 - m * x2;
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+            const min = Math.min(x1, x2);
+            const max = Math.max(x1, x2);
             for (let x = min; x < max; x += 0.2) {
                 const y = m * x + b;
                 const gx = Math.floor((x - this.offset.first) / this.bounds.first * this.dimensions.first);
                 const gy = Math.floor((y - this.offset.second) / this.bounds.second * this.dimensions.second);
                 if (gx < this.dimensions.first && gy < this.dimensions.second) {
-                    const pixel = this.screenBuffer[gx + gy * this.dimensions.first];
-                    if (pixel && !pixel.compare(this.color)) {
-                        this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
-                        pixel.copy(this.color);
+                    for (let i = -0.5 * this.lineWidth; i < this.lineWidth * 0.5; i += 0.5) {
+                        for (let j = -0.5 * this.lineWidth; j < this.lineWidth * 0.5; j += 0.5) {
+                            const ngx = gx + Math.floor(j + 0.5);
+                            const ngy = (gy + Math.floor(i + 0.5));
+                            const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
+                            if (pixel && !pixel.compare(this.color)) {
+                                this.updatesStack[this.updatesStack.length - 1].push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
+                                pixel.copy(this.color);
+                            }
+                        }
                     }
                 }
             }
         }
         else {
-            const min = Math.min(y1, event.touchPos[1]);
-            const max = Math.max(y1, event.touchPos[1]);
+            const min = Math.min(y1, y2);
+            const max = Math.max(y1, y2);
             for (let y = min; y < max; y += 0.2) {
-                const x = Math.abs(event.deltaX) > 0 ? (y - b) / m : event.touchPos[0];
+                const x = Math.abs(deltaX) > 0 ? (y - b) / m : x2;
                 const gx = Math.floor((x - this.offset.first) / this.bounds.first * this.dimensions.first);
                 const gy = Math.floor((y - this.offset.second) / this.bounds.second * this.dimensions.second);
                 if (gx < this.dimensions.first && gy < this.dimensions.second) {
-                    const pixel = this.screenBuffer[gx + gy * this.dimensions.first];
-                    if (!pixel.compare(this.color)) {
-                        this.updatesStack[this.updatesStack.length - 1].push(new Pair(gx + gy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
-                        pixel.copy(this.color);
+                    for (let i = -0.5 * this.lineWidth; i < this.lineWidth * 0.5; i += 0.5) {
+                        for (let j = -0.5 * this.lineWidth; j < this.lineWidth * 0.5; j += 0.5) {
+                            const ngx = gx + Math.floor(j + 0.5);
+                            const ngy = (gy + Math.floor(i + 0.5));
+                            const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
+                            if (pixel && !pixel.compare(this.color)) {
+                                this.updatesStack[this.updatesStack.length - 1].push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
+                                pixel.copy(this.color);
+                            }
+                        }
                     }
                 }
             }
@@ -1136,6 +1155,7 @@ class Sprite {
             this.pixels[(i << 2) + 2] = pixels[i].blue();
             this.pixels[(i << 2) + 3] = pixels[i].alpha();
         }
+        this.refreshImage();
     }
     copyToBuffer(buf) {
         for (let i = 0; i < buf.length; i++) {
@@ -1145,6 +1165,19 @@ class Sprite {
             buf[i].setAlpha(this.pixels[(i << 2) + 3]);
         }
     }
+    refreshImage() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const idata = ctx.createImageData(this.width, this.height);
+        idata.data.set(this.pixels);
+        canvas.width = this.width;
+        canvas.height = this.height;
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, this.width, this.height);
+        ctx.putImageData(idata, 0, 0);
+        this.image = new Image();
+        this.image.src = canvas.toDataURL();
+    }
     copySprite(sprite) {
         if (this.pixels.length !== sprite.pixels.length)
             this.pixels = new Uint8ClampedArray(sprite.pixels.length);
@@ -1152,12 +1185,13 @@ class Sprite {
         this.height = sprite.height;
         let i = 0;
         this.pixels.forEach(el => el = sprite.pixels[i++]);
+        this.refreshImage();
     }
     draw(ctx, x, y, width, height) {
         if (this.pixels) {
-            const idata = ctx.createImageData(this.width, this.height);
-            idata.data.set(this.pixels);
-            ctx.putImageData(idata, x, y);
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(x, y, width, height);
+            ctx.drawImage(this.image, x, y, width, height);
         }
     }
 }
@@ -1188,18 +1222,17 @@ class SpriteAnimation {
 class SpriteSelector {
     constructor(canvas, drawingField, animationGroup, spritesPerRow, width, height) {
         this.canvas = canvas;
-        this.canvas.width = width * spritesPerRow;
+        //this.canvas.width = width * spritesPerRow;
         this.ctx = this.canvas.getContext("2d");
         this.ctx.strokeStyle = "#000000";
         this.ctx.lineWidth = 2;
         this.drawingField = drawingField;
         this.animationGroup = animationGroup;
         this.spritesPerRow = spritesPerRow;
-        this.spriteHeight = height;
-        this.spriteWidth = width;
+        this.spriteWidth = canvas.width / spritesPerRow;
+        this.spriteHeight = this.spriteWidth;
         this.selectedSprite = 0;
-        canvas.width = width * spritesPerRow;
-        canvas.height = height;
+        canvas.height = this.spriteWidth;
         const listener = new SingleTouchListener(canvas, true, true);
         this.listener = listener;
         this.spritesCount = this.sprites() ? this.sprites().length : 0;
@@ -1230,7 +1263,7 @@ class SpriteSelector {
         if (this.sprites()) {
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             for (let i = 0; i < this.sprites().length; i++) {
-                const x = i % this.spritesPerRow * this.spriteWidth;
+                const x = (i % this.spritesPerRow) * this.spriteWidth;
                 const y = Math.floor(i / this.spritesPerRow) * this.spriteHeight;
                 this.sprites()[i].draw(this.ctx, x, y, this.spriteHeight, this.spriteWidth);
             }
@@ -1353,7 +1386,7 @@ async function main() {
     });
     pallette.canvas.addEventListener("mouseup", e => { field.color = pallette.calcColor(); });
     pallette.listeners.registerCallBack("touchend", e => true, e => { field.color = pallette.calcColor(); });
-    const animations = new AnimationGroup(field, "animations", "sprites", Math.floor(field.canvas.width / dim[0] + 0.5), dim[0], dim[1]);
+    const animations = new AnimationGroup(field, "animations", "sprites", 5, dim[0], dim[1]);
     const add_animationButton = document.getElementById("add_animation");
     const add_animationTouchListener = new SingleTouchListener(add_animationButton, false, true);
     add_animationTouchListener.registerCallBack("touchstart", e => true, e => {
@@ -1383,7 +1416,7 @@ async function main() {
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    const fps = 200;
+    const fps = 20;
     const goalSleep = 1000 / fps;
     let counter = 0;
     while (true) {
@@ -1393,7 +1426,7 @@ async function main() {
         if (counter++ % 2 == 0)
             animations.draw();
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
-        //console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
+        console.log("Frame time: ", Date.now() - start, "avgfps:", 1000 / (Date.now() - start));
         await sleep(goalSleep - adjustment);
     }
 }
