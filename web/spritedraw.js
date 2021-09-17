@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [528, 528];
+const dim = [128, 128];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -827,7 +827,7 @@ class DrawingScreen {
             if (!touchStart[0]) {
                 touchStart = [this.listeners.touchStart["clientX"] - this.canvas.getBoundingClientRect().left, this.listeners.touchStart["clientY"] - this.canvas.getBoundingClientRect().top];
             }
-            ctx.lineWidth = Math.floor(cellWidth + 0.5);
+            ctx.lineWidth = 6;
             ctx.beginPath();
             ctx.strokeStyle = this.color.htmlRBGA();
             ctx.moveTo(touchStart[0], touchStart[1]);
@@ -835,7 +835,7 @@ class DrawingScreen {
             ctx.stroke();
         }
         this.toolSelector.draw();
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 6;
         ctx.strokeStyle = "#FFFFFF";
         ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
         ctx.strokeRect(this.pasteRect[0], this.pasteRect[1], this.pasteRect[2], this.pasteRect[3]);
