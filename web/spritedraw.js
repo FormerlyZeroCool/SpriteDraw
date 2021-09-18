@@ -1210,12 +1210,11 @@ class SpriteAnimation {
     }
     draw(ctx) {
         if (this.sprites.length) {
-            this.animationIndex++;
+            ++this.animationIndex;
             this.sprites[this.animationIndex %= this.sprites.length].draw(ctx, this.x, this.y, this.width, this.height);
-            this.animationIndex;
         }
         else {
-            this.animationIndex = 0;
+            this.animationIndex = -1;
         }
     }
 }
@@ -1273,7 +1272,6 @@ class SpriteSelector {
     }
     deleteSelectedSprite() {
         this.sprites().splice(this.selectedSprite--, 1);
-        console.log(this.sprites());
     }
     loadSprite() {
         if (this.selectedSpriteVal())
