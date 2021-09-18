@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [128, 128];
+const dim = [528, 528];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -1210,8 +1210,9 @@ class SpriteAnimation {
     }
     draw(ctx) {
         if (this.sprites.length) {
-            this.sprites[this.animationIndex++].draw(ctx, this.x, this.y, this.width, this.height);
-            this.animationIndex %= this.sprites.length;
+            this.animationIndex++;
+            this.sprites[this.animationIndex %= this.sprites.length].draw(ctx, this.x, this.y, this.width, this.height);
+            this.animationIndex;
         }
         else {
             this.animationIndex = 0;
@@ -1269,6 +1270,10 @@ class SpriteSelector {
             }
             this.ctx.strokeRect(this.selectedSprite % this.spritesPerRow * this.spriteWidth + 2, Math.floor(this.selectedSprite / this.spritesPerRow) * this.spriteHeight + 2, this.spriteWidth - 4, this.spriteHeight - 4);
         }
+    }
+    deleteSelectedSprite() {
+        this.sprites().splice(this.selectedSprite--, 1);
+        console.log(this.sprites());
     }
     loadSprite() {
         if (this.selectedSpriteVal())
@@ -1402,6 +1407,11 @@ async function main() {
     save_spriteButtonTouchListener.registerCallBack("touchstart", e => true, e => {
         animations.spriteSelector.pushSelectedToCanvas();
     });
+    const delete_spriteButton = document.getElementById("delete_sprite");
+    const delete_spriteButtonTouchListener = new SingleTouchListener(delete_spriteButton, false, true);
+    delete_spriteButtonTouchListener.registerCallBack("touchstart", e => true, e => {
+        animations.spriteSelector.deleteSelectedSprite();
+    });
     const save_serverButton = document.getElementById("save_server");
     if (save_serverButton)
         save_serverButton.addEventListener("mousedown", e => logToServer({ animation: animations.animations[animations.selectedAnimation] }));
@@ -1416,7 +1426,7 @@ async function main() {
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    const fps = 20;
+    const fps = 40;
     const goalSleep = 1000 / fps;
     let counter = 0;
     while (true) {
