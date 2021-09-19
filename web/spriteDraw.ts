@@ -1654,8 +1654,10 @@ class SpriteSelector {
     }
     pushSelectedToCanvas()
     {
+        const spriteWidth:number = this.drawingField.dimensions.first;
+        const spriteHeight:number = this.drawingField.dimensions.second;
         if(this.selectedSpriteVal())
-            this.selectedSpriteVal().copy(this.drawingField.screenBuffer, this.spriteWidth, this.spriteHeight);
+            this.selectedSpriteVal().copy(this.drawingField.screenBuffer, spriteWidth, spriteHeight);
     }
     selectedSpriteVal():Sprite
     {
