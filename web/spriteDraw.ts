@@ -1,7 +1,26 @@
 function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
-const dim = [128,128];
+
+function threeByThreeMat(a:number[], b:number[]):number[]
+{
+    return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 
+    a[0]*b[1]+a[1]*b[4]+a[2]*b[7], 
+    a[0]*b[2]+a[1]*b[5]+a[2]*b[8],
+    a[3]*b[0]+a[4]*b[3]+a[5]*b[6], 
+    a[3]*b[1]+a[4]*b[4]+a[5]*b[7], 
+    a[3]*b[2]+a[4]*b[5]+a[5]*b[8],
+    a[6]*b[0]+a[7]*b[3]+a[8]*b[6], 
+    a[6]*b[1]+a[7]*b[4]+a[8]*b[7], 
+    a[6]*b[2]+a[7]*b[5]+a[8]*b[8]];
+}
+function matByVec(mat:number[], vec:number[]):number[]
+{
+    return [mat[0]*vec[0]+mat[1]*vec[1]+mat[2]*vec[2],
+            mat[3]*vec[0]+mat[4]*vec[1]+mat[5]*vec[2],
+            mat[6]*vec[0]+mat[7]*vec[1]+mat[8]*vec[2]];
+}
+const dim = [528,528];
 class Queue<T> {
     data:Array<T>;
     start:number;
@@ -380,16 +399,31 @@ class ClipBoard {
     //only really works for rotation by pi/2
     rotate(theta:number):void
     {
+        const dx:number = this.pixelCountX/2;
+        const dy:number = this.pixelCountY/2;
+        const initTransMatrix:number[] = [1,0,dx*-1,
+                                 0,1,dy*-1,
+                                 0,0,1];
+        const cos:number = Math.cos(theta);
+        const sin:number = Math.sin(theta);
+        const rotationMatrix:number[] = [cos, -sin, 0, 
+                                         sin, cos, 0,
+                                         0, 0, 1];
+        const revertTransMatrix:number[] = [1,0,dx,
+                                 0,1,dy,
+                                 0,0,1];
+        const finalTransformationMatrix:number[] = threeByThreeMat(threeByThreeMat(initTransMatrix, rotationMatrix), revertTransMatrix);
+        const vec:number[] = [0,0,0];
         for(const rec of this.clipBoardBuffer.entries())
         {
             let x:number = rec[1].second % this.pixelCountX;
-            let y:number = Math.floor((rec[1].second) / this.pixelCountX);
-            const oldX = x;
-            const oldY = y;
-            x = (oldX*Math.cos(theta) - oldY*Math.sin(theta));
-            y = (oldX*Math.sin(theta) + oldY*Math.cos(theta));
-            x = Math.floor(x);
-            y = Math.floor(y);
+            let y:number = Math.floor(rec[1].second / this.pixelCountX);
+            vec[0] = x;
+            vec[1] = y;
+            vec[2] = 1;
+            const transformed = matByVec(finalTransformationMatrix, vec);
+            x = Math.floor(transformed[0]);
+            y = Math.floor(transformed[1]);
             rec[1].second = Math.floor((x) + (y) * this.pixelCountX);
         }
         this.clipBoardBuffer.sort((a, b) => a.second - b.second);
@@ -450,6 +484,8 @@ class DrawingScreen {
     undoneUpdatesStack:Array<Array<Pair<number,RGB>>>;
     toolSelector:ToolSelector;
     dragData:Pair<Pair<number>, Map<number, number> >;
+    dragDataMaxPoint:number;
+    dragDataMinPoint:number;
     lineWidth:number;
 
 
@@ -458,6 +494,7 @@ class DrawingScreen {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         canvas.width = bounds[0];
         canvas.height = bounds[1];
+        this.dragDataMaxPoint = 0;
         this.canvas = canvas;
         this.dragData = null;
         this.lineWidth = dimensions[0] / bounds[0] * 4;
@@ -603,6 +640,7 @@ class DrawingScreen {
                 break;
             }
         });
+        
         this.listeners.registerCallBack("touchmove",e => true, e => {
             switch (this.toolSelector.selectedToolName())
             {
@@ -613,8 +651,17 @@ class DrawingScreen {
 
                 break;
                 case("drag"):
-                this.dragData.first.first += (e.deltaX / this.bounds.first) * this.dimensions.first;
-                this.dragData.first.second += (e.deltaY / this.bounds.second) * this.dimensions.second;
+                //console.log(this.keyboardHandler.keysHeld["AltLeft"])
+                if(this.keyboardHandler.keysHeld["AltRight"])
+                {
+                    if(e.moveCount % 2 == 0)
+                        this.rotateSelectedPixelGroup(Math.PI/16);
+                }
+                else
+                {
+                    this.dragData.first.first += (e.deltaX / this.bounds.first) * this.dimensions.first;
+                    this.dragData.first.second += (e.deltaY / this.bounds.second) * this.dimensions.second;
+                }
                 
                 break;
                 case("fill"):
@@ -768,6 +815,8 @@ class DrawingScreen {
         const startPixel:RGB = this.screenBuffer[startIndex];
         const spc:RGB = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
         stack.push(startIndex);
+        this.dragDataMaxPoint = 0;
+        this.dragDataMinPoint = this.dimensions.first*this.dimensions.second;
         while(stack.length > 0)
         {
             const cur:number = stack.pop();
@@ -779,6 +828,10 @@ class DrawingScreen {
                 this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                 data.set(cur, pixelColor.color);
                 pixelColor.color = defaultColor.color;
+                if(cur > this.dragDataMaxPoint)
+                    this.dragDataMaxPoint = cur;
+                if(cur < this.dragDataMinPoint)
+                    this.dragDataMinPoint = cur;
                 if(!checkedMap[cur+1])
                     stack.push(cur+1);
                 if(!checkedMap[cur-1])
@@ -797,7 +850,51 @@ class DrawingScreen {
                     stack.push(cur - this.dimensions.first + 1);
             }
         }
-        return new Pair(new Pair(0, 0), data);
+        return new Pair(new Pair(0,0), data);
+    }
+    rotateSelectedPixelGroup(theta:number):void
+    {
+        const min = [this.dragDataMinPoint%this.dimensions.first, Math.floor(this.dragDataMinPoint/this.dimensions.first)];
+        const max = [this.dragDataMaxPoint%this.dimensions.first, Math.floor(this.dragDataMaxPoint/this.dimensions.first)];
+        const dx:number = (min[0] + max[0])/2;
+        const dy:number = (min[1] + max[1])/2;
+        console.log(min);
+        this.dragDataMinPoint = this.dimensions.first*(this.dimensions.second);
+        //this.dragDataMinPoint = this.dimensions.first*this.dimensions.second;
+        this.dragDataMaxPoint = 0;
+        const initTransMatrix:number[] = [1,0,dx,
+                                          0,1,dy,
+                                          0,0,1];
+        const cos:number = Math.cos(theta);
+        const sin:number = Math.sin(theta);
+        const identity:number[] = [1,0,0,
+                                   0,1,0,
+                                   0,0,1];
+        const rotationMatrix:number[] = [cos, -sin, 0, 
+                                         sin, cos, 0,
+                                         0, 0, 1];
+        const revertTransMatrix:number[] = [1,0,dx*-1,
+                                            0,1,dy*-1,
+                                            0,0,1];
+        const finalTransformationMatrix:number[] = threeByThreeMat(threeByThreeMat(initTransMatrix, rotationMatrix), revertTransMatrix);
+        const vec:number[] = [0,0,0];
+        const map:Map<number, number> = new Map<number, number>();
+        for(let [key, value] of this.dragData.second)
+        {
+            vec[0] = key % this.dimensions.first;
+            vec[1] = Math.floor(key / this.dimensions.first);
+            vec[2] = 1;
+            let transformed:number[] = matByVec(finalTransformationMatrix, vec);
+            transformed[0] = Math.floor(transformed[0]+0.5);
+            transformed[1] = Math.floor(transformed[1]+0.5);
+            const point:number =  transformed[0] + transformed[1] * this.dimensions.first;
+            if(point < this.dragDataMinPoint && point >= 0)
+                this.dragDataMinPoint = point;
+            if(point > this.dragDataMaxPoint)
+                this.dragDataMaxPoint = point;
+            map.set(point, value);
+        }
+        this.dragData.second = map;
     }
     drawRect(start:Array<number>, end:Array<number>):void
     {
