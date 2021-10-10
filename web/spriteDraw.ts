@@ -1519,19 +1519,22 @@ class Pallette {
             const width:number = (this.canvas.width/this.colors.length);
             const height:number = this.canvas.height;
             this.ctx.strokeStyle = "#000000";
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(i * width, 0, width, height);
             ctx.fillStyle = this.calcColor(i).htmlRBGA();
             ctx.fillRect(i * width, 0, width, height);
             ctx.strokeRect(i * width, 0, width, height);
             this.ctx.font = '16px Calibri';
             const visibleColor:RGB = (this.calcColor(i));
 
-            ctx.strokeStyle = visibleColor.htmlRBGA();
+            ctx.strokeStyle = "#000000";
 
             this.ctx.strokeText((i+1)%10,i*width+width*0.5, height/3);
 
             visibleColor.setBlue(Math.floor(visibleColor.blue()/2));
             visibleColor.setRed(Math.floor(visibleColor.red()/2));
             visibleColor.setGreen(Math.floor(visibleColor.green()/2));
+            visibleColor.setAlpha(255);
             this.ctx.fillStyle = visibleColor.htmlRBGA();
             this.ctx.fillText((i+1)%10, i*width+width*0.5, height/3);
        

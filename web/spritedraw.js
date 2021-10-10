@@ -1235,16 +1235,19 @@ class Pallette {
             const width = (this.canvas.width / this.colors.length);
             const height = this.canvas.height;
             this.ctx.strokeStyle = "#000000";
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(i * width, 0, width, height);
             ctx.fillStyle = this.calcColor(i).htmlRBGA();
             ctx.fillRect(i * width, 0, width, height);
             ctx.strokeRect(i * width, 0, width, height);
             this.ctx.font = '16px Calibri';
             const visibleColor = (this.calcColor(i));
-            ctx.strokeStyle = visibleColor.htmlRBGA();
+            ctx.strokeStyle = "#000000";
             this.ctx.strokeText((i + 1) % 10, i * width + width * 0.5, height / 3);
             visibleColor.setBlue(Math.floor(visibleColor.blue() / 2));
             visibleColor.setRed(Math.floor(visibleColor.red() / 2));
             visibleColor.setGreen(Math.floor(visibleColor.green() / 2));
+            visibleColor.setAlpha(255);
             this.ctx.fillStyle = visibleColor.htmlRBGA();
             this.ctx.fillText((i + 1) % 10, i * width + width * 0.5, height / 3);
             if (i == this.highLightedCell) {
@@ -1594,7 +1597,7 @@ async function main() {
             animations.draw();
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
-        console.log("Frame time: ", Date.now() - start, "avgfps:", 1000 / (Date.now() - start));
+        //console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
     }
 }
 main();
