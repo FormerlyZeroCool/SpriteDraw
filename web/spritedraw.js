@@ -613,8 +613,8 @@ class DrawingScreen {
             }
         }
     }
-    fillArea(startCoordinate) {
-        const stack = new Array(1024);
+    async fillArea(startCoordinate) {
+        const stack = new Queue(1024);
         let checkedMap = {};
         checkedMap = {};
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
@@ -631,14 +631,16 @@ class DrawingScreen {
                     this.updatesStack[this.updatesStack.length - 1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                     pixelColor.copy(this.color);
                 }
-                if (!checkedMap[cur + 1])
-                    stack.push(cur + 1);
-                if (!checkedMap[cur - 1])
-                    stack.push(cur - 1);
+                this.draw();
+                await sleep(20);
                 if (!checkedMap[cur + this.dimensions.first])
                     stack.push(cur + this.dimensions.first);
                 if (!checkedMap[cur - this.dimensions.first])
                     stack.push(cur - this.dimensions.first);
+                if (!checkedMap[cur - 1])
+                    stack.push(cur - 1);
+                if (!checkedMap[cur + 1])
+                    stack.push(cur + 1);
             }
         }
     }
@@ -695,8 +697,7 @@ class DrawingScreen {
         const dx = (min[0] + max[0]) / 2;
         const dy = (min[1] + max[1]) / 2;
         console.log(min);
-        this.dragDataMinPoint = this.dimensions.first * (this.dimensions.second);
-        //this.dragDataMinPoint = this.dimensions.first*this.dimensions.second;
+        this.dragDataMinPoint = this.dimensions.first * this.dimensions.second;
         this.dragDataMaxPoint = 0;
         const initTransMatrix = [1, 0, dx,
             0, 1, dy,
