@@ -20,7 +20,7 @@ function matByVec(mat:number[], vec:number[]):number[]
             mat[3]*vec[0]+mat[4]*vec[1]+mat[5]*vec[2],
             mat[6]*vec[0]+mat[7]*vec[1]+mat[8]*vec[2]];
 }
-const dim = [528,528];
+const dim = [128,128];
 class Queue<T> {
     data:Array<T>;
     start:number;
@@ -655,7 +655,7 @@ class DrawingScreen {
                 if(this.keyboardHandler.keysHeld["AltRight"])
                 {
                     if(e.moveCount % 2 == 0)
-                        this.rotateSelectedPixelGroup(Math.PI/16);
+                        this.rotateSelectedPixelGroup(Math.PI/32);
                 }
                 else
                 {
@@ -850,9 +850,10 @@ class DrawingScreen {
                     stack.push(cur - this.dimensions.first + 1);
             }
         }
+        this.updatesStack.push([]);
         return new Pair(new Pair(0,0), data);
     }
-    rotateSelectedPixelGroup(theta:number):void
+    rotateSelectedPixelGroup(theta:number, ):void
     {
         const min = [this.dragDataMinPoint%this.dimensions.first, Math.floor(this.dragDataMinPoint/this.dimensions.first)];
         const max = [this.dragDataMaxPoint%this.dimensions.first, Math.floor(this.dragDataMaxPoint/this.dimensions.first)];

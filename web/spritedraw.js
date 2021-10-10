@@ -17,7 +17,7 @@ function matByVec(mat, vec) {
         mat[3] * vec[0] + mat[4] * vec[1] + mat[5] * vec[2],
         mat[6] * vec[0] + mat[7] * vec[1] + mat[8] * vec[2]];
 }
-const dim = [528, 528];
+const dim = [128, 128];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -520,7 +520,7 @@ class DrawingScreen {
                     //console.log(this.keyboardHandler.keysHeld["AltLeft"])
                     if (this.keyboardHandler.keysHeld["AltRight"]) {
                         if (e.moveCount % 2 == 0)
-                            this.rotateSelectedPixelGroup(Math.PI / 16);
+                            this.rotateSelectedPixelGroup(Math.PI / 32);
                     }
                     else {
                         this.dragData.first.first += (e.deltaX / this.bounds.first) * this.dimensions.first;
@@ -686,6 +686,7 @@ class DrawingScreen {
                     stack.push(cur - this.dimensions.first + 1);
             }
         }
+        this.updatesStack.push([]);
         return new Pair(new Pair(0, 0), data);
     }
     rotateSelectedPixelGroup(theta) {
