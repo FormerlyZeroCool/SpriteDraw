@@ -17,7 +17,7 @@ function matByVec(mat, vec) {
         mat[3] * vec[0] + mat[4] * vec[1] + mat[5] * vec[2],
         mat[6] * vec[0] + mat[7] * vec[1] + mat[8] * vec[2]];
 }
-const dim = [64, 64];
+const dim = [128, 128];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -1593,8 +1593,8 @@ async function main() {
         if (counter++ % 2 == 0)
             animations.draw();
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
-        //console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
         await sleep(goalSleep - adjustment);
+        console.log("Frame time: ", Date.now() - start, "avgfps:", 1000 / (Date.now() - start));
     }
 }
 main();

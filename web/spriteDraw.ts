@@ -1972,8 +1972,8 @@ async function main()
         if(counter++ % 2 == 0)
             animations.draw();
         const adjustment:number = Date.now() - start <= 30 ? Date.now() - start : 30;
-        //console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
         await sleep(goalSleep - adjustment);
+        //console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
     }
 }
 main();
