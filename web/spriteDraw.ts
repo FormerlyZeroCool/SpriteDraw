@@ -641,14 +641,13 @@ class DrawingScreen {
             }
         });
         
-        this.listeners.registerCallBack("touchmove",e => true, e => {
+        this.listeners.registerCallBack("touchmove",e => true,e => {
             switch (this.toolSelector.selectedToolName())
             {
                 case("pen"):
                 const x1:number = e.touchPos[0] - e.deltaX;
                 const y1:number = e.touchPos[1] - e.deltaY;
                 this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
-
                 break;
                 case("drag"):
                 //console.log(this.keyboardHandler.keysHeld["AltLeft"])
@@ -773,7 +772,7 @@ class DrawingScreen {
     }
     async fillArea(startCoordinate:Pair<number>)
     {
-        const stack:Array<number> = new Array<number>(1024);
+        const stack:number[] = [];
         let checkedMap:any = {};
         checkedMap = {};
         const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
@@ -792,8 +791,10 @@ class DrawingScreen {
                     this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                     pixelColor.copy(this.color);
                 }
+                if(this.keyboardHandler.keysHeld["KeyS"]){
                 this.draw();
-                await sleep(20);
+                await sleep(1);
+                }
                 if(!checkedMap[cur + this.dimensions.first])
                     stack.push(cur + this.dimensions.first);
                 if(!checkedMap[cur - this.dimensions.first])
@@ -909,7 +910,7 @@ class DrawingScreen {
     {
         this.handleDraw(start[0], end[0], start[1], end[1]);
     }
-    handleDraw(x1:number, x2:number, y1:number, y2:number):void
+    async handleDraw(x1:number, x2:number, y1:number, y2:number):Promise<void>
     {
         //draw line from current touch pos to the touchpos minus the deltas
         //calc equation for line
@@ -938,6 +939,11 @@ class DrawingScreen {
                             if(pixel && !pixel.compare(this.color)){
                                 this.updatesStack[this.updatesStack.length-1].push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
                                 pixel.copy(this.color);
+                                if(this.keyboardHandler.keysHeld["KeyS"])
+                                {
+                                    this.draw();
+                                    await sleep(1);
+                                }
                             }
                         }
                     }
@@ -964,6 +970,11 @@ class DrawingScreen {
                             if(pixel && !pixel.compare(this.color)){
                                 this.updatesStack[this.updatesStack.length-1].push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
                                 pixel.copy(this.color);
+                                if(this.keyboardHandler.keysHeld["KeyS"])
+                                {
+                                    this.draw();
+                                    await sleep(1);
+                                }
                             }
                         }
                     }
@@ -971,7 +982,7 @@ class DrawingScreen {
             }
         }
     }
-    handleEllipse(event):void
+    async handleEllipse(event):Promise<void>
     {
         const start_x:number = Math.min(event.touchPos[0] - event.deltaX, event.touchPos[0]);
         const end_x:number = Math.max(event.touchPos[0] - event.deltaX, event.touchPos[0]);
@@ -987,41 +998,60 @@ class DrawingScreen {
         { 
             const cur = [h + width*Math.cos(x), k + height*Math.sin(x)];
             this.drawLine([last[0], last[1]], [cur[0], cur[1]]);
+            if(this.keyboardHandler.keysHeld["KeyS"])
+            {
+                this.draw();
+                await sleep(1);
+            }
             last = cur;
         }
     }
-    undoLast()
+    async undoLast()
     {
         if(this.updatesStack.length)
         {
             const data = this.updatesStack.pop();
             const backedUpFrame = new Array<Pair<number, RGB>>();
             this.undoneUpdatesStack.push(backedUpFrame);
-            data.forEach(el => {
+            for(let i = 0; i < data.length; i++)
+            {
+                const el:Pair<number, RGB> = data[i];
                     backedUpFrame.push(el);
                     const color:number = (this.screenBuffer[el.first]).color;
                     this.screenBuffer[el.first].copy(el.second);
                     el.second.color = color;
-                });
+                    if(this.keyboardHandler.keysHeld["KeyS"])
+                    {
+                        this.draw();
+                        await sleep(1);
+                    }
+            }
         }
         else{
             console.log("Error, nothing to undo");
         }
             
     }
-    redoLast()
+    async redoLast()
     {
         if(this.undoneUpdatesStack.length)
         {
             const data = this.undoneUpdatesStack.pop();
             const backedUpFrame = new Array<Pair<number, RGB>>();
             this.updatesStack.push(backedUpFrame);
-            data.forEach(el => {
+            for(let i = 0; i < data.length; i++)
+            {
+                const el:Pair<number, RGB> = data[i];
                     backedUpFrame.push(el);
                     const color:number = this.screenBuffer[el.first].color;
                     this.screenBuffer[el.first].copy(el.second);
                     el.second.color = color;
-                });
+                    if(this.keyboardHandler.keysHeld["KeyS"])
+                    {
+                        this.draw();
+                        await sleep(1);
+                    }
+            }
         }
         else{
             console.log("Error, nothing to redo");

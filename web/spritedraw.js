@@ -17,7 +17,7 @@ function matByVec(mat, vec) {
         mat[3] * vec[0] + mat[4] * vec[1] + mat[5] * vec[2],
         mat[6] * vec[0] + mat[7] * vec[1] + mat[8] * vec[2]];
 }
-const dim = [128, 128];
+const dim = [64, 64];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -614,7 +614,7 @@ class DrawingScreen {
         }
     }
     async fillArea(startCoordinate) {
-        const stack = new Queue(1024);
+        const stack = [];
         let checkedMap = {};
         checkedMap = {};
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
@@ -631,8 +631,10 @@ class DrawingScreen {
                     this.updatesStack[this.updatesStack.length - 1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                     pixelColor.copy(this.color);
                 }
-                this.draw();
-                await sleep(20);
+                if (this.keyboardHandler.keysHeld["KeyS"]) {
+                    this.draw();
+                    await sleep(1);
+                }
                 if (!checkedMap[cur + this.dimensions.first])
                     stack.push(cur + this.dimensions.first);
                 if (!checkedMap[cur - this.dimensions.first])
@@ -741,7 +743,7 @@ class DrawingScreen {
     drawLine(start, end) {
         this.handleDraw(start[0], end[0], start[1], end[1]);
     }
-    handleDraw(x1, x2, y1, y2) {
+    async handleDraw(x1, x2, y1, y2) {
         //draw line from current touch pos to the touchpos minus the deltas
         //calc equation for line
         const deltaY = y2 - y1;
@@ -764,6 +766,10 @@ class DrawingScreen {
                             if (pixel && !pixel.compare(this.color)) {
                                 this.updatesStack[this.updatesStack.length - 1].push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
                                 pixel.copy(this.color);
+                                if (this.keyboardHandler.keysHeld["KeyS"]) {
+                                    this.draw();
+                                    await sleep(1);
+                                }
                             }
                         }
                     }
@@ -786,6 +792,10 @@ class DrawingScreen {
                             if (pixel && !pixel.compare(this.color)) {
                                 this.updatesStack[this.updatesStack.length - 1].push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
                                 pixel.copy(this.color);
+                                if (this.keyboardHandler.keysHeld["KeyS"]) {
+                                    this.draw();
+                                    await sleep(1);
+                                }
                             }
                         }
                     }
@@ -793,7 +803,7 @@ class DrawingScreen {
             }
         }
     }
-    handleEllipse(event) {
+    async handleEllipse(event) {
         const start_x = Math.min(event.touchPos[0] - event.deltaX, event.touchPos[0]);
         const end_x = Math.max(event.touchPos[0] - event.deltaX, event.touchPos[0]);
         const min_y = Math.min(event.touchPos[1] - event.deltaY, event.touchPos[1]);
@@ -806,36 +816,50 @@ class DrawingScreen {
         for (let x = -0.1; x < 2 * Math.PI; x += 0.05) {
             const cur = [h + width * Math.cos(x), k + height * Math.sin(x)];
             this.drawLine([last[0], last[1]], [cur[0], cur[1]]);
+            if (this.keyboardHandler.keysHeld["KeyS"]) {
+                this.draw();
+                await sleep(1);
+            }
             last = cur;
         }
     }
-    undoLast() {
+    async undoLast() {
         if (this.updatesStack.length) {
             const data = this.updatesStack.pop();
             const backedUpFrame = new Array();
             this.undoneUpdatesStack.push(backedUpFrame);
-            data.forEach(el => {
+            for (let i = 0; i < data.length; i++) {
+                const el = data[i];
                 backedUpFrame.push(el);
                 const color = (this.screenBuffer[el.first]).color;
                 this.screenBuffer[el.first].copy(el.second);
                 el.second.color = color;
-            });
+                if (this.keyboardHandler.keysHeld["KeyS"]) {
+                    this.draw();
+                    await sleep(1);
+                }
+            }
         }
         else {
             console.log("Error, nothing to undo");
         }
     }
-    redoLast() {
+    async redoLast() {
         if (this.undoneUpdatesStack.length) {
             const data = this.undoneUpdatesStack.pop();
             const backedUpFrame = new Array();
             this.updatesStack.push(backedUpFrame);
-            data.forEach(el => {
+            for (let i = 0; i < data.length; i++) {
+                const el = data[i];
                 backedUpFrame.push(el);
                 const color = this.screenBuffer[el.first].color;
                 this.screenBuffer[el.first].copy(el.second);
                 el.second.color = color;
-            });
+                if (this.keyboardHandler.keysHeld["KeyS"]) {
+                    this.draw();
+                    await sleep(1);
+                }
+            }
         }
         else {
             console.log("Error, nothing to redo");
