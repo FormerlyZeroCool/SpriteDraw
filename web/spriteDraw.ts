@@ -2,6 +2,7 @@ function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
+const dim = [158,158];
 function threeByThreeMat(a:number[], b:number[]):number[]
 {
     return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 
@@ -20,7 +21,6 @@ function matByVec(mat:number[], vec:number[]):number[]
             mat[3]*vec[0]+mat[4]*vec[1]+mat[5]*vec[2],
             mat[6]*vec[0]+mat[7]*vec[1]+mat[8]*vec[2]];
 }
-const dim = [128,128];
 class Queue<T> {
     data:Array<T>;
     start:number;
@@ -483,7 +483,8 @@ class DrawingScreen {
     updatesStack:Array<Array<Pair<number,RGB>>>;
     undoneUpdatesStack:Array<Array<Pair<number,RGB>>>;
     toolSelector:ToolSelector;
-    dragData:Pair<Pair<number>, Map<number, number> >;
+    //[{x:float,y:float,color:int32}]
+    dragData:Pair<Pair<number>, number[] >;
     dragDataMaxPoint:number;
     dragDataMinPoint:number;
     lineWidth:number;
@@ -772,7 +773,7 @@ class DrawingScreen {
     }
     async fillArea(startCoordinate:Pair<number>)
     {
-        const stack:number[] = [];
+        const stack:Queue<number> = new Queue<number>(1024);
         let checkedMap:any = {};
         checkedMap = {};
         const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
@@ -807,10 +808,10 @@ class DrawingScreen {
         }
     }
     //Pair<offset point>, Map of colors encoded as numbers by location>
-    getSelectedPixelGroup(startCoordinate:Pair<number>, countColor:boolean):Pair<Pair<number>, Map<number, number> >
+    getSelectedPixelGroup(startCoordinate:Pair<number>, countColor:boolean):Pair<Pair<number>, number[] >
     {
         const stack:Array<number> = new Array<number>(1024);
-        const data:Map<number,number> = new Map<number, number>();
+        const data:number[] = [];
         const defaultColor = new RGB(255,255,255,0);
         let checkedMap:any = {};
         checkedMap = {};
@@ -829,7 +830,20 @@ class DrawingScreen {
             {
                 checkedMap[cur] = true;
                 this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
-                data.set(cur, pixelColor.color);
+                //top left
+                data.push(cur % this.dimensions.first);
+                data.push(Math.floor(cur / this.dimensions.first));
+                //top right
+                data.push(cur % this.dimensions.first + 1);
+                data.push(Math.floor(cur / this.dimensions.first));
+                //bottom left
+                data.push(cur % this.dimensions.first);
+                data.push(Math.floor(cur / this.dimensions.first) + 1);
+                //bottom right
+                data.push(cur % this.dimensions.first + 1);
+                data.push(Math.floor(cur / this.dimensions.first) + 1);
+
+                data.push(pixelColor.color);
                 pixelColor.color = defaultColor.color;
                 if(cur > this.dragDataMaxPoint)
                     this.dragDataMaxPoint = cur;
@@ -862,7 +876,7 @@ class DrawingScreen {
         const max = [this.dragDataMaxPoint%this.dimensions.first, Math.floor(this.dragDataMaxPoint/this.dimensions.first)];
         const dx:number = (min[0] + max[0])/2;
         const dy:number = (min[1] + max[1])/2;
-        console.log(min);
+        console.log(dx,dy);
         this.dragDataMinPoint = this.dimensions.first * this.dimensions.second;
         this.dragDataMaxPoint = 0;
         const initTransMatrix:number[] = [1,0,dx,
@@ -881,23 +895,27 @@ class DrawingScreen {
                                             0,0,1];
         const finalTransformationMatrix:number[] = threeByThreeMat(threeByThreeMat(initTransMatrix, rotationMatrix), revertTransMatrix);
         const vec:number[] = [0,0,0];
-        const map:Map<number, number> = new Map<number, number>();
-        for(let [key, value] of this.dragData.second)
+        const data:number[] = [];
+        for(let i = 0; i < this.dragData.second.length; i+=9)
         {
-            vec[0] = key % this.dimensions.first;
-            vec[1] = Math.floor(key / this.dimensions.first);
-            vec[2] = 1;
-            let transformed:number[] = matByVec(finalTransformationMatrix, vec);
-            transformed[0] = Math.floor(transformed[0]+0.5);
-            transformed[1] = Math.floor(transformed[1]+0.5);
-            const point:number =  transformed[0] + transformed[1] * this.dimensions.first;
-            if(point < this.dragDataMinPoint && point >= 0)
-                this.dragDataMinPoint = point;
-            if(point > this.dragDataMaxPoint)
-                this.dragDataMaxPoint = point;
-            map.set(point, value);
+            for(let j = i; j < i+8; j += 2)
+            {
+
+                vec[0] = this.dragData.second[j];
+                vec[1] = this.dragData.second[j+1];
+                vec[2] = 1;
+                let transformed:number[] = matByVec(finalTransformationMatrix, vec);
+                const point:number =  Math.floor(transformed[0]) + Math.floor(transformed[1]) * this.dimensions.first;
+                if(point < this.dragDataMinPoint && point >= 0)
+                    this.dragDataMinPoint = point;
+                if(point > this.dragDataMaxPoint)
+                    this.dragDataMaxPoint = point;
+                data.push(transformed[0]);
+                data.push(transformed[1]);
+            }
+            data.push(this.dragData.second[i+8]);
         }
-        this.dragData.second = map;
+        this.dragData.second = data;
     }
     drawRect(start:Array<number>, end:Array<number>):void
     {
@@ -939,13 +957,13 @@ class DrawingScreen {
                             if(pixel && !pixel.compare(this.color)){
                                 this.updatesStack[this.updatesStack.length-1].push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
                                 pixel.copy(this.color);
-                                if(this.keyboardHandler.keysHeld["KeyS"])
-                                {
-                                    this.draw();
-                                    await sleep(1);
-                                }
                             }
                         }
+                    }
+                    if(this.keyboardHandler.keysHeld["KeyS"])
+                    {
+                        this.draw();
+                        await sleep(1);
                     }
                 }
             }
@@ -970,13 +988,13 @@ class DrawingScreen {
                             if(pixel && !pixel.compare(this.color)){
                                 this.updatesStack[this.updatesStack.length-1].push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
                                 pixel.copy(this.color);
-                                if(this.keyboardHandler.keysHeld["KeyS"])
-                                {
-                                    this.draw();
-                                    await sleep(1);
-                                }
                             }
                         }
+                    }
+                    if(this.keyboardHandler.keysHeld["KeyS"])
+                    {
+                        this.draw();
+                        await sleep(1);
                     }
                 }
             }
@@ -1083,23 +1101,123 @@ class DrawingScreen {
             }
         }
     }
+    addColors(c1:RGB, c1Weight:number, c2:RGB, c2Weight:number):number
+    {
+        let result:number = 0;
+        if(!c2.color)
+            c2.color = 0;
+        if(!c1.color)
+            c1.color = 0;
+
+        result |= ((c1.red() * c1Weight + c2.red() * c2Weight)&((1<<8) - 1)) << 24;
+        result |= ((c1.green() * c1Weight + c2.green() * c2Weight)&((1<<8) - 1)) << 16;
+        result |= ((c1.blue() * c1Weight + c2.blue() * c2Weight)&((1<<8) - 1)) << 8;
+        result |= ((c1.alpha() * c1Weight + c2.alpha() * c2Weight)&((1<<8) - 1));
+        return result;
+    }
+    lowerPixelPercentage(a:number):number
+    {
+        const frac:number = a - Math.floor(a);
+        return 1 - frac;
+    }
+    upperPixelPercentage(a:number):number
+    {
+        return a - Math.floor(a);
+    }
+    partitionedAgregation(data:Map<number, number>, operand:number, x:number, y:number):void
+    {
+        let value:number = data.get(x + y * this.dimensions.first);
+        if(!value)
+        {
+            value = 0;
+        }
+        data.set(x + y * this.dimensions.first, value + operand);
+    }
     saveDragDataToScreen()
     {
         if(this.dragData)
         {
-            const color:RGB = new RGB(0,0,0,0);
-            for(const el of this.dragData.second.entries()){
-                const x:number = Math.floor(el[0] % this.dimensions.first + this.dragData.first.first);
-                let y:number = Math.floor(Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second) % this.dimensions.second;
-                if( y < 0)
-                {
-                    y = this.dimensions.second + y;
+            const color0:RGB = new RGB(0,0,0,0);
+            const color1:RGB = new RGB(0,0,0,0);
+            const dragDataColors = this.dragData.second;
+            const map:Map<number, number> = new Map<number,number>();
+            const percentage:Map<number, number> = new Map<number, number>();
+            for(let i = 0; i < this.dragData.second.length; i += 9){
+                const x:number = dragDataColors[i] +     Math.floor(this.dragData.first.first);
+                const y:number = dragDataColors[i + 1] + Math.floor(this.dragData.first.second);
+
+                if(x < this.dimensions.first && y < this.dimensions.second){
+                    color0.color = dragDataColors[i + 8];
+                    const xFloored:number = Math.floor(x);
+                    const xCeiled:number = Math.ceil(x);
+                    const yFloored:number = Math.floor(y);
+                    const yCeiled:number = Math.ceil(y);
+                    if(xFloored === xCeiled && yFloored === yCeiled)
+                    {
+                        color1.color = map.get(xFloored + yFloored * this.dimensions.first);
+                        color1.color = color0.color;
+                        map.set(xFloored + yFloored * this.dimensions.first, color1.color);
+                        this.partitionedAgregation(percentage, 1, xFloored, yFloored);
+                    }
+                    else if(xFloored === xCeiled)
+                    {
+                        color1.color = map.get(xFloored + yFloored * this.dimensions.first);
+                        color1.color = this.addColors(color0, this.lowerPixelPercentage(y), color1, 1);
+                        map.set(xFloored + yFloored * this.dimensions.first, color1.color);
+                        this.partitionedAgregation(percentage, this.lowerPixelPercentage(y), xFloored, yFloored);
+                        
+                        color1.color = map.get(xFloored + yCeiled * this.dimensions.first);
+                        color1.color = this.addColors(color0, this.upperPixelPercentage(y), color1, 1);
+                        map.set(xFloored + yCeiled * this.dimensions.first, color1.color);
+                        this.partitionedAgregation(percentage, this.upperPixelPercentage(y), xFloored, yCeiled);
+                        
+                    }
+                    else if(yFloored === yCeiled)
+                    {
+                        color1.color = map.get(xFloored + yFloored * this.dimensions.first);
+                        color1.color = this.addColors(color0,this.lowerPixelPercentage(x), color1, 1)
+                        map.set(xFloored + yFloored * this.dimensions.first, color1.color);
+                        this.partitionedAgregation(percentage, this.lowerPixelPercentage(x), xFloored, yFloored);
+    
+                        color1.color = map.get(xCeiled + yFloored * this.dimensions.first);
+                        color1.color = this.addColors(color0, this.upperPixelPercentage(x), color1, 1);
+                        map.set(xCeiled + yFloored * this.dimensions.first, color1.color);
+                        this.partitionedAgregation(percentage, this.upperPixelPercentage(x), xCeiled, yFloored);
+                        
+                    }
+                    else 
+                    {
+                        color1.color = map.get(xFloored + yFloored * this.dimensions.first);
+                        map.set(xFloored + yFloored * this.dimensions.first, 
+                            this.addColors(color0,0.5*this.lowerPixelPercentage(x) + 0.5*this.lowerPixelPercentage(y), color1, 1));
+                        this.partitionedAgregation(percentage, 0.5*this.lowerPixelPercentage(x) + 0.5*this.lowerPixelPercentage(y), xFloored, yFloored);
+    
+                        color1.color = map.get(xCeiled + yFloored * this.dimensions.first);
+                        color1.color = this.addColors(color0, 0.5*this.upperPixelPercentage(x) + 0.5*this.lowerPixelPercentage(y), color1, 1);
+                        map.set(xCeiled + yFloored * this.dimensions.first, color1.color);
+                        this.partitionedAgregation(percentage, 0.5*this.upperPixelPercentage(x) + 0.5*this.lowerPixelPercentage(y), xCeiled, yFloored);
+                        
+                        color1.color = map.get(xFloored + yCeiled * this.dimensions.first);
+                        color1.color = this.addColors(color0, 0.5*this.lowerPixelPercentage(x) + 0.5*this.upperPixelPercentage(y), color1, 1);
+                        map.set(xFloored + yCeiled * this.dimensions.first, color1.color);
+                        this.partitionedAgregation(percentage, 0.5*this.lowerPixelPercentage(x) + 0.5*this.upperPixelPercentage(y), xFloored, yCeiled);
+                        
+                        color1.color = map.get(xCeiled + yCeiled * this.dimensions.first);
+                        color1.color = this.addColors(color0, 0.5*this.upperPixelPercentage(x) + 0.5*this.upperPixelPercentage(y), color1, 1);
+                        map.set(xCeiled + yCeiled * this.dimensions.first, color1.color);
+                        this.partitionedAgregation(percentage, 0.5*this.upperPixelPercentage(x) + 0.5*this.upperPixelPercentage(y), xCeiled, yCeiled);
+                    }
+                    
                 }
-                if(this.screenBuffer[x + y * this.dimensions.first]){
-                    const pixelColor:RGB = this.screenBuffer[x + y * this.dimensions.first];
-                    this.updatesStack[this.updatesStack.length-1].push(new Pair(x + y * this.dimensions.first, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
-                    color.color = el[1];
-                    this.screenBuffer[x + y * this.dimensions.first].blendAlphaCopy(color);
+            };
+            for(const [key, value] of map.entries())
+            {
+                color0.color = value;
+                if(this.screenBuffer[key])
+                {
+                    console.log(percentage.get(key));
+                    this.updatesStack[this.updatesStack.length-1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
+                    this.screenBuffer[key].blendAlphaCopy(color0);
                 }
             };
         }
@@ -1134,10 +1252,12 @@ class DrawingScreen {
         if(this.dragData)
         {
             const offset = (Math.floor(this.dragData.first.first) + Math.floor(this.dragData.first.second) * this.dimensions.first);
-            for(const el of this.dragData.second.entries()){
-                const sx:number = (el[0] % this.dimensions.first + this.dragData.first.first) * cellWidth;
-                const sy:number = (Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second) * cellHeight;
-                reassignableColor.color = el[1];
+            const dragDataColors:number[] = this.dragData.second;
+            for(let i:number = 0; i < this.dragData.second.length; i += 9){
+
+                const sx:number = (dragDataColors[i] + this.dragData.first.first) * cellWidth;
+                const sy:number = (dragDataColors[i+1] + this.dragData.first.second) * cellHeight;
+                reassignableColor.color = dragDataColors[i + 8];
                 ctx.fillStyle = reassignableColor.htmlRBGA();
                 ctx.fillRect(sx, sy, cellWidth, cellHeight);
             };
@@ -1246,6 +1366,19 @@ class ListenerTypes {
         this.touchend = new Array<TouchHandler>();
     }
 }
+interface TouchMoveEvent {
+
+    deltaX:number;
+    deltaY:number;
+    mag:number;
+    angle:number;
+    avgVelocity:number;
+    touchPos:number[];
+    startTouchTime:number;
+    eventTime:number;
+    moveCount:number;
+
+}
 class SingleTouchListener
 {
     lastTouchTime:number;
@@ -1260,6 +1393,7 @@ class SingleTouchListener
     deltaTouchPos:number;
     listenerTypeMap:ListenerTypes;
     component:any;
+    touchMoveEvents:TouchMoveEvent[];
     constructor(component:any, preventDefault:boolean, mouseEmulation:boolean)
     {
         this.lastTouchTime = Date.now();
@@ -1315,7 +1449,7 @@ class SingleTouchListener
             this.touchPos = [this.touchStart["clientX"] - this.component.getBoundingClientRect().left, this.touchStart["clientY"] - this.component.getBoundingClientRect().top];
         }
         event.touchPos = this.touchPos;
-
+        this.touchMoveEvents = [];
         this.touchVelocity = 0;
         this.touchMoveCount = 0;
         this.deltaTouchPos = 0;
@@ -1364,6 +1498,7 @@ class SingleTouchListener
             event.startTouchTime = this.lastTouchTime;
             event.eventTime = Date.now();
             event.moveCount = this.moveCount;
+            this.touchMoveEvents.push(event);
             this.callHandler("touchmove", event);
         }
         return true;
@@ -1409,7 +1544,6 @@ class SingleTouchListener
                 event.moveCount = this.moveCount;
                 this.callHandler("touchend", event);
             }
-
             this.registeredTouch = false;
         }
     }
