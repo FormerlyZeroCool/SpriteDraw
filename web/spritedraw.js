@@ -426,7 +426,6 @@ class DrawingScreen {
             const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
             switch (this.toolSelector.selectedToolName()) {
                 case ("pen"):
-                    this.color.copy(colorBackup);
                     this.lineWidth = dimensions[0] / bounds[0] * 4;
                     break;
                 case ("eraser"):
@@ -493,8 +492,8 @@ class DrawingScreen {
                     this.handleTap(e);
                     break;
                 case ("eraser"):
-                    this.color.copy(noColor);
                     this.handleTap(e);
+                    this.color.copy(colorBackup);
                     break;
                 case ("drag"):
                     this.saveDragDataToScreen();
