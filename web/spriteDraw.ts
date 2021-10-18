@@ -2,7 +2,7 @@ function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
-const dim = [528,528];
+const dim = [128,128];
 function threeByThreeMat(a:number[], b:number[]):number[]
 {
     return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 
@@ -231,6 +231,7 @@ class ToolSelector {
     undoTool:HTMLImageElement;
     dragTool:HTMLImageElement;
     colorPickerTool:HTMLImageElement;
+    eraserTool:HTMLImageElement;
 
     toolArray:Array<Pair<string,HTMLImageElement> >;
     canvas:HTMLCanvasElement;
@@ -303,6 +304,10 @@ class ToolSelector {
         fetchImage("images/colorPickerSprite.png").then(img => { 
             this.colorPickerTool = img;
             this.toolArray.push(new Pair("colorPicker", this.colorPickerTool));
+        });
+        fetchImage("images/eraserSprite.png").then(img => { 
+            this.eraserTool = img;
+            this.toolArray.push(new Pair("eraser", this.eraserTool));
         });
         this.canvas = <HTMLCanvasElement> document.getElementById("tool_selector_screen");
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
@@ -521,6 +526,7 @@ class DrawingScreen {
             this.screenBuffer.push(new RGB(255,255,255,0));
             this.screenLastBuffer.push(new RGB(1, 0,0,0));
         }
+        const noColor:RGB = new RGB(0, 0, 0, 0);
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
@@ -545,7 +551,10 @@ class DrawingScreen {
             switch (this.toolSelector.selectedToolName())
             {
                 case("pen"):
-
+                this.lineWidth = dimensions[0] / bounds[0] * 4;
+                break;
+                case("eraser"):
+                this.lineWidth = dimensions[0] / bounds[0] * 12;
                 break;
                 case("fill"):
                 break;
@@ -607,6 +616,10 @@ class DrawingScreen {
                 case("pen"):
                 this.handleTap(e);
                 break;
+                case("eraser"):
+                this.color.copy(noColor);
+                this.handleTap(e);
+                break;
                 case("drag"):
                 this.saveDragDataToScreen();
                 this.dragData = null;
@@ -643,11 +656,15 @@ class DrawingScreen {
         });
         
         this.listeners.registerCallBack("touchmove",e => true,e => {
+            const x1:number = e.touchPos[0] - e.deltaX;
+            const y1:number = e.touchPos[1] - e.deltaY;
             switch (this.toolSelector.selectedToolName())
             {
                 case("pen"):
-                const x1:number = e.touchPos[0] - e.deltaX;
-                const y1:number = e.touchPos[1] - e.deltaY;
+                this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
+                break;
+                case("eraser"):
+                this.color.copy(noColor);
                 this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                 break;
                 case("drag"):
@@ -810,7 +827,7 @@ class DrawingScreen {
     //Pair<offset point>, Map of colors encoded as numbers by location>
     getSelectedPixelGroup(startCoordinate:Pair<number>, countColor:boolean):Pair<Pair<number>, number[] >
     {
-        const stack:Array<number> = new Array<number>(1024);
+        const stack:number[] = [];
         const data:number[] = [];
         const defaultColor = new RGB(255,255,255,0);
         let checkedMap:any = {};
@@ -1106,7 +1123,7 @@ class DrawingScreen {
         const frac:number = a - Math.floor(a);
         return 1 - frac;
     }
-    saveDragDataToScreen()
+    async saveDragDataToScreen()
     {
         if(this.dragData)
         {
@@ -1166,6 +1183,11 @@ class DrawingScreen {
                 {
                     this.updatesStack[this.updatesStack.length-1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
                     this.screenBuffer[key].blendAlphaCopy(color0);
+                    if(this.keyboardHandler.keysHeld["KeyS"])
+                    {
+                        this.draw();
+                        await sleep(1);
+                    }
                 }
             };
         }
