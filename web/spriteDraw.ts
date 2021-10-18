@@ -2,7 +2,7 @@ function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
-const dim = [128,128];
+const dim = [528,528];
 function threeByThreeMat(a:number[], b:number[]):number[]
 {
     return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 
@@ -527,6 +527,7 @@ class DrawingScreen {
             this.screenLastBuffer.push(new RGB(1, 0,0,0));
         }
         const noColor:RGB = new RGB(0, 0, 0, 0);
+        const colorBackup:RGB = new RGB(0, 0, 0, 0);
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
@@ -551,9 +552,11 @@ class DrawingScreen {
             switch (this.toolSelector.selectedToolName())
             {
                 case("pen"):
+                this.color.copy(colorBackup);
                 this.lineWidth = dimensions[0] / bounds[0] * 4;
                 break;
                 case("eraser"):
+                colorBackup.copy(this.color);
                 this.lineWidth = dimensions[0] / bounds[0] * 12;
                 break;
                 case("fill"):
