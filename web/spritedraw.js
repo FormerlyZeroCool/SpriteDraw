@@ -1,6 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+const dim = [528, 528];
 function threeByThreeMat(a, b) {
     return [a[0] * b[0] + a[1] * b[3] + a[2] * b[6],
         a[0] * b[1] + a[1] * b[4] + a[2] * b[7],
@@ -17,7 +18,6 @@ function matByVec(mat, vec) {
         mat[3] * vec[0] + mat[4] * vec[1] + mat[5] * vec[2],
         mat[6] * vec[0] + mat[7] * vec[1] + mat[8] * vec[2]];
 }
-const dim = [128, 128];
 class Queue {
     constructor(size) {
         this.data = [];
@@ -614,7 +614,7 @@ class DrawingScreen {
         }
     }
     async fillArea(startCoordinate) {
-        const stack = [];
+        const stack = new Queue(1024);
         let checkedMap = {};
         checkedMap = {};
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
@@ -649,7 +649,7 @@ class DrawingScreen {
     //Pair<offset point>, Map of colors encoded as numbers by location>
     getSelectedPixelGroup(startCoordinate, countColor) {
         const stack = new Array(1024);
-        const data = new Map();
+        const data = [];
         const defaultColor = new RGB(255, 255, 255, 0);
         let checkedMap = {};
         checkedMap = {};
@@ -666,7 +666,19 @@ class DrawingScreen {
                 (pixelColor.alpha() !== 0 && (!countColor || pixelColor.color === spc.color)) && !checkedMap[cur]) {
                 checkedMap[cur] = true;
                 this.updatesStack[this.updatesStack.length - 1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
-                data.set(cur, pixelColor.color);
+                //top left
+                data.push(cur % this.dimensions.first);
+                data.push(Math.floor(cur / this.dimensions.first));
+                //top right
+                data.push(cur % this.dimensions.first + 1);
+                data.push(Math.floor(cur / this.dimensions.first));
+                //bottom left
+                data.push(cur % this.dimensions.first);
+                data.push(Math.floor(cur / this.dimensions.first) + 1);
+                //bottom right
+                data.push(cur % this.dimensions.first + 1);
+                data.push(Math.floor(cur / this.dimensions.first) + 1);
+                data.push(pixelColor.color);
                 pixelColor.color = defaultColor.color;
                 if (cur > this.dragDataMaxPoint)
                     this.dragDataMaxPoint = cur;
@@ -698,7 +710,7 @@ class DrawingScreen {
         const max = [this.dragDataMaxPoint % this.dimensions.first, Math.floor(this.dragDataMaxPoint / this.dimensions.first)];
         const dx = (min[0] + max[0]) / 2;
         const dy = (min[1] + max[1]) / 2;
-        console.log(min);
+        console.log(dx, dy);
         this.dragDataMinPoint = this.dimensions.first * this.dimensions.second;
         this.dragDataMaxPoint = 0;
         const initTransMatrix = [1, 0, dx,
@@ -717,22 +729,24 @@ class DrawingScreen {
             0, 0, 1];
         const finalTransformationMatrix = threeByThreeMat(threeByThreeMat(initTransMatrix, rotationMatrix), revertTransMatrix);
         const vec = [0, 0, 0];
-        const map = new Map();
-        for (let [key, value] of this.dragData.second) {
-            vec[0] = key % this.dimensions.first;
-            vec[1] = Math.floor(key / this.dimensions.first);
-            vec[2] = 1;
-            let transformed = matByVec(finalTransformationMatrix, vec);
-            transformed[0] = Math.floor(transformed[0] + 0.5);
-            transformed[1] = Math.floor(transformed[1] + 0.5);
-            const point = transformed[0] + transformed[1] * this.dimensions.first;
-            if (point < this.dragDataMinPoint && point >= 0)
-                this.dragDataMinPoint = point;
-            if (point > this.dragDataMaxPoint)
-                this.dragDataMaxPoint = point;
-            map.set(point, value);
+        const data = [];
+        for (let i = 0; i < this.dragData.second.length; i += 9) {
+            for (let j = i; j < i + 8; j += 2) {
+                vec[0] = this.dragData.second[j];
+                vec[1] = this.dragData.second[j + 1];
+                vec[2] = 1;
+                let transformed = matByVec(finalTransformationMatrix, vec);
+                const point = Math.floor(transformed[0]) + Math.floor(transformed[1]) * this.dimensions.first;
+                if (point < this.dragDataMinPoint && point >= 0)
+                    this.dragDataMinPoint = point;
+                if (point > this.dragDataMaxPoint)
+                    this.dragDataMaxPoint = point;
+                data.push(transformed[0]);
+                data.push(transformed[1]);
+            }
+            data.push(this.dragData.second[i + 8]);
         }
-        this.dragData.second = map;
+        this.dragData.second = data;
     }
     drawRect(start, end) {
         this.drawLine(start, [start[0], end[1]]);
@@ -766,12 +780,12 @@ class DrawingScreen {
                             if (pixel && !pixel.compare(this.color)) {
                                 this.updatesStack[this.updatesStack.length - 1].push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
                                 pixel.copy(this.color);
-                                if (this.keyboardHandler.keysHeld["KeyS"]) {
-                                    this.draw();
-                                    await sleep(1);
-                                }
                             }
                         }
+                    }
+                    if (this.keyboardHandler.keysHeld["KeyS"]) {
+                        this.draw();
+                        await sleep(1);
                     }
                 }
             }
@@ -792,12 +806,12 @@ class DrawingScreen {
                             if (pixel && !pixel.compare(this.color)) {
                                 this.updatesStack[this.updatesStack.length - 1].push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
                                 pixel.copy(this.color);
-                                if (this.keyboardHandler.keysHeld["KeyS"]) {
-                                    this.draw();
-                                    await sleep(1);
-                                }
                             }
                         }
+                    }
+                    if (this.keyboardHandler.keysHeld["KeyS"]) {
+                        this.draw();
+                        await sleep(1);
                     }
                 }
             }
@@ -885,20 +899,59 @@ class DrawingScreen {
             }
         }
     }
+    lowerPixelPercentage(a) {
+        const frac = a - Math.floor(a);
+        return 1 - frac;
+    }
     saveDragDataToScreen() {
         if (this.dragData) {
-            const color = new RGB(0, 0, 0, 0);
-            for (const el of this.dragData.second.entries()) {
-                const x = Math.floor(el[0] % this.dimensions.first + this.dragData.first.first);
-                let y = Math.floor(Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second) % this.dimensions.second;
-                if (y < 0) {
-                    y = this.dimensions.second + y;
+            const color0 = new RGB(0, 0, 0, 0);
+            const color1 = new RGB(0, 0, 0, 0);
+            const dragDataColors = this.dragData.second;
+            const map = new Map();
+            for (let i = 0; i < this.dragData.second.length; i += 9) {
+                const x1 = dragDataColors[i + 0] + Math.floor(this.dragData.first.first);
+                const y1 = dragDataColors[i + 1] + Math.floor(this.dragData.first.second);
+                const x2 = dragDataColors[i + 2] + Math.floor(this.dragData.first.first);
+                const y2 = dragDataColors[i + 3] + Math.floor(this.dragData.first.second);
+                const x3 = dragDataColors[i + 6] + Math.floor(this.dragData.first.first);
+                const y3 = dragDataColors[i + 7] + Math.floor(this.dragData.first.second);
+                const deltaX = Math.max(x1, x2) - Math.min(x1, x2);
+                const deltaY = Math.max(y1, y2) - Math.min(y1, y2);
+                const deltaX2 = Math.max(x1, x3) - Math.min(x1, x3);
+                const deltaY2 = Math.max(y1, y3) - Math.min(y1, y3);
+                color0.color = dragDataColors[i + 8];
+                const limit = 15;
+                const ratio = 1 / limit;
+                const percent = 1 / (limit * limit);
+                for (let j = 0; j <= limit; j++) {
+                    for (let k = 0; k <= limit; k++) {
+                        const sub_x = Math.floor(k * ratio * deltaX + j * ratio * deltaX2 + x1);
+                        const sub_y = Math.floor(k * ratio * deltaY + j * ratio * deltaY2 + y1);
+                        const pixelIndex = sub_x + sub_y * this.dimensions.first;
+                        let color = map.get(pixelIndex);
+                        if (!color) {
+                            color = [0, 0, 0, 0, 0];
+                        }
+                        if (color[4] < 1) {
+                            color[0] += color0.red() * percent;
+                            color[1] += color0.green() * percent;
+                            color[2] += color0.blue() * percent;
+                            color[3] += color0.alpha() * percent;
+                            color[4] += percent;
+                        }
+                        map.set(pixelIndex, color);
+                    }
                 }
-                if (this.screenBuffer[x + y * this.dimensions.first]) {
-                    const pixelColor = this.screenBuffer[x + y * this.dimensions.first];
-                    this.updatesStack[this.updatesStack.length - 1].push(new Pair(x + y * this.dimensions.first, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
-                    color.color = el[1];
-                    this.screenBuffer[x + y * this.dimensions.first].blendAlphaCopy(color);
+            }
+            for (const [key, value] of map.entries()) {
+                color0.setRed(value[0]);
+                color0.setGreen(value[1]);
+                color0.setBlue(value[2]);
+                color0.setAlpha(value[3]);
+                if (this.screenBuffer[key]) {
+                    this.updatesStack[this.updatesStack.length - 1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
+                    this.screenBuffer[key].blendAlphaCopy(color0);
                 }
             }
             ;
@@ -926,10 +979,11 @@ class DrawingScreen {
         ctx.drawImage(this.canvas.offScreenCanvas, 0, 0);
         if (this.dragData) {
             const offset = (Math.floor(this.dragData.first.first) + Math.floor(this.dragData.first.second) * this.dimensions.first);
-            for (const el of this.dragData.second.entries()) {
-                const sx = (el[0] % this.dimensions.first + this.dragData.first.first) * cellWidth;
-                const sy = (Math.floor(el[0] / this.dimensions.first) + this.dragData.first.second) * cellHeight;
-                reassignableColor.color = el[1];
+            const dragDataColors = this.dragData.second;
+            for (let i = 0; i < this.dragData.second.length; i += 9) {
+                const sx = (dragDataColors[i] + this.dragData.first.first) * cellWidth;
+                const sy = (dragDataColors[i + 1] + this.dragData.first.second) * cellHeight;
+                reassignableColor.color = dragDataColors[i + 8];
                 ctx.fillStyle = reassignableColor.htmlRBGA();
                 ctx.fillRect(sx, sy, cellWidth, cellHeight);
             }
@@ -1069,6 +1123,7 @@ class SingleTouchListener {
             this.touchPos = [this.touchStart["clientX"] - this.component.getBoundingClientRect().left, this.touchStart["clientY"] - this.component.getBoundingClientRect().top];
         }
         event.touchPos = this.touchPos;
+        this.touchMoveEvents = [];
         this.touchVelocity = 0;
         this.touchMoveCount = 0;
         this.deltaTouchPos = 0;
@@ -1112,6 +1167,7 @@ class SingleTouchListener {
             event.startTouchTime = this.lastTouchTime;
             event.eventTime = Date.now();
             event.moveCount = this.moveCount;
+            this.touchMoveEvents.push(event);
             this.callHandler("touchmove", event);
         }
         return true;

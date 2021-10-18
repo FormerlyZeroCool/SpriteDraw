@@ -2,7 +2,7 @@ function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
-const dim = [158,158];
+const dim = [528,528];
 function threeByThreeMat(a:number[], b:number[]):number[]
 {
     return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 
@@ -1101,37 +1101,10 @@ class DrawingScreen {
             }
         }
     }
-    addColors(c1:RGB, c1Weight:number, c2:RGB, c2Weight:number):number
-    {
-        let result:number = 0;
-        if(!c2.color)
-            c2.color = 0;
-        if(!c1.color)
-            c1.color = 0;
-
-        result |= ((c1.red() * c1Weight + c2.red() * c2Weight)&((1<<8) - 1)) << 24;
-        result |= ((c1.green() * c1Weight + c2.green() * c2Weight)&((1<<8) - 1)) << 16;
-        result |= ((c1.blue() * c1Weight + c2.blue() * c2Weight)&((1<<8) - 1)) << 8;
-        result |= ((c1.alpha() * c1Weight + c2.alpha() * c2Weight)&((1<<8) - 1));
-        return result;
-    }
     lowerPixelPercentage(a:number):number
     {
         const frac:number = a - Math.floor(a);
         return 1 - frac;
-    }
-    upperPixelPercentage(a:number):number
-    {
-        return a - Math.floor(a);
-    }
-    partitionedAgregation(data:Map<number, number>, operand:number, x:number, y:number):void
-    {
-        let value:number = data.get(x + y * this.dimensions.first);
-        if(!value)
-        {
-            value = 0;
-        }
-        data.set(x + y * this.dimensions.first, value + operand);
     }
     saveDragDataToScreen()
     {
@@ -1140,82 +1113,57 @@ class DrawingScreen {
             const color0:RGB = new RGB(0,0,0,0);
             const color1:RGB = new RGB(0,0,0,0);
             const dragDataColors = this.dragData.second;
-            const map:Map<number, number> = new Map<number,number>();
-            const percentage:Map<number, number> = new Map<number, number>();
+            const map:Map<number, number[]> = new Map<number,number[]>();
             for(let i = 0; i < this.dragData.second.length; i += 9){
-                const x:number = dragDataColors[i] +     Math.floor(this.dragData.first.first);
-                const y:number = dragDataColors[i + 1] + Math.floor(this.dragData.first.second);
+                const x1:number = dragDataColors[i + 0] + Math.floor(this.dragData.first.first);
+                const y1:number = dragDataColors[i + 1] + Math.floor(this.dragData.first.second);
+                const x2:number = dragDataColors[i + 2] + Math.floor(this.dragData.first.first);
+                const y2:number = dragDataColors[i + 3] + Math.floor(this.dragData.first.second);
+                const x3:number = dragDataColors[i + 6] + Math.floor(this.dragData.first.first);
+                const y3:number = dragDataColors[i + 7] + Math.floor(this.dragData.first.second);
+                const deltaX:number = Math.max(x1,x2) - Math.min(x1, x2);
+                const deltaY:number = Math.max(y1,y2) - Math.min(y1, y2);
+                const deltaX2:number = Math.max(x1,x3) - Math.min(x1, x3);
+                const deltaY2:number = Math.max(y1,y3) - Math.min(y1, y3);
 
-                if(x < this.dimensions.first && y < this.dimensions.second){
                     color0.color = dragDataColors[i + 8];
-                    const xFloored:number = Math.floor(x);
-                    const xCeiled:number = Math.ceil(x);
-                    const yFloored:number = Math.floor(y);
-                    const yCeiled:number = Math.ceil(y);
-                    if(xFloored === xCeiled && yFloored === yCeiled)
+                    const limit:number = 15;
+                    const ratio:number = 1/limit;
+                    const percent = 1/(limit*limit);
+                    for(let j = 0; j <= limit; j++)
                     {
-                        color1.color = map.get(xFloored + yFloored * this.dimensions.first);
-                        color1.color = color0.color;
-                        map.set(xFloored + yFloored * this.dimensions.first, color1.color);
-                        this.partitionedAgregation(percentage, 1, xFloored, yFloored);
+                        for(let k = 0; k <= limit; k++)
+                        {
+                            const sub_x:number = Math.floor(k*ratio * deltaX + j*ratio * deltaX2 + x1);
+                            const sub_y:number = Math.floor(k*ratio * deltaY + j*ratio * deltaY2 + y1);
+                            const pixelIndex = sub_x + sub_y * this.dimensions.first;
+                            let color:number[] = map.get(pixelIndex);
+                            if(!color)
+                            {
+                                color = [0, 0, 0, 0, 0];
+                            }
+                            if(color[4] < 1)
+                            {
+                                color[0] += color0.red() * percent;
+                                color[1] += color0.green() * percent;
+                                color[2] += color0.blue() * percent;
+                                color[3] += color0.alpha() * percent;
+                                color[4] += percent;
+                            }
+                            map.set(pixelIndex, color);
+                        }
                     }
-                    else if(xFloored === xCeiled)
-                    {
-                        color1.color = map.get(xFloored + yFloored * this.dimensions.first);
-                        color1.color = this.addColors(color0, this.lowerPixelPercentage(y), color1, 1);
-                        map.set(xFloored + yFloored * this.dimensions.first, color1.color);
-                        this.partitionedAgregation(percentage, this.lowerPixelPercentage(y), xFloored, yFloored);
-                        
-                        color1.color = map.get(xFloored + yCeiled * this.dimensions.first);
-                        color1.color = this.addColors(color0, this.upperPixelPercentage(y), color1, 1);
-                        map.set(xFloored + yCeiled * this.dimensions.first, color1.color);
-                        this.partitionedAgregation(percentage, this.upperPixelPercentage(y), xFloored, yCeiled);
-                        
-                    }
-                    else if(yFloored === yCeiled)
-                    {
-                        color1.color = map.get(xFloored + yFloored * this.dimensions.first);
-                        color1.color = this.addColors(color0,this.lowerPixelPercentage(x), color1, 1)
-                        map.set(xFloored + yFloored * this.dimensions.first, color1.color);
-                        this.partitionedAgregation(percentage, this.lowerPixelPercentage(x), xFloored, yFloored);
-    
-                        color1.color = map.get(xCeiled + yFloored * this.dimensions.first);
-                        color1.color = this.addColors(color0, this.upperPixelPercentage(x), color1, 1);
-                        map.set(xCeiled + yFloored * this.dimensions.first, color1.color);
-                        this.partitionedAgregation(percentage, this.upperPixelPercentage(x), xCeiled, yFloored);
-                        
-                    }
-                    else 
-                    {
-                        color1.color = map.get(xFloored + yFloored * this.dimensions.first);
-                        map.set(xFloored + yFloored * this.dimensions.first, 
-                            this.addColors(color0,0.5*this.lowerPixelPercentage(x) + 0.5*this.lowerPixelPercentage(y), color1, 1));
-                        this.partitionedAgregation(percentage, 0.5*this.lowerPixelPercentage(x) + 0.5*this.lowerPixelPercentage(y), xFloored, yFloored);
-    
-                        color1.color = map.get(xCeiled + yFloored * this.dimensions.first);
-                        color1.color = this.addColors(color0, 0.5*this.upperPixelPercentage(x) + 0.5*this.lowerPixelPercentage(y), color1, 1);
-                        map.set(xCeiled + yFloored * this.dimensions.first, color1.color);
-                        this.partitionedAgregation(percentage, 0.5*this.upperPixelPercentage(x) + 0.5*this.lowerPixelPercentage(y), xCeiled, yFloored);
-                        
-                        color1.color = map.get(xFloored + yCeiled * this.dimensions.first);
-                        color1.color = this.addColors(color0, 0.5*this.lowerPixelPercentage(x) + 0.5*this.upperPixelPercentage(y), color1, 1);
-                        map.set(xFloored + yCeiled * this.dimensions.first, color1.color);
-                        this.partitionedAgregation(percentage, 0.5*this.lowerPixelPercentage(x) + 0.5*this.upperPixelPercentage(y), xFloored, yCeiled);
-                        
-                        color1.color = map.get(xCeiled + yCeiled * this.dimensions.first);
-                        color1.color = this.addColors(color0, 0.5*this.upperPixelPercentage(x) + 0.5*this.upperPixelPercentage(y), color1, 1);
-                        map.set(xCeiled + yCeiled * this.dimensions.first, color1.color);
-                        this.partitionedAgregation(percentage, 0.5*this.upperPixelPercentage(x) + 0.5*this.upperPixelPercentage(y), xCeiled, yCeiled);
-                    }
-                    
-                }
-            };
+                
+            }
             for(const [key, value] of map.entries())
             {
-                color0.color = value;
+                color0.setRed(value[0]);
+                color0.setGreen(value[1]);
+                color0.setBlue(value[2]);
+                color0.setAlpha(value[3]);
+                
                 if(this.screenBuffer[key])
                 {
-                    console.log(percentage.get(key));
                     this.updatesStack[this.updatesStack.length-1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
                     this.screenBuffer[key].blendAlphaCopy(color0);
                 }
