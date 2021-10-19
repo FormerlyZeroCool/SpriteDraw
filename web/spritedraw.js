@@ -430,7 +430,7 @@ class DrawingScreen {
                     break;
                 case ("eraser"):
                     colorBackup.copy(this.color);
-                    this.lineWidth = dimensions[0] / bounds[0] * 12;
+                    this.lineWidth = dimensions[0] / bounds[0] * 4 * 3;
                     break;
                 case ("fill"):
                     break;
@@ -492,6 +492,7 @@ class DrawingScreen {
                     this.handleTap(e);
                     break;
                 case ("eraser"):
+                    this.color.copy(noColor);
                     this.handleTap(e);
                     this.color.copy(colorBackup);
                     break;
@@ -646,7 +647,7 @@ class DrawingScreen {
             const cur = stack.pop();
             const pixelColor = this.screenBuffer[cur];
             if (cur >= 0 && cur < this.dimensions.first * this.dimensions.second &&
-                (pixelColor.compare(spc) || (altHeld && pixelColor.compare(blank))) && !checkedMap[cur]) {
+                (pixelColor.compare(spc) || (altHeld && pixelColor.alpha() === 0)) && !checkedMap[cur]) {
                 checkedMap[cur] = true;
                 if (!pixelColor.compare(this.color)) {
                     this.updatesStack[this.updatesStack.length - 1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));

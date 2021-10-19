@@ -556,7 +556,7 @@ class DrawingScreen {
                 break;
                 case("eraser"):
                 colorBackup.copy(this.color);
-                this.lineWidth = dimensions[0] / bounds[0] * 12;
+                this.lineWidth = dimensions[0] / bounds[0] * 4 * 3;
                 break;
                 case("fill"):
                 break;
@@ -619,6 +619,7 @@ class DrawingScreen {
                 this.handleTap(e);
                 break;
                 case("eraser"):
+                this.color.copy(noColor);
                 this.handleTap(e);
                 this.color.copy(colorBackup);
                 break;
