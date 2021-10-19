@@ -806,7 +806,7 @@ class DrawingScreen {
             const cur:number = stack.pop();
             const pixelColor:RGB = this.screenBuffer[cur];
             if(cur >= 0 && cur < this.dimensions.first * this.dimensions.second && 
-                (pixelColor.compare(spc) || (altHeld && pixelColor.compare(blank))) && !checkedMap[cur])
+                (pixelColor.compare(spc) || (altHeld && pixelColor.alpha() === 0)) && !checkedMap[cur])
             {
                 checkedMap[cur] = true;
                 if(!pixelColor.compare(this.color)){
@@ -814,8 +814,8 @@ class DrawingScreen {
                     pixelColor.copy(this.color);
                 }
                 if(this.keyboardHandler.keysHeld["KeyS"]){
-                this.draw();
-                await sleep(1);
+                    this.draw();
+                    await sleep(1);
                 }
                 if(!checkedMap[cur + this.dimensions.first])
                     stack.push(cur + this.dimensions.first);
