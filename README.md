@@ -79,10 +79,10 @@ Simply click on the screen to undo the last action you performed.<br>
 Holding s will activate slow mode<br>
 *You can also always (with any tool selected) press the u key on the keyboard to undo.
 <br>
-<h3>10.) Color Picker Tool</h3>
+<h3>11.) Color Picker Tool</h3>
 Click on a pixel, and set the current drawing color.<br>
 *Note pressing shift will reset color chosen, but pressing the "Set Color:" button will save the selected color to the pallete so it can be reselected, and pressing shift won't lose the picked color<br>
-<h3>10.) Eraser Tool</h3>
+<h3>12.) Eraser Tool</h3>
 Much like the pen tool, just drag the cursor across the area to be erased while holding down the mouse button.<br>
 <h3>Notes on the clipboard viewer</h3>
 1.) The clip board viewer can be found directly to the right of the toolbar, and is contained in a blue rectangle.<br>
