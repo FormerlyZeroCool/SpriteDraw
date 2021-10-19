@@ -792,6 +792,7 @@ class DrawingScreen {
     }
     async fillArea(startCoordinate:Pair<number>)
     {
+        const altHeld:boolean = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
         const stack:Queue<number> = new Queue<number>(1024);
         let checkedMap:any = {};
         checkedMap = {};
@@ -805,7 +806,7 @@ class DrawingScreen {
             const cur:number = stack.pop();
             const pixelColor:RGB = this.screenBuffer[cur];
             if(cur >= 0 && cur < this.dimensions.first * this.dimensions.second && 
-                (pixelColor.compare(spc) || pixelColor.compare(blank)) && !checkedMap[cur])
+                (pixelColor.compare(spc) || (altHeld && pixelColor.compare(blank))) && !checkedMap[cur])
             {
                 checkedMap[cur] = true;
                 if(!pixelColor.compare(this.color)){
