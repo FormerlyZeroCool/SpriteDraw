@@ -639,12 +639,13 @@ class DrawingScreen {
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
         const startPixel = this.screenBuffer[startIndex];
         const spc = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
+        const blank = new RGB(0, 0, 0, 0);
         stack.push(startIndex);
         while (stack.length > 0) {
             const cur = stack.pop();
             const pixelColor = this.screenBuffer[cur];
             if (cur >= 0 && cur < this.dimensions.first * this.dimensions.second &&
-                pixelColor.compare(spc) && !checkedMap[cur]) {
+                (pixelColor.compare(spc) || pixelColor.compare(blank)) && !checkedMap[cur]) {
                 checkedMap[cur] = true;
                 if (!pixelColor.compare(this.color)) {
                     this.updatesStack[this.updatesStack.length - 1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
