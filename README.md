@@ -66,7 +66,6 @@ Used to drag groups of pixels around the screen once they have already been draw
 To use click on one of the pixels in the group you wish to drag, and simply drag to a new location on the screen.<br>
 *Important note<br>
 If the left alt key is held then the pixel group will be defined as all adjacent pixels of the same color, otherwise it is all adjacent pixels that are not completely transparent.<br>
-If the right alt key is held then as the cursor moves the selected group of pixels will rotate on the screen.<br>
 Holding s when releaseing the mouse to drop the dragged pixels back into the sprite will activate slow mode, and show pixel by pixel the placement of the dragged pixel group onto the screen.
 <br>
 <h3>9.) Redo Tool</h3>
@@ -84,6 +83,9 @@ Click on a pixel, and set the current drawing color.<br>
 *Note pressing shift will reset color chosen, but pressing the "Set Color:" button will save the selected color to the pallete so it can be reselected, and pressing shift won't lose the picked color<br>
 <h3>12.) Eraser Tool</h3>
 Much like the pen tool, just drag the cursor across the area to be erased while holding down the mouse button.<br>
+<h3>12.) Rotation Tool</h3>
+Click on a portion of the graphic, then drag your mouse to rotate.<br>
+Holding s will run slow mode showing drawing to the screen pixel by pixel<br>
 <h3>Notes on the clipboard viewer</h3>
 1.) The clip board viewer can be found directly to the right of the toolbar, and is contained in a blue rectangle.<br>
 2.) If you drag the cursor, while holding down the left mouse button over the clipboard its contents will rotate 90 degrees so no antialiasing will be applied.<br>
