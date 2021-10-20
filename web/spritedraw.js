@@ -183,16 +183,29 @@ class ToolSelector {
         this.imgHeight = imgHeight;
         this.selectedTool = 0;
         this.keyboardHandler = keyboardHandler;
-        this.keyboardHandler.registerCallBack("keydown", e => e.code === "ArrowUp" || e.code === "ArrowDown", e => {
+        this.keyboardHandler.registerCallBack("keydown", e => true, e => {
             e.preventDefault();
+            const imgPerColumn = (this.canvas.height / this.imgHeight);
             if (e.code === "ArrowUp")
                 if (this.selectedTool !== 0)
                     this.selectedTool--;
                 else
                     this.selectedTool = this.toolArray.length - 1;
-            else {
+            else if (e.code === "ArrowDown") {
                 this.selectedTool++;
                 this.selectedTool %= this.toolArray.length;
+            }
+            else if (e.code === "ArrowLeft") {
+                if (this.selectedTool >= imgPerColumn)
+                    this.selectedTool -= imgPerColumn;
+                else
+                    this.selectedTool = 0;
+            }
+            else if (e.code === "ArrowRight") {
+                if (this.toolArray.length - this.selectedTool > imgPerColumn)
+                    this.selectedTool += imgPerColumn;
+                else
+                    this.selectedTool = this.toolArray.length - 1;
             }
         });
         this.toolArray = new Array();
