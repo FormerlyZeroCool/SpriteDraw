@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [528, 528];
+const dim = [50, 50];
 function threeByThreeMat(a, b) {
     return [a[0] * b[0] + a[1] * b[3] + a[2] * b[6],
         a[0] * b[1] + a[1] * b[4] + a[2] * b[7],
@@ -244,6 +244,10 @@ class ToolSelector {
             this.eraserTool = img;
             this.toolArray.push(new Pair("eraser", this.eraserTool));
         });
+        fetchImage("images/rotateSprite.png").then(img => {
+            this.rotationTool = img;
+            this.toolArray.push(new Pair("rotate", this.rotationTool));
+        });
         this.canvas = document.getElementById("tool_selector_screen");
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
         this.touchListener.registerCallBack("touchstart", e => true, e => {
@@ -406,7 +410,7 @@ class DrawingScreen {
             this.screenBuffer.push(new RGB(255, 255, 255, 0));
             this.screenLastBuffer.push(new RGB(1, 0, 0, 0));
         }
-        const noColor = new RGB(0, 0, 0, 0);
+        const noColor = new RGB(1, 0, 0, 0);
         const colorBackup = new RGB(0, 0, 0, 0);
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
@@ -435,6 +439,14 @@ class DrawingScreen {
                 case ("fill"):
                     break;
                 case ("line"):
+                    this.lineWidth = dimensions[0] / bounds[0] * 4;
+                    break;
+                case ("rotate"):
+                    this.saveDragDataToScreenAntiAliased();
+                    if (this.keyboardHandler.keysHeld["AltLeft"])
+                        this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), true);
+                    else
+                        this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), false);
                     break;
                 case ("drag"):
                     this.saveDragDataToScreen();
@@ -444,7 +456,9 @@ class DrawingScreen {
                         this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), false);
                     break;
                 case ("oval"):
+                    this.lineWidth = dimensions[0] / bounds[0] * 4;
                 case ("rect"):
+                    this.lineWidth = dimensions[0] / bounds[0] * 4;
                 case ("copy"):
                     this.selectionRect = [e.touchPos[0], e.touchPos[1], 0, 0];
                     break;
@@ -496,6 +510,10 @@ class DrawingScreen {
                     this.handleTap(e);
                     this.color.copy(colorBackup);
                     break;
+                case ("rotate"):
+                    this.saveDragDataToScreenAntiAliased();
+                    this.dragData = null;
+                    break;
                 case ("drag"):
                     this.saveDragDataToScreen();
                     this.dragData = null;
@@ -537,15 +555,12 @@ class DrawingScreen {
                     this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                     break;
                 case ("drag"):
-                    //console.log(this.keyboardHandler.keysHeld["AltLeft"])
-                    if (this.keyboardHandler.keysHeld["AltRight"]) {
-                        if (e.moveCount % 2 == 0)
-                            this.rotateSelectedPixelGroup(Math.PI / 32);
-                    }
-                    else {
-                        this.dragData.first.first += (e.deltaX / this.bounds.first) * this.dimensions.first;
-                        this.dragData.first.second += (e.deltaY / this.bounds.second) * this.dimensions.second;
-                    }
+                    this.dragData.first.first += (e.deltaX / this.bounds.first) * this.dimensions.first;
+                    this.dragData.first.second += (e.deltaY / this.bounds.second) * this.dimensions.second;
+                    break;
+                case ("rotate"):
+                    if (e.moveCount % 2 == 0)
+                        this.rotateSelectedPixelGroup(Math.PI / 32);
                     break;
                 case ("fill"):
                     break;
@@ -926,6 +941,20 @@ class DrawingScreen {
         return 1 - frac;
     }
     async saveDragDataToScreen() {
+        if (this.dragData) {
+            const color = new RGB(0, 0, 0, 0);
+            const dragDataColors = this.dragData.second;
+            for (let i = 0; i < this.dragData.second.length; i += 9) {
+                const x = Math.floor(dragDataColors[i + 0] + this.dragData.first.first);
+                const y = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
+                const key = x + y * this.dimensions.first;
+                color.color = dragDataColors[i + 8];
+                this.updatesStack[this.updatesStack.length - 1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
+                this.screenBuffer[key].blendAlphaCopy(color);
+            }
+        }
+    }
+    async saveDragDataToScreenAntiAliased() {
         if (this.dragData) {
             const color0 = new RGB(0, 0, 0, 0);
             const color1 = new RGB(0, 0, 0, 0);
@@ -1590,6 +1619,15 @@ class AnimationGroup {
             this.animationDiv.appendChild(canvas);
             i++;
         });
+    }
+    getBinaryFileSize() {
+        let size = 1;
+        this.animations.forEach(animation => size += animation.binaryFileSize());
+        return size;
+    }
+    toBinary() {
+        const size = this.getBinaryFileSize();
+        const binary = new Uint32Array(size);
     }
     draw() {
         for (let i = 0; i < this.animations.length; i++) {
