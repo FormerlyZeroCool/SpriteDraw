@@ -183,7 +183,8 @@ class ToolSelector {
         this.imgHeight = imgHeight;
         this.selectedTool = 0;
         this.keyboardHandler = keyboardHandler;
-        this.keyboardHandler.registerCallBack("keydown", e => true, e => {
+        this.keyboardHandler.registerCallBack("keydown", e => { if (e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "ArrowLeft" || e.code === "ArrowRight")
+            return true; }, e => {
             e.preventDefault();
             const imgPerColumn = (this.canvas.height / this.imgHeight);
             if (e.code === "ArrowUp")
@@ -1409,6 +1410,23 @@ class Sprite {
             buf[i].setAlpha(this.pixels[(i << 2) + 3]);
         }
     }
+    binaryFileSize() {
+        return 3 + this.width * this.height;
+    }
+    saveToUint32Buffer(buf, index) {
+        buf[index++] = this.binaryFileSize();
+        buf[index++] = 2;
+        buf[index] |= this.height << 16;
+        buf[index++] |= this.width;
+        for (let i = 0; i < this.pixels.length; i += 4) {
+            buf[index] ^= buf[index];
+            buf[index] |= this.pixels[i] << 24;
+            buf[index] |= this.pixels[i + 1] << 16;
+            buf[index] |= this.pixels[i + 2] << 8;
+            buf[index++] |= this.pixels[i + 3];
+        }
+        return ++index;
+    }
     refreshImage() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -1453,10 +1471,21 @@ class SpriteAnimation {
     pushSprite(sprite) {
         this.sprites.push(sprite);
     }
-    draw(ctx) {
+    binaryFileSize() {
+        let size = 2;
+        this.sprites.forEach(sprite => size += sprite.binaryFileSize());
+        return size;
+    }
+    saveToUint32Buffer(buf, index) {
+        buf[index++] = this.binaryFileSize();
+        buf[index++] = 1;
+        this.sprites.forEach(sprite => index += sprite.saveToUint32Buffer(buf, index));
+        return index;
+    }
+    draw(ctx, x, y, width, height) {
         if (this.sprites.length) {
             ++this.animationIndex;
-            this.sprites[this.animationIndex %= this.sprites.length].draw(ctx, this.x, this.y, this.width, this.height);
+            this.sprites[this.animationIndex %= this.sprites.length].draw(ctx, x, y, width, height);
         }
         else {
             this.animationIndex = -1;
@@ -1526,7 +1555,6 @@ class SpriteSelector {
             this.canvas.height = (1 + Math.floor(this.sprites().length / this.spritesPerRow)) * this.spriteHeight;
         }
         if (this.spritesCount !== this.sprites().length) {
-            console.log(this.spritesCount, this.sprites().length);
             this.spritesCount = this.sprites() ? this.sprites().length : 0;
             this.selectedSprite = this.spritesCount - 1;
             this.loadSprite();
@@ -1555,7 +1583,8 @@ class SpriteSelector {
         }
     }
     deleteSelectedSprite() {
-        this.sprites().splice(this.selectedSprite--, 1);
+        if (this.sprites().length > 1)
+            this.sprites().splice(this.selectedSprite--, 1);
     }
     loadSprite() {
         if (this.selectedSpriteVal())
@@ -1580,15 +1609,27 @@ class SpriteSelector {
 }
 ;
 class AnimationGroup {
-    constructor(drawingField, keyboardHandler, animiationsID, animiationsSpritesID, spritesPerRow = 10, spriteWidth = 64, spriteDrawHeight = 64) {
+    constructor(drawingField, keyboardHandler, animiationsID, animiationsSpritesID, spritesPerRow = 10, spriteWidth = 64, spriteHeight = 64, animationsPerRow = 5) {
         this.drawingField = drawingField;
+        this.keyboardHandler = keyboardHandler;
         this.animationDiv = document.getElementById(animiationsID);
         this.animationSpritesDiv = document.getElementById(animiationsSpritesID);
         this.animations = new Array();
-        this.animationCanvases = new Array();
-        this.spriteCanvases = new Array();
+        this.animationCanvas = document.getElementById("animations");
         this.selectedAnimation = 0;
-        this.spriteSelector = new SpriteSelector(document.getElementById("sprites-canvas"), this.drawingField, this, keyboardHandler, spritesPerRow, spriteWidth, spriteDrawHeight);
+        this.animationsPerRow = animationsPerRow;
+        this.spriteWidth = spriteWidth;
+        this.spriteHeight = spriteHeight;
+        this.spriteSelector = new SpriteSelector(document.getElementById("sprites-canvas"), this.drawingField, this, keyboardHandler, spritesPerRow, spriteWidth, spriteHeight);
+        const listener = new SingleTouchListener(this.animationCanvas, false, true);
+        listener.registerCallBack("touchstart", e => true, e => {
+            const clickedIndex = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
+            if (this.animations.length > clickedIndex) {
+                this.selectedAnimation = clickedIndex;
+                this.spriteSelector.sprites()[this.spriteSelector.sprites().length - 1].copyToBuffer(this.drawingField.screenBuffer);
+            }
+        });
+        this.buildAnimationHTML();
     }
     pushAnimation(animation) {
         this.animations.push(animation);
@@ -1614,44 +1655,103 @@ class AnimationGroup {
             this.spriteSelector.loadSprite();
         }
     }
-    buildAnimationHTML() {
-        this.animationCanvases.forEach(el => el.first.first.remove());
-        this.animationCanvases.splice(0, this.animationCanvases.length); //deletes all elements from array
-        this.animationDiv.innerHTML = '';
-        let i = 0;
-        this.animations.forEach(async (el) => {
-            const canvas = document.createElement("canvas");
-            canvas.id = "animation_canvas" + i;
-            canvas.width = this.spriteSelector.spriteWidth;
-            canvas.height = this.spriteSelector.spriteHeight;
-            const listener = new SingleTouchListener(canvas, false, true);
-            listener.registerCallBack("touchstart", e => true, e => {
-                this.selectedAnimation = parseInt(canvas.id.substring(16, canvas.id.length));
-            });
-            this.animationCanvases.push(new Pair(new Pair(canvas, listener), canvas.getContext("2d")));
-            this.animationDiv.appendChild(canvas);
-            i++;
-        });
+    maxAnimationsOnCanvas() {
+        return Math.floor(this.animationCanvas.height / this.spriteHeight) * this.animationsPerRow;
     }
-    getBinaryFileSize() {
-        let size = 1;
+    neededRowsInCanvas() {
+        return Math.floor(this.animations.length / this.animationsPerRow) + 1;
+    }
+    buildAnimationHTML() {
+        this.animationCanvas.width = this.spriteWidth * this.animationsPerRow;
+        if (this.maxAnimationsOnCanvas() < this.animations.length) {
+            this.animationCanvas.height += this.spriteHeight;
+        }
+        else if (this.maxAnimationsOnCanvas() / this.animationsPerRow > this.neededRowsInCanvas()) {
+            this.animationCanvas.height = this.neededRowsInCanvas() * this.spriteHeight;
+        }
+    }
+    binaryFileSize() {
+        let size = 2;
         this.animations.forEach(animation => size += animation.binaryFileSize());
         return size;
     }
+    buildFromBinary(binary) {
+        let i = 0;
+        const groupSize = binary[i];
+        const color = new RGB(0, 0, 0, 0);
+        const groups = [];
+        while (i < binary.length) {
+            if (i++ != 0)
+                throw "Corrupted File, animation group project header corrupted";
+            let j = 0;
+            const animationSize = binary[i + 2];
+            groups.push(new AnimationGroup(this.drawingField, this.keyboardHandler, "test", "test", this.spriteSelector.spritesPerRow, this.spriteSelector.spriteWidth, this.spriteSelector.spriteHeight));
+            if (binary[i + 1] != 1)
+                throw "Corrupted File, animation header corrupted";
+            for (; j < groupSize; j += animationSize) {
+                const animationSize = binary[i + j + 2];
+                groups[groups.length - 1].animations.push(new SpriteAnimation(0, 0, this.spriteSelector.spriteWidth, this.spriteSelector.spriteHeight));
+                const animations = groups[groups.length - 1].animations;
+                const sprites = animations[animations.length - 1].sprites;
+                let k = 0;
+                const spriteSize = binary[i + j + 4];
+                if (binary[i + j + 5] != 2)
+                    throw "Corrupted sprite header file";
+                for (; k < animationSize; k += spriteSize) {
+                    const spriteSize = binary[i + j + k + 4];
+                    const spriteWidth = binary[i + j + k + 5] & ((1 << 16) - 1);
+                    const spriteHeight = binary[i + j + k + 5] >> 16;
+                    let binaryPixelIndex = i + j + k + 7;
+                    let l = 0;
+                    const sprite = new Sprite(undefined, spriteWidth, spriteHeight);
+                    sprites.push(sprite);
+                    for (; l < spriteSize; l++, binaryPixelIndex++) {
+                        color.color = binary[binaryPixelIndex];
+                        const pixelIndex = (l << 2);
+                        sprite.pixels[pixelIndex] = color.red();
+                        sprite.pixels[pixelIndex + 1] = color.blue();
+                        sprite.pixels[pixelIndex + 2] = color.green();
+                        sprite.pixels[pixelIndex + 3] = color.alpha();
+                    }
+                }
+            }
+        }
+        return groups;
+    }
     toBinary() {
-        const size = this.getBinaryFileSize();
-        const binary = new Uint32Array(size);
+        const size = this.binaryFileSize();
+        const buffer = new Uint32Array(size);
+        buffer[0] = size;
+        buffer[1] = 0;
+        let index = 0;
+        this.animations.forEach(animation => index += animation.saveToUint32Buffer(buffer, index));
+        return buffer;
+    }
+    selectedAnimationX() {
+        return (this.selectedAnimation % this.animationsPerRow) * this.spriteWidth;
+    }
+    selectedAnimationY() {
+        return Math.floor(this.selectedAnimation / this.animationsPerRow) * this.spriteHeight;
     }
     draw() {
-        for (let i = 0; i < this.animations.length; i++) {
-            this.animations[i].draw(this.animationCanvases[i].second);
+        const ctx = this.animationCanvas.getContext("2d");
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, this.animationCanvas.width, this.animationCanvas.height);
+        const xLimit = this.animationsPerRow;
+        const yLimit = this.neededRowsInCanvas();
+        for (let y = 0; y < yLimit - 1; y++)
+            for (let x = 0; x < xLimit; x++) {
+                this.animations[x + y * this.animationsPerRow].draw(ctx, x * this.spriteWidth, y * this.spriteHeight, this.spriteWidth, this.spriteHeight);
+            }
+        for (let x = 0; x < this.animations.length % this.animationsPerRow; x++) {
+            this.animations[x + (yLimit - 1) * this.animationsPerRow].draw(ctx, x * this.spriteWidth, (yLimit - 1) * this.spriteHeight, this.spriteWidth, this.spriteHeight);
         }
         if (this.animations.length) {
             this.spriteSelector.update();
             this.spriteSelector.draw();
-            this.animationCanvases[this.selectedAnimation].second.strokeStyle = "#000000";
-            this.animationCanvases[this.selectedAnimation].second.lineWidth = 3;
-            this.animationCanvases[this.selectedAnimation].second.strokeRect(1, 1, this.animationCanvases[this.selectedAnimation].first.first.width - 2, this.animationCanvases[this.selectedAnimation].first.first.height - 2);
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(1 + this.selectedAnimationX(), 1 + this.selectedAnimationY(), this.spriteWidth - 2, this.spriteHeight - 2);
         }
     }
 }

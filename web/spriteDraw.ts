@@ -2,7 +2,7 @@ function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
-const dim = [528,528];
+const dim = [128,128];
 function threeByThreeMat(a:number[], b:number[]):number[]
 {
     return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 
@@ -2017,8 +2017,12 @@ class AnimationGroup {
         const listener:SingleTouchListener = new SingleTouchListener(this.animationCanvas, false, true);
         listener.registerCallBack("touchstart", e => true, e => {
             const clickedIndex:number = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
-            if(this.animations.length < this.selectedAnimation)
+            if(this.animations.length > clickedIndex)
+            {
                 this.selectedAnimation = clickedIndex;
+                this.spriteSelector.sprites()[this.spriteSelector.sprites().length-1].copyToBuffer(this.drawingField.screenBuffer);
+            }
+
         });
         this.buildAnimationHTML();
     }
