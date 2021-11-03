@@ -2016,7 +2016,9 @@ class AnimationGroup {
 
         const listener:SingleTouchListener = new SingleTouchListener(this.animationCanvas, false, true);
         listener.registerCallBack("touchstart", e => true, e => {
-            this.selectedAnimation = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
+            const clickedIndex:number = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
+            if(this.animations.length < this.selectedAnimation)
+                this.selectedAnimation = clickedIndex;
         });
         this.buildAnimationHTML();
     }
