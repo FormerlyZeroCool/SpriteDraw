@@ -1630,6 +1630,7 @@ class AnimationGroup {
         this.spriteSelector = new SpriteSelector(document.getElementById("sprites-canvas"), this.drawingField, this, keyboardHandler, spritesPerRow, spriteWidth, spriteHeight);
         this.dragSprite = null;
         const listener = new SingleTouchListener(this.animationCanvas, false, true);
+        this.listener = listener;
         listener.registerCallBack("touchstart", e => true, e => {
             //const clickedIndex:number = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
         });
@@ -1650,10 +1651,10 @@ class AnimationGroup {
             if (clickedSprite >= 0) {
                 if (this.dragSprite !== null)
                     this.animations.splice(clickedSprite, 0, this.dragSprite);
+                this.dragSprite = null;
+                this.dragSpritePos[0] = -1;
+                this.dragSpritePos[1] = -1;
             }
-            this.dragSprite = null;
-            this.dragSpritePos[0] = -1;
-            this.dragSpritePos[1] = -1;
             if (clickedSprite < this.animations.length && this.spriteSelector.sprites()) {
                 this.selectedAnimation = clickedSprite;
                 this.spriteSelector.sprites()[0].copyToBuffer(this.drawingField.screenBuffer);
@@ -1663,9 +1664,31 @@ class AnimationGroup {
     }
     pushAnimation(animation) {
         this.animations.push(animation);
-        this.selectedAnimation = this.animations.length - 1;
-        this.pushSpriteToAnimation(this.animations[this.selectedAnimation]);
+        if (animation.sprites.length === 0)
+            this.pushSpriteToAnimation(this.animations[this.selectedAnimation]);
         this.buildAnimationHTML();
+    }
+    deleteAnimation(index) {
+        if (index >= 0 && index < this.animations.length) {
+            this.animations.splice(index, 1);
+            if (this.selectedAnimation >= this.animations.length)
+                this.selectedAnimation--;
+            return true;
+        }
+        return false;
+    }
+    cloneAnimation(index) {
+        if (index >= 0 && index < this.animations.length) {
+            const cloned = new SpriteAnimation(0, 0, this.spriteWidth, this.spriteHeight);
+            const original = this.animations[index];
+            original.sprites.forEach(sprite => {
+                const clonedSprite = new Sprite([], sprite.width, sprite.height);
+                clonedSprite.copySprite(sprite);
+                cloned.sprites.push(clonedSprite);
+            });
+            return cloned;
+        }
+        return null;
     }
     pushSpriteToAnimation(animation) {
         const sprites = animation.sprites;
@@ -1767,14 +1790,19 @@ class AnimationGroup {
         const ctx = this.animationCanvas.getContext("2d");
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, this.animationCanvas.width, this.animationCanvas.height);
-        const xLimit = this.animationsPerRow;
-        const yLimit = this.neededRowsInCanvas();
-        for (let y = 0; y < yLimit - 1; y++)
-            for (let x = 0; x < xLimit; x++) {
-                this.animations[x + y * this.animationsPerRow].draw(ctx, x * this.spriteWidth, y * this.spriteHeight, this.spriteWidth, this.spriteHeight);
+        let dragSpriteAdjustment = 0;
+        const touchX = Math.floor(this.listener.touchPos[0] / this.animationCanvas.width * this.animationsPerRow);
+        const touchY = Math.floor((this.listener.touchPos[1]) / this.animationCanvas.height * Math.floor(this.animationCanvas.height / this.spriteHeight));
+        for (let i = 0; i < this.animations.length; i++) {
+            let x = (dragSpriteAdjustment) % this.animationsPerRow;
+            let y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
+            if (this.dragSprite && x == touchX && y == touchY) {
+                dragSpriteAdjustment++;
+                x = (dragSpriteAdjustment) % this.animationsPerRow;
+                y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
             }
-        for (let x = 0; x < this.animations.length % this.animationsPerRow; x++) {
-            this.animations[x + (yLimit - 1) * this.animationsPerRow].draw(ctx, x * this.spriteWidth, (yLimit - 1) * this.spriteHeight, this.spriteWidth, this.spriteHeight);
+            this.animations[i].draw(ctx, x * this.spriteWidth, y * this.spriteHeight, this.spriteWidth, this.spriteHeight);
+            dragSpriteAdjustment++;
         }
         if (this.animations.length) {
             this.spriteSelector.update();
@@ -1821,6 +1849,16 @@ async function main() {
     const add_animationTouchListener = new SingleTouchListener(add_animationButton, false, true);
     add_animationTouchListener.registerCallBack("touchstart", e => true, e => {
         animations.pushAnimation(new SpriteAnimation(0, 0, dim[0], dim[1]));
+    });
+    const clone_animationButton = document.getElementById("clone_animation");
+    const clone_animationTouchListener = new SingleTouchListener(clone_animationButton, false, true);
+    clone_animationTouchListener.registerCallBack("touchstart", e => true, e => {
+        animations.pushAnimation(animations.cloneAnimation(animations.selectedAnimation));
+    });
+    const delete_animationButton = document.getElementById("delete_animation");
+    const delete_animationTouchListener = new SingleTouchListener(delete_animationButton, false, true);
+    delete_animationTouchListener.registerCallBack("touchstart", e => true, e => {
+        animations.deleteAnimation(animations.selectedAnimation);
     });
     const add_spriteButton = document.getElementById("add_sprite");
     const add_spriteButtonTouchListener = new SingleTouchListener(add_spriteButton, false, true);

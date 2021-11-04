@@ -2054,7 +2054,7 @@ class AnimationGroup {
             {
                 if(this.dragSprite !== null)
                     this.animations.splice(clickedSprite, 0, this.dragSprite);
-                    
+
                 this.dragSprite = null;
                 this.dragSpritePos[0] = -1;
                 this.dragSpritePos[1] = -1;
@@ -2070,11 +2070,37 @@ class AnimationGroup {
     pushAnimation(animation:SpriteAnimation)
     {
         this.animations.push(animation);
-        this.selectedAnimation = this.animations.length - 1;
-        this.pushSpriteToAnimation(this.animations[this.selectedAnimation]);
+        if(animation.sprites.length === 0)
+            this.pushSpriteToAnimation(this.animations[this.selectedAnimation]);
         this.buildAnimationHTML();
     }
+    deleteAnimation(index:number):boolean
+    {
+        if(index >= 0 && index < this.animations.length)
+        {
+            this.animations.splice(index, 1);
+            if(this.selectedAnimation >= this.animations.length)
+                this.selectedAnimation--;
+            return true;
+        }
+        return false;
+    }
+    cloneAnimation(index:number):SpriteAnimation
+    {
+        if(index >= 0 && index < this.animations.length)
+        {
+            const cloned:SpriteAnimation = new SpriteAnimation(0, 0, this.spriteWidth, this.spriteHeight);
+            const original:SpriteAnimation = this.animations[index];
+            original.sprites.forEach(sprite => {
+                const clonedSprite:Sprite = new Sprite([], sprite.width, sprite.height);
+                clonedSprite.copySprite(sprite);
+                cloned.sprites.push(clonedSprite);
+            });
 
+            return cloned;
+        }
+        return null;
+    }
     pushSpriteToAnimation(animation:SpriteAnimation)
     {
         const sprites:Array<Sprite> = animation.sprites;
@@ -2263,6 +2289,16 @@ async function main()
     const add_animationTouchListener:SingleTouchListener = new SingleTouchListener(add_animationButton, false, true);
     add_animationTouchListener.registerCallBack("touchstart", e => true, e => {
         animations.pushAnimation(new SpriteAnimation(0, 0, dim[0], dim[1]));
+    });
+    const clone_animationButton = document.getElementById("clone_animation");
+    const clone_animationTouchListener:SingleTouchListener = new SingleTouchListener(clone_animationButton, false, true);
+    clone_animationTouchListener.registerCallBack("touchstart", e => true, e => {
+        animations.pushAnimation(animations.cloneAnimation(animations.selectedAnimation));
+    });
+    const delete_animationButton = document.getElementById("delete_animation");
+    const delete_animationTouchListener:SingleTouchListener = new SingleTouchListener(delete_animationButton, false, true);
+    delete_animationTouchListener.registerCallBack("touchstart", e => true, e => {
+        animations.deleteAnimation(animations.selectedAnimation);
     });
 
     const add_spriteButton = document.getElementById("add_sprite");
