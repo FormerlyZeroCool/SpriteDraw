@@ -2054,10 +2054,11 @@ class AnimationGroup {
             {
                 if(this.dragSprite !== null)
                     this.animations.splice(clickedSprite, 0, this.dragSprite);
+                    
+                this.dragSprite = null;
+                this.dragSpritePos[0] = -1;
+                this.dragSpritePos[1] = -1;
             }
-            this.dragSprite = null;
-            this.dragSpritePos[0] = -1;
-            this.dragSpritePos[1] = -1;
             if(clickedSprite < this.animations.length && this.spriteSelector.sprites())
             {
                 this.selectedAnimation = clickedSprite;
