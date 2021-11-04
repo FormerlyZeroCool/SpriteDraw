@@ -1919,15 +1919,18 @@ class SpriteSelector {
     }
     update()
     {
-        if((1+Math.floor(this.sprites().length / this.spritesPerRow) * this.spriteHeight) > this.canvas.height)
+        if(this.sprites())
         {
-            this.canvas.height = (1+Math.floor(this.sprites().length / this.spritesPerRow)) * this.spriteHeight;
-        }
-        if(this.spritesCount !== this.sprites().length)
-        {
-            this.spritesCount = this.sprites()?this.sprites().length:0;
-            this.selectedSprite = this.spritesCount - 1;
-            this.loadSprite();
+            if((1+Math.floor(this.sprites().length / this.spritesPerRow) * this.spriteHeight) > this.canvas.height)
+            {
+                this.canvas.height = (1+Math.floor(this.sprites().length / this.spritesPerRow)) * this.spriteHeight;
+            }
+            if(this.spritesCount !== this.sprites().length)
+            {
+                this.spritesCount = this.sprites()?this.sprites().length:0;
+                this.selectedSprite = this.spritesCount - 1;
+                this.loadSprite();
+            }
         }
     }
     draw()
@@ -1984,7 +1987,12 @@ class SpriteSelector {
     sprites():Array<Sprite>
     {
         if(this.animationGroup.animations[this.animationGroup.selectedAnimation])
-            return this.animationGroup.animations[this.animationGroup.selectedAnimation].sprites
+            return this.animationGroup.animations[this.animationGroup.selectedAnimation].sprites;
+        else if(this.animationGroup.animations.length)
+        {
+            this.animationGroup.selectedAnimation = 0;
+            return this.animationGroup.animations[this.animationGroup.selectedAnimation].sprites;
+        }
         return null;
         }
 };
@@ -2000,6 +2008,8 @@ class AnimationGroup {
     animationsPerRow:number;
     spriteWidth:number;
     spriteHeight:number;
+    dragSprite:SpriteAnimation;
+    dragSpritePos:number[];
     constructor(drawingField:DrawingScreen, keyboardHandler:KeyboardHandler, animiationsID:string, animiationsSpritesID:string, spritesPerRow:number = 10, spriteWidth:number = 64, spriteHeight:number = 64, animationsPerRow:number = 5)
     {
         this.drawingField = drawingField;
@@ -2012,17 +2022,45 @@ class AnimationGroup {
         this.animationsPerRow = animationsPerRow;
         this.spriteWidth = spriteWidth;
         this.spriteHeight = spriteHeight;
+        this.dragSpritePos = [0, 0];
         this.spriteSelector = new SpriteSelector(document.getElementById("sprites-canvas"), this.drawingField, this, keyboardHandler, spritesPerRow, spriteWidth, spriteHeight);
-
+        this.dragSprite = null;
         const listener:SingleTouchListener = new SingleTouchListener(this.animationCanvas, false, true);
         listener.registerCallBack("touchstart", e => true, e => {
-            const clickedIndex:number = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
-            if(this.animations.length > clickedIndex)
-            {
-                this.selectedAnimation = clickedIndex;
-                this.spriteSelector.sprites()[this.spriteSelector.sprites().length-1].copyToBuffer(this.drawingField.screenBuffer);
-            }
+            //const clickedIndex:number = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
 
+        });
+        listener.registerCallBack("touchmove", e => true, e => {
+            if(e.moveCount == 1)
+            { 
+                const clickedSprite:number = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
+
+                this.dragSprite = this.animations.splice(clickedSprite, 1)[0];
+                this.dragSpritePos[0] = e.touchPos[0] - this.spriteWidth / 2;
+                this.dragSpritePos[1] = e.touchPos[1] - this.spriteWidth / 2;
+            }
+            else if(e.moveCount > 1)
+            {
+                this.dragSpritePos[0] += e.deltaX;
+                this.dragSpritePos[1] += e.deltaY;
+            }
+        });
+        listener.registerCallBack("touchend", e => true, e => {
+            const clickedSprite:number = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
+
+            if(clickedSprite >= 0)
+            {
+                if(this.dragSprite !== null)
+                    this.animations.splice(clickedSprite, 0, this.dragSprite);
+            }
+            this.dragSprite = null;
+            this.dragSpritePos[0] = -1;
+            this.dragSpritePos[1] = -1;
+            if(clickedSprite < this.animations.length && this.spriteSelector.sprites())
+            {
+                this.selectedAnimation = clickedSprite;
+                this.spriteSelector.sprites()[0].copyToBuffer(this.drawingField.screenBuffer);
+            }
         });
         this.buildAnimationHTML();
     }
@@ -2172,6 +2210,8 @@ class AnimationGroup {
             ctx.lineWidth = 3;
             ctx.strokeRect(1 + this.selectedAnimationX(), 1 + this.selectedAnimationY(), this.spriteWidth - 2, this.spriteHeight - 2);
         }
+        if(this.dragSprite)
+            this.dragSprite.draw(ctx, this.dragSpritePos[0], this.dragSpritePos[1], this.spriteWidth, this.spriteHeight);
     }
 };
 async function fetchImage(url:string):Promise<HTMLImageElement>
