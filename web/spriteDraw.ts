@@ -2006,12 +2006,12 @@ class AnimationGroup {
     spriteSelector:SpriteSelector;
     keyboardHandler:KeyboardHandler;
     animationsPerRow:number;
-    spriteWidth:number;
-    spriteHeight:number;
+    animationWidth:number;
+    animationHeight:number;
     dragSprite:SpriteAnimation;
     dragSpritePos:number[];
     listener:SingleTouchListener;
-    constructor(drawingField:DrawingScreen, keyboardHandler:KeyboardHandler, animiationsID:string, animiationsSpritesID:string, spritesPerRow:number = 10, spriteWidth:number = 64, spriteHeight:number = 64, animationsPerRow:number = 5)
+    constructor(drawingField:DrawingScreen, keyboardHandler:KeyboardHandler, animiationsID:string, animiationsSpritesID:string, spritesPerRow:number = 10, spriteWidth:number = 64, spriteHeight:number = 64, animationWidth:number = 128, animationHeight:number = 128, animationsPerRow:number = 5)
     {
         this.drawingField = drawingField;
         this.keyboardHandler = keyboardHandler;
@@ -2021,8 +2021,8 @@ class AnimationGroup {
         this.animationCanvas = <HTMLCanvasElement> document.getElementById("animations");
         this.selectedAnimation = 0;
         this.animationsPerRow = animationsPerRow;
-        this.spriteWidth = spriteWidth;
-        this.spriteHeight = spriteHeight;
+        this.animationWidth = animationWidth;
+        this.animationHeight = animationHeight;
         this.dragSpritePos = [0, 0];
         this.spriteSelector = new SpriteSelector(document.getElementById("sprites-canvas"), this.drawingField, this, keyboardHandler, spritesPerRow, spriteWidth, spriteHeight);
         this.dragSprite = null;
@@ -2038,8 +2038,8 @@ class AnimationGroup {
                 const clickedSprite:number = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
 
                 this.dragSprite = this.animations.splice(clickedSprite, 1)[0];
-                this.dragSpritePos[0] = e.touchPos[0] - this.spriteWidth / 2;
-                this.dragSpritePos[1] = e.touchPos[1] - this.spriteWidth / 2;
+                this.dragSpritePos[0] = e.touchPos[0] - this.animationWidth / 2;
+                this.dragSpritePos[1] = e.touchPos[1] - this.animationWidth / 2;
             }
             else if(e.moveCount > 1)
             {
@@ -2089,7 +2089,7 @@ class AnimationGroup {
     {
         if(index >= 0 && index < this.animations.length)
         {
-            const cloned:SpriteAnimation = new SpriteAnimation(0, 0, this.spriteWidth, this.spriteHeight);
+            const cloned:SpriteAnimation = new SpriteAnimation(0, 0, this.animationWidth, this.animationHeight);
             const original:SpriteAnimation = this.animations[index];
             original.sprites.forEach(sprite => {
                 const clonedSprite:Sprite = new Sprite([], sprite.width, sprite.height);
@@ -2125,7 +2125,7 @@ class AnimationGroup {
     }
     maxAnimationsOnCanvas():number
     {
-        return Math.floor(this.animationCanvas.height / this.spriteHeight) * this.animationsPerRow;
+        return Math.floor(this.animationCanvas.height / this.animationHeight) * this.animationsPerRow;
     }
     neededRowsInCanvas():number
     {
@@ -2133,14 +2133,14 @@ class AnimationGroup {
     }
     buildAnimationHTML()
     {
-        this.animationCanvas.width = this.spriteWidth * this.animationsPerRow;
+        this.animationCanvas.width = this.animationWidth * this.animationsPerRow;
         if(this.maxAnimationsOnCanvas() < this.animations.length)
         {
-            this.animationCanvas.height += this.spriteHeight;
+            this.animationCanvas.height += this.animationHeight;
         }
         else if(this.maxAnimationsOnCanvas() / this.animationsPerRow > this.neededRowsInCanvas())
         {
-            this.animationCanvas.height = this.neededRowsInCanvas() * this.spriteHeight;
+            this.animationCanvas.height = this.neededRowsInCanvas() * this.animationHeight;
         }
     }
     binaryFileSize():number
@@ -2210,11 +2210,11 @@ class AnimationGroup {
     }
     selectedAnimationX():number
     {
-        return (this.selectedAnimation % this.animationsPerRow) * this.spriteWidth;
+        return (this.selectedAnimation % this.animationsPerRow) * this.animationWidth;
     }
     selectedAnimationY():number
     {
-        return Math.floor(this.selectedAnimation / this.animationsPerRow) * this.spriteHeight;
+        return Math.floor(this.selectedAnimation / this.animationsPerRow) * this.animationHeight;
     }
     draw()
     {
@@ -2223,7 +2223,7 @@ class AnimationGroup {
         ctx.fillRect(0, 0, this.animationCanvas.width, this.animationCanvas.height);
         let dragSpriteAdjustment:number = 0;
         const touchX:number = Math.floor(this.listener.touchPos[0] / this.animationCanvas.width * this.animationsPerRow);
-        const touchY:number = Math.floor((this.listener.touchPos[1]) / this.animationCanvas.height * Math.floor(this.animationCanvas.height / this.spriteHeight));
+        const touchY:number = Math.floor((this.listener.touchPos[1]) / this.animationCanvas.height * Math.floor(this.animationCanvas.height / this.animationHeight));
         
         for(let i = 0; i < this.animations.length; i++)
         {
@@ -2235,7 +2235,7 @@ class AnimationGroup {
                 x = (dragSpriteAdjustment) % this.animationsPerRow;
                 y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
             }
-            this.animations[i].draw(ctx, x*this.spriteWidth, y*this.spriteHeight, this.spriteWidth, this.spriteHeight);
+            this.animations[i].draw(ctx, x*this.animationWidth, y*this.animationHeight, this.animationWidth, this.animationHeight);
             dragSpriteAdjustment++;
         }
         if(this.animations.length){
@@ -2243,10 +2243,10 @@ class AnimationGroup {
             this.spriteSelector.draw();
             ctx.strokeStyle = "#000000";
             ctx.lineWidth = 3;
-            ctx.strokeRect(1 + this.selectedAnimationX(), 1 + this.selectedAnimationY(), this.spriteWidth - 2, this.spriteHeight - 2);
+            ctx.strokeRect(1 + this.selectedAnimationX(), 1 + this.selectedAnimationY(), this.animationWidth - 2, this.animationHeight - 2);
         }
         if(this.dragSprite)
-            this.dragSprite.draw(ctx, this.dragSpritePos[0], this.dragSpritePos[1], this.spriteWidth, this.spriteHeight);
+            this.dragSprite.draw(ctx, this.dragSpritePos[0], this.dragSpritePos[1], this.animationWidth, this.animationHeight);
     }
 };
 async function fetchImage(url:string):Promise<HTMLImageElement>
