@@ -1,5 +1,6 @@
 # SpriteDraw
 A small animation creation tool that allows users to do pixel art, and make animations from that pixel art.
+You can try it out: <a href="http://andrew-rubinstein.com/SpriteDraw/web">Here!</a>
 <br>
 <h2>Animations</h2>
 Animations are groups of sprites(small images, for more see below) that make up a single small flip book of sprites, or frames.<br>
