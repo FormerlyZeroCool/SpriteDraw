@@ -2010,6 +2010,7 @@ class AnimationGroup {
     spriteHeight:number;
     dragSprite:SpriteAnimation;
     dragSpritePos:number[];
+    listener:SingleTouchListener;
     constructor(drawingField:DrawingScreen, keyboardHandler:KeyboardHandler, animiationsID:string, animiationsSpritesID:string, spritesPerRow:number = 10, spriteWidth:number = 64, spriteHeight:number = 64, animationsPerRow:number = 5)
     {
         this.drawingField = drawingField;
@@ -2026,6 +2027,7 @@ class AnimationGroup {
         this.spriteSelector = new SpriteSelector(document.getElementById("sprites-canvas"), this.drawingField, this, keyboardHandler, spritesPerRow, spriteWidth, spriteHeight);
         this.dragSprite = null;
         const listener:SingleTouchListener = new SingleTouchListener(this.animationCanvas, false, true);
+        this.listener = listener;
         listener.registerCallBack("touchstart", e => true, e => {
             //const clickedIndex:number = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
 
@@ -2192,16 +2194,22 @@ class AnimationGroup {
         const ctx:CanvasRenderingContext2D = this.animationCanvas.getContext("2d");
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, this.animationCanvas.width, this.animationCanvas.height);
-        const xLimit:number = this.animationsPerRow;
-        const yLimit:number = this.neededRowsInCanvas();
-        for(let y = 0; y < yLimit-1; y++)
-        for(let x = 0; x < xLimit; x++)
+        let dragSpriteAdjustment:number = 0;
+        const touchX:number = Math.floor(this.listener.touchPos[0] / this.animationCanvas.width * this.animationsPerRow);
+        const touchY:number = Math.floor((this.listener.touchPos[1]) / this.animationCanvas.height * Math.floor(this.animationCanvas.height / this.spriteHeight));
+        
+        for(let i = 0; i < this.animations.length; i++)
         {
-            this.animations[x + y * this.animationsPerRow].draw(ctx, x*this.spriteWidth, y*this.spriteHeight, this.spriteWidth, this.spriteHeight);
-        }
-        for(let x = 0; x < this.animations.length % this.animationsPerRow; x++)
-        {
-            this.animations[x + (yLimit - 1) * this.animationsPerRow].draw(ctx, x*this.spriteWidth, (yLimit - 1)*this.spriteHeight, this.spriteWidth, this.spriteHeight);
+            let x:number = (dragSpriteAdjustment) % this.animationsPerRow;
+            let y:number = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
+            if(this.dragSprite && x == touchX && y == touchY)
+            {
+                dragSpriteAdjustment++;
+                x = (dragSpriteAdjustment) % this.animationsPerRow;
+                y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
+            }
+            this.animations[i].draw(ctx, x*this.spriteWidth, y*this.spriteHeight, this.spriteWidth, this.spriteHeight);
+            dragSpriteAdjustment++;
         }
         if(this.animations.length){
             this.spriteSelector.update();
