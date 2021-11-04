@@ -5,6 +5,8 @@ You can try it out: <a href="http://andrew-rubinstein.com/SpriteDraw/web">Here!<
 <h2>Animations</h2>
 Animations are groups of sprites(small images, for more see below) that make up a single small flip book of sprites, or frames.<br>
 You can add new animations at any time by pressing the "Add Animation" button, or when you haven't created one yet by pressing the "Add Sprite" button.<br>
+You can delete an existing animation by selecting the animation you want to delete by left clicking on it, and then pressing the "Delete Animation" button.<br>
+You can clone, or copy an existing animation by left clicking the animation you wish to clone to select it, and then clicking the "Clone Animation" button<br>
 both will take the contents of the drawing screen, and save them to a new sprite, and save that sprite within a new animation.<br>
 You can switch between animations by clicking on them, and the animation's sprites will show up in the sprite selector so you can update, or add to them.<br>
 You can also drag and drop animations to rearrange the order they are dislayed<br>
