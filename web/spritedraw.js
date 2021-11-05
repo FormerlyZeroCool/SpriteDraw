@@ -1657,22 +1657,28 @@ class AnimationGroup {
             }
             if (clickedSprite < this.animations.length && this.spriteSelector.sprites()) {
                 this.selectedAnimation = clickedSprite;
-                this.spriteSelector.sprites()[0].copyToBuffer(this.drawingField.screenBuffer);
+                if (this.spriteSelector.sprites().length)
+                    this.spriteSelector.sprites()[0].copyToBuffer(this.drawingField.screenBuffer);
             }
         });
-        this.buildAnimationHTML();
+        this.autoResizeCanvas();
     }
     pushAnimation(animation) {
         this.animations.push(animation);
+        //if this animation has no sprites in it 
+        //then push the current buffer in the drawing screen as new sprite to animation
         if (animation.sprites.length === 0)
-            this.pushSpriteToAnimation(this.animations[this.selectedAnimation]);
-        this.buildAnimationHTML();
+            this.pushDrawingScreenToAnimation(animation);
+        //resize canvas if necessary
+        this.autoResizeCanvas();
     }
     deleteAnimation(index) {
         if (index >= 0 && index < this.animations.length) {
             this.animations.splice(index, 1);
             if (this.selectedAnimation >= this.animations.length)
                 this.selectedAnimation--;
+            //resize canvas if necessary
+            this.autoResizeCanvas();
             return true;
         }
         return false;
@@ -1686,11 +1692,13 @@ class AnimationGroup {
                 clonedSprite.copySprite(sprite);
                 cloned.sprites.push(clonedSprite);
             });
+            //resize canvas if necessary
+            this.autoResizeCanvas();
             return cloned;
         }
         return null;
     }
-    pushSpriteToAnimation(animation) {
+    pushDrawingScreenToAnimation(animation) {
         const sprites = animation.sprites;
         this.spriteSelector.spritesCount = sprites.length;
         this.spriteSelector.selectedSprite = sprites.length - 1;
@@ -1714,7 +1722,7 @@ class AnimationGroup {
     neededRowsInCanvas() {
         return Math.floor(this.animations.length / this.animationsPerRow) + 1;
     }
-    buildAnimationHTML() {
+    autoResizeCanvas() {
         this.animationCanvas.width = this.animationWidth * this.animationsPerRow;
         if (this.maxAnimationsOnCanvas() < this.animations.length) {
             this.animationCanvas.height += this.animationHeight;

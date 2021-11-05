@@ -1998,7 +1998,7 @@ class SpriteSelector {
 };
 class AnimationGroup {
     drawingField:DrawingScreen;
-    animations:Array<SpriteAnimation>;
+    animations:SpriteAnimation[];
     animationDiv:any;
     animationSpritesDiv:any;
     animationCanvas:HTMLCanvasElement;
@@ -2062,17 +2062,21 @@ class AnimationGroup {
             if(clickedSprite < this.animations.length && this.spriteSelector.sprites())
             {
                 this.selectedAnimation = clickedSprite;
-                this.spriteSelector.sprites()[0].copyToBuffer(this.drawingField.screenBuffer);
+                if(this.spriteSelector.sprites().length)
+                    this.spriteSelector.sprites()[0].copyToBuffer(this.drawingField.screenBuffer);
             }
         });
-        this.buildAnimationHTML();
+        this.autoResizeCanvas();
     }
-    pushAnimation(animation:SpriteAnimation)
+    pushAnimation(animation:SpriteAnimation):void
     {
         this.animations.push(animation);
+        //if this animation has no sprites in it 
+        //then push the current buffer in the drawing screen as new sprite to animation
         if(animation.sprites.length === 0)
-            this.pushSpriteToAnimation(this.animations[this.selectedAnimation]);
-        this.buildAnimationHTML();
+            this.pushDrawingScreenToAnimation(animation);
+        //resize canvas if necessary
+        this.autoResizeCanvas();
     }
     deleteAnimation(index:number):boolean
     {
@@ -2081,6 +2085,9 @@ class AnimationGroup {
             this.animations.splice(index, 1);
             if(this.selectedAnimation >= this.animations.length)
                 this.selectedAnimation--;
+            
+            //resize canvas if necessary
+            this.autoResizeCanvas();
             return true;
         }
         return false;
@@ -2097,11 +2104,13 @@ class AnimationGroup {
                 cloned.sprites.push(clonedSprite);
             });
 
+            //resize canvas if necessary
+            this.autoResizeCanvas();
             return cloned;
         }
         return null;
     }
-    pushSpriteToAnimation(animation:SpriteAnimation)
+    pushDrawingScreenToAnimation(animation:SpriteAnimation):void
     {
         const sprites:Array<Sprite> = animation.sprites;
         this.spriteSelector.spritesCount = sprites.length;
@@ -2117,7 +2126,7 @@ class AnimationGroup {
         }
         else
         { 
-            const sprites:Array<Sprite> = this.animations[this.selectedAnimation].sprites;
+            const sprites:Sprite[] = this.animations[this.selectedAnimation].sprites;
             this.spriteSelector.selectedSprite = sprites.length - 1;
             sprites.push(new Sprite(this.drawingField.screenBuffer, this.drawingField.dimensions.first, this.drawingField.dimensions.second));
             this.spriteSelector.loadSprite();
@@ -2131,7 +2140,7 @@ class AnimationGroup {
     {
         return Math.floor(this.animations.length / this.animationsPerRow) + 1;
     }
-    buildAnimationHTML()
+    autoResizeCanvas()
     {
         this.animationCanvas.width = this.animationWidth * this.animationsPerRow;
         if(this.maxAnimationsOnCanvas() < this.animations.length)
