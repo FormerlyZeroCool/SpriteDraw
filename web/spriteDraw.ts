@@ -494,7 +494,9 @@ class DrawingScreen {
     offset:Pair<number>;
     bounds:Pair<number>;
     dimensions:Pair<number>;
-    canvas:any;
+    canvas:HTMLCanvasElement;
+    offScreenBufferSprite:Sprite;
+    dragDataBufferSprite:Sprite;
     screenBuffer:Array<RGB>;
     screenLastBuffer:Array<RGB>;
     clipBoard:ClipBoard;
@@ -506,7 +508,6 @@ class DrawingScreen {
     updatesStack:Array<Array<Pair<number,RGB>>>;
     undoneUpdatesStack:Array<Array<Pair<number,RGB>>>;
     toolSelector:ToolSelector;
-    //[{x:float,y:float,color:int32}]
     dragData:Pair<Pair<number>, number[] >;
     dragDataMaxPoint:number;
     dragDataMinPoint:number;
@@ -522,10 +523,8 @@ class DrawingScreen {
         this.canvas = canvas;
         this.dragData = null;
         this.lineWidth = dimensions[0] / bounds[0] * 4;
-        this.canvas.offScreenCanvas = document.createElement('canvas');
-        this.canvas.offScreenCanvas.width = this.canvas.width;
-        this.canvas.offScreenCanvas.height = this.canvas.height;
-        this.canvas.offScreenCanvas.ctx = this.canvas.offScreenCanvas.getContext("2d");
+        this.offScreenBufferSprite = new Sprite([], this.canvas.width, this.canvas.height, false);
+        this.dragDataBufferSprite = new Sprite([], canvas.width, canvas.height, false);
         this.keyboardHandler = keyboardHandler;
         this.toolSelector = new ToolSelector(keyboardHandler);
         this.updatesStack = new Array<Array<Pair<number,RGB>>>();
@@ -819,7 +818,7 @@ class DrawingScreen {
     async fillArea(startCoordinate:Pair<number>)
     {
         const altHeld:boolean = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
-        const stack:Queue<number> = new Queue<number>(1024);
+        const stack:number[] = [];
         let checkedMap:any = {};
         checkedMap = {};
         const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
@@ -1164,10 +1163,13 @@ class DrawingScreen {
             {
                 const x:number = Math.floor(dragDataColors[i + 0] + this.dragData.first.first);
                 const y:number = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
-                const key:number = x + y * this.dimensions.first;
+                let key:number = (x + y * this.dimensions.first) % (this.dimensions.first * this.dimensions.second);
+                if(key < 0)
+                    key += this.dimensions.first * this.dimensions.second;
                 color.color = dragDataColors[i + 8];
                 this.updatesStack[this.updatesStack.length-1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
                 this.screenBuffer[key].blendAlphaCopy(color);
+                
             }
         }
     }
@@ -1246,39 +1248,36 @@ class DrawingScreen {
         const ctx:any = this.canvas.getContext("2d");
         const cellHeight:number = (this.bounds.second / this.dimensions.second);
         const cellWidth:number = (this.bounds.first / this.dimensions.first);
-
+        const white:RGB = new RGB(255,255,255);
         for(let y = 0; y < this.dimensions.second; y++)
         {
             for(let x = 0; x < this.dimensions.first; x++)
             {
                 const sy:number = (this.offset.second + y * cellHeight);
                 const sx:number = (this.offset.first + x * cellWidth);
-                
                 if(this.screenLastBuffer[x + y*this.dimensions.first].color != this.screenBuffer[x + y*this.dimensions.first].color)
                 {
-                    this.canvas.offScreenCanvas.ctx.fillStyle = "#FFFFFF";
-                    this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
-                    this.canvas.offScreenCanvas.ctx.fillStyle = this.screenBuffer[x + y*this.dimensions.first].htmlRBGA();
-                    this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
+                    this.offScreenBufferSprite.fillRect(white, sx, sy, cellWidth, cellHeight);
+                    this.offScreenBufferSprite.fillRect(this.screenBuffer[x + y*this.dimensions.first], sx, sy, cellWidth, cellHeight);
                     this.screenLastBuffer[x + y*this.dimensions.first].color = this.screenBuffer[x + y*this.dimensions.first].color;
                 }
                 
             }
         }
+        this.offScreenBufferSprite.putPixels(ctx);
         const reassignableColor:RGB = new RGB(0,0,0,0);
-        ctx.drawImage(this.canvas.offScreenCanvas, 0, 0);
         if(this.dragData)
         {
             const offset = (Math.floor(this.dragData.first.first) + Math.floor(this.dragData.first.second) * this.dimensions.first);
             const dragDataColors:number[] = this.dragData.second;
+            this.dragDataBufferSprite.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
             for(let i:number = 0; i < this.dragData.second.length; i += 9){
-
                 const sx:number = (dragDataColors[i] + this.dragData.first.first) * cellWidth;
                 const sy:number = (dragDataColors[i+1] + this.dragData.first.second) * cellHeight;
                 reassignableColor.color = dragDataColors[i + 8];
-                ctx.fillStyle = reassignableColor.htmlRBGA();
-                ctx.fillRect(sx, sy, cellWidth, cellHeight);
+                this.dragDataBufferSprite.fillRect(reassignableColor, sx, sy, cellWidth, cellHeight);
             };
+            this.dragDataBufferSprite.putPixels(ctx);
         }
         if(this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line")
         {
@@ -1701,10 +1700,12 @@ class Pallette {
 class Sprite {
     pixels:Uint8ClampedArray;
     image:HTMLImageElement;
+    fillBackground:boolean;
     width:number;
     height:number;
-    constructor(pixels:Array<RGB>, width:number, height:number)
+    constructor(pixels:Array<RGB>, width:number, height:number, fillBackground:boolean = true)
     {
+        this.fillBackground = fillBackground;
         this.copy(pixels, width, height);
     }
     copy(pixels:Array<RGB>, width:number, height:number):void
@@ -1723,6 +1724,28 @@ class Sprite {
             this.pixels[(i<<2)+3] = pixels[i].alpha();
         }
         this.refreshImage();
+    }
+    putPixels(ctx:CanvasRenderingContext2D):void
+    {
+        const idata = ctx.createImageData(this.width, this.height);
+        idata.data.set(this.pixels);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, this.width, this.height);
+        ctx.putImageData(idata, 0, 0);
+    }
+    fillRect(color:RGB, x:number, y:number, width:number, height:number)
+    {
+        for(let xi = x; xi < x+width; xi++)
+        {
+            for(let yi = y; yi < y+height; yi++)
+            {
+                const index:number = (xi<<2) + (yi*this.width<<2);
+                this.pixels[index] = color.red();
+                this.pixels[index + 1] = color.green();
+                this.pixels[index + 2] = color.blue();
+                this.pixels[index + 3] = color.alpha();
+            }
+        }
     }
     copyToBuffer(buf:Array<RGB>)
     {
@@ -1785,8 +1808,10 @@ class Sprite {
     draw(ctx, x:number, y:number, width:number, height:number):void
     {
         if(this.pixels){ 
-            ctx.fillStyle = "#FFFFFF";
-            ctx.fillRect(x, y, width, height);
+            if(this.fillBackground){
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(x, y, width, height);
+            }
             ctx.drawImage(this.image, x, y, width, height);
         }
     }
@@ -1854,7 +1879,6 @@ class SpriteSelector {
     constructor(canvas, drawingField:DrawingScreen, animationGroup:AnimationGroup, keyboardHandler:KeyboardHandler, spritesPerRow:number, width:number, height:number)
     {
         this.canvas = canvas;
-        //this.canvas.width = width * spritesPerRow;
         this.ctx = this.canvas.getContext("2d");
         this.ctx.strokeStyle = "#000000";
         this.ctx.lineWidth = 2;
@@ -1910,7 +1934,7 @@ class SpriteSelector {
                 this.dragSpriteLocation[0] = -1;
                 this.dragSpriteLocation[1] = -1;
             }
-            if(clickedSprite < this.sprites().length)
+            if(clickedSprite >= 0 && clickedSprite < this.sprites().length)
             {
                 this.selectedSprite = clickedSprite;
                 this.sprites()[clickedSprite].copyToBuffer(this.drawingField.screenBuffer);
@@ -2011,20 +2035,19 @@ class AnimationGroup {
     dragSprite:SpriteAnimation;
     dragSpritePos:number[];
     listener:SingleTouchListener;
-    constructor(drawingField:DrawingScreen, keyboardHandler:KeyboardHandler, animiationsID:string, animiationsSpritesID:string, spritesPerRow:number = 10, spriteWidth:number = 64, spriteHeight:number = 64, animationWidth:number = 128, animationHeight:number = 128, animationsPerRow:number = 5)
+    constructor(drawingField:DrawingScreen, keyboardHandler:KeyboardHandler, animiationsID:string, animationsSpritesID:string, spritesPerRow:number = 10, spriteWidth:number = 64, spriteHeight:number = 64, animationWidth:number = 128, animationHeight:number = 128, animationsPerRow:number = 5)
     {
         this.drawingField = drawingField;
         this.keyboardHandler = keyboardHandler;
         this.animationDiv = document.getElementById(animiationsID);
-        this.animationSpritesDiv = document.getElementById(animiationsSpritesID);
         this.animations = new Array<SpriteAnimation>();
-        this.animationCanvas = <HTMLCanvasElement> document.getElementById("animations");
+        this.animationCanvas = <HTMLCanvasElement> document.getElementById(animiationsID);
         this.selectedAnimation = 0;
         this.animationsPerRow = animationsPerRow;
         this.animationWidth = animationWidth;
         this.animationHeight = animationHeight;
         this.dragSpritePos = [0, 0];
-        this.spriteSelector = new SpriteSelector(document.getElementById("sprites-canvas"), this.drawingField, this, keyboardHandler, spritesPerRow, spriteWidth, spriteHeight);
+        this.spriteSelector = new SpriteSelector(document.getElementById(animationsSpritesID), this.drawingField, this, keyboardHandler, spritesPerRow, spriteWidth, spriteHeight);
         this.dragSprite = null;
         const listener:SingleTouchListener = new SingleTouchListener(this.animationCanvas, false, true);
         this.listener = listener;
@@ -2258,6 +2281,67 @@ class AnimationGroup {
             this.dragSprite.draw(ctx, this.dragSpritePos[0], this.dragSpritePos[1], this.animationWidth, this.animationHeight);
     }
 };
+class AnimationGroupsSelector {
+    selectedAnimationGroup:number;
+    //group, then index of current sprite, and animation to draw in each group
+    animationGroups:Pair<AnimationGroup, number>[];
+    canvas:HTMLCanvasElement;
+
+    animationsCanvasId:string;
+    spritesCanvasId:string;
+
+    constructor(field:DrawingScreen, keyboardHandler:KeyboardHandler,animationGroupSelectorId:string, animationsCanvasId:string, spritesCanvasId:string, spriteWidth:number, spriteHeight:number, renderWidth:number, renderHeight:number)
+    {
+        this.animationGroups = [];
+        this.canvas = <HTMLCanvasElement> document.getElementById(animationGroupSelectorId);
+        this.animationsCanvasId = animationsCanvasId;
+        this.spritesCanvasId = spritesCanvasId;
+        this.animationGroups.push(new Pair(new AnimationGroup(field, keyboardHandler, animationsCanvasId, spritesCanvasId, 5, spriteWidth, spriteHeight), 0));
+        
+    }
+    animationGroup():AnimationGroup
+    {
+        if(this.selectedAnimationGroup >= 0 && this.selectedAnimationGroup < this.animationGroups.length)
+        {
+            return this.animationGroups[this.selectedAnimationGroup].first;
+        }
+        return null;
+    }
+    pushAnimationToSelected(animation:SpriteAnimation):void
+    {
+        this.animationGroup().pushAnimation(animation);
+    }
+    inSelectedAnimationBounds(animationIndex:number):boolean
+    {
+        return (animationIndex >= 0 && animationIndex < this.animationGroup().animations.length)
+    }
+    cloneAnimationFromSelected(animationIndex:number):void
+    {
+        this.animationGroup().cloneAnimation(animationIndex);
+    }
+    deleteAnimationFromSelected(animationIndex:number):void
+    {
+        this.animationGroup().deleteAnimation(animationIndex);
+    }
+    pushSpriteToSelected():void
+    {
+        this.animationGroup().pushSprite();
+    }
+    pushSelectedSpriteToCanvas():void
+    {
+        this.animationGroup().spriteSelector.pushSelectedToCanvas();
+    }
+    deleteSelectedSprite():void
+    {
+        this.animationGroup().spriteSelector.deleteSelectedSprite();
+    }
+
+    draw():void
+    {
+        this.animationGroup().draw();
+    }
+    
+};
 async function fetchImage(url:string):Promise<HTMLImageElement>
 {
     const img = new Image();
@@ -2280,8 +2364,18 @@ async function main()
     const newColor:HTMLInputElement = <HTMLInputElement> document.getElementById("newColor");
     const keyboardHandler:KeyboardHandler = new KeyboardHandler();
     const field:DrawingScreen = new DrawingScreen(document.getElementById("screen"), keyboardHandler,[0,0], dim, newColor);
-
-
+    
+    const imageData:ImageData = (<HTMLCanvasElement> field.canvas).getContext("2d").getImageData(0, 0, field.canvas.width, field.canvas.height);
+    const sprite:Sprite = new Sprite([], imageData.width, imageData.height, true);
+    
+    const start:number = Date.now();
+    const c:RGB = new RGB(23,43,65);
+    for(let i = 0; i < sprite.height*sprite.width; i++)
+    {
+        sprite.fillRect(c, i%sprite.width, Math.floor(i/sprite.width), 1, 1);
+    }
+    console.log("Frame time: ",Date.now() - start);
+    
     const pallette:Pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler, newColor);
     const setPalletteColorButton = document.getElementById("setPalletteColorButton");
     const palletteColorButtonListener:SingleTouchListener = new SingleTouchListener(setPalletteColorButton, true, true);
@@ -2292,7 +2386,7 @@ async function main()
     pallette.canvas.addEventListener("mouseup", e => { field.color = pallette.calcColor() });
     pallette.listeners.registerCallBack("touchend", e => true,  e => { field.color = pallette.calcColor(); })
     
-    const animations:AnimationGroup = new AnimationGroup(field, keyboardHandler, "animations", "sprites", 5, dim[0], dim[1]);
+    const animations:AnimationGroup = new AnimationGroup(field, keyboardHandler, "animations", "sprites_canvas", 5, dim[0], dim[1]);
 
     const add_animationButton = document.getElementById("add_animation");
     const add_animationTouchListener:SingleTouchListener = new SingleTouchListener(add_animationButton, false, true);
@@ -2354,7 +2448,8 @@ async function main()
             animations.draw();
         const adjustment:number = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
-        //console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
+        if(1000/(Date.now() - start) < 20)
+        console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
     }
 }
 main();

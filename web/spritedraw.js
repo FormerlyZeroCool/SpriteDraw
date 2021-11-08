@@ -403,10 +403,8 @@ class DrawingScreen {
         this.canvas = canvas;
         this.dragData = null;
         this.lineWidth = dimensions[0] / bounds[0] * 4;
-        this.canvas.offScreenCanvas = document.createElement('canvas');
-        this.canvas.offScreenCanvas.width = this.canvas.width;
-        this.canvas.offScreenCanvas.height = this.canvas.height;
-        this.canvas.offScreenCanvas.ctx = this.canvas.offScreenCanvas.getContext("2d");
+        this.offScreenBufferSprite = new Sprite([], this.canvas.width, this.canvas.height, false);
+        this.dragDataBufferSprite = new Sprite([], canvas.width, canvas.height, false);
         this.keyboardHandler = keyboardHandler;
         this.toolSelector = new ToolSelector(keyboardHandler);
         this.updatesStack = new Array();
@@ -664,7 +662,7 @@ class DrawingScreen {
     }
     async fillArea(startCoordinate) {
         const altHeld = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
-        const stack = new Queue(1024);
+        const stack = [];
         let checkedMap = {};
         checkedMap = {};
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
@@ -961,7 +959,9 @@ class DrawingScreen {
             for (let i = 0; i < this.dragData.second.length; i += 9) {
                 const x = Math.floor(dragDataColors[i + 0] + this.dragData.first.first);
                 const y = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
-                const key = x + y * this.dimensions.first;
+                let key = (x + y * this.dimensions.first) % (this.dimensions.first * this.dimensions.second);
+                if (key < 0)
+                    key += this.dimensions.first * this.dimensions.second;
                 color.color = dragDataColors[i + 8];
                 this.updatesStack[this.updatesStack.length - 1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
                 this.screenBuffer[key].blendAlphaCopy(color);
@@ -1031,32 +1031,32 @@ class DrawingScreen {
         const ctx = this.canvas.getContext("2d");
         const cellHeight = (this.bounds.second / this.dimensions.second);
         const cellWidth = (this.bounds.first / this.dimensions.first);
+        const white = new RGB(255, 255, 255);
         for (let y = 0; y < this.dimensions.second; y++) {
             for (let x = 0; x < this.dimensions.first; x++) {
                 const sy = (this.offset.second + y * cellHeight);
                 const sx = (this.offset.first + x * cellWidth);
                 if (this.screenLastBuffer[x + y * this.dimensions.first].color != this.screenBuffer[x + y * this.dimensions.first].color) {
-                    this.canvas.offScreenCanvas.ctx.fillStyle = "#FFFFFF";
-                    this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
-                    this.canvas.offScreenCanvas.ctx.fillStyle = this.screenBuffer[x + y * this.dimensions.first].htmlRBGA();
-                    this.canvas.offScreenCanvas.ctx.fillRect(sx, sy, cellWidth, cellHeight);
+                    this.offScreenBufferSprite.fillRect(white, sx, sy, cellWidth, cellHeight);
+                    this.offScreenBufferSprite.fillRect(this.screenBuffer[x + y * this.dimensions.first], sx, sy, cellWidth, cellHeight);
                     this.screenLastBuffer[x + y * this.dimensions.first].color = this.screenBuffer[x + y * this.dimensions.first].color;
                 }
             }
         }
+        this.offScreenBufferSprite.putPixels(ctx);
         const reassignableColor = new RGB(0, 0, 0, 0);
-        ctx.drawImage(this.canvas.offScreenCanvas, 0, 0);
         if (this.dragData) {
             const offset = (Math.floor(this.dragData.first.first) + Math.floor(this.dragData.first.second) * this.dimensions.first);
             const dragDataColors = this.dragData.second;
+            this.dragDataBufferSprite.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
             for (let i = 0; i < this.dragData.second.length; i += 9) {
                 const sx = (dragDataColors[i] + this.dragData.first.first) * cellWidth;
                 const sy = (dragDataColors[i + 1] + this.dragData.first.second) * cellHeight;
                 reassignableColor.color = dragDataColors[i + 8];
-                ctx.fillStyle = reassignableColor.htmlRBGA();
-                ctx.fillRect(sx, sy, cellWidth, cellHeight);
+                this.dragDataBufferSprite.fillRect(reassignableColor, sx, sy, cellWidth, cellHeight);
             }
             ;
+            this.dragDataBufferSprite.putPixels(ctx);
         }
         if (this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line") {
             let touchStart = [this.listeners.touchStart["offsetX"], this.listeners.touchStart["offsetY"]];
@@ -1385,7 +1385,8 @@ class Pallette {
 }
 ;
 class Sprite {
-    constructor(pixels, width, height) {
+    constructor(pixels, width, height, fillBackground = true) {
+        this.fillBackground = fillBackground;
         this.copy(pixels, width, height);
     }
     copy(pixels, width, height) {
@@ -1401,6 +1402,24 @@ class Sprite {
             this.pixels[(i << 2) + 3] = pixels[i].alpha();
         }
         this.refreshImage();
+    }
+    putPixels(ctx) {
+        const idata = ctx.createImageData(this.width, this.height);
+        idata.data.set(this.pixels);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, this.width, this.height);
+        ctx.putImageData(idata, 0, 0);
+    }
+    fillRect(color, x, y, width, height) {
+        for (let xi = x; xi < x + width; xi++) {
+            for (let yi = y; yi < y + height; yi++) {
+                const index = (xi << 2) + (yi * this.width << 2);
+                this.pixels[index] = color.red();
+                this.pixels[index + 1] = color.green();
+                this.pixels[index + 2] = color.blue();
+                this.pixels[index + 3] = color.alpha();
+            }
+        }
     }
     copyToBuffer(buf) {
         for (let i = 0; i < buf.length; i++) {
@@ -1452,8 +1471,10 @@ class Sprite {
     }
     draw(ctx, x, y, width, height) {
         if (this.pixels) {
-            ctx.fillStyle = "#FFFFFF";
-            ctx.fillRect(x, y, width, height);
+            if (this.fillBackground) {
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(x, y, width, height);
+            }
             ctx.drawImage(this.image, x, y, width, height);
         }
     }
@@ -1496,7 +1517,6 @@ class SpriteAnimation {
 class SpriteSelector {
     constructor(canvas, drawingField, animationGroup, keyboardHandler, spritesPerRow, width, height) {
         this.canvas = canvas;
-        //this.canvas.width = width * spritesPerRow;
         this.ctx = this.canvas.getContext("2d");
         this.ctx.strokeStyle = "#000000";
         this.ctx.lineWidth = 2;
@@ -1544,7 +1564,7 @@ class SpriteSelector {
                 this.dragSpriteLocation[0] = -1;
                 this.dragSpriteLocation[1] = -1;
             }
-            if (clickedSprite < this.sprites().length) {
+            if (clickedSprite >= 0 && clickedSprite < this.sprites().length) {
                 this.selectedSprite = clickedSprite;
                 this.sprites()[clickedSprite].copyToBuffer(this.drawingField.screenBuffer);
             }
@@ -1615,19 +1635,18 @@ class SpriteSelector {
 }
 ;
 class AnimationGroup {
-    constructor(drawingField, keyboardHandler, animiationsID, animiationsSpritesID, spritesPerRow = 10, spriteWidth = 64, spriteHeight = 64, animationWidth = 128, animationHeight = 128, animationsPerRow = 5) {
+    constructor(drawingField, keyboardHandler, animiationsID, animationsSpritesID, spritesPerRow = 10, spriteWidth = 64, spriteHeight = 64, animationWidth = 128, animationHeight = 128, animationsPerRow = 5) {
         this.drawingField = drawingField;
         this.keyboardHandler = keyboardHandler;
         this.animationDiv = document.getElementById(animiationsID);
-        this.animationSpritesDiv = document.getElementById(animiationsSpritesID);
         this.animations = new Array();
-        this.animationCanvas = document.getElementById("animations");
+        this.animationCanvas = document.getElementById(animiationsID);
         this.selectedAnimation = 0;
         this.animationsPerRow = animationsPerRow;
         this.animationWidth = animationWidth;
         this.animationHeight = animationHeight;
         this.dragSpritePos = [0, 0];
-        this.spriteSelector = new SpriteSelector(document.getElementById("sprites-canvas"), this.drawingField, this, keyboardHandler, spritesPerRow, spriteWidth, spriteHeight);
+        this.spriteSelector = new SpriteSelector(document.getElementById(animationsSpritesID), this.drawingField, this, keyboardHandler, spritesPerRow, spriteWidth, spriteHeight);
         this.dragSprite = null;
         const listener = new SingleTouchListener(this.animationCanvas, false, true);
         this.listener = listener;
@@ -1824,6 +1843,46 @@ class AnimationGroup {
     }
 }
 ;
+class AnimationGroupsSelector {
+    constructor(field, keyboardHandler, animationGroupSelectorId, animationsCanvasId, spritesCanvasId, spriteWidth, spriteHeight, renderWidth, renderHeight) {
+        this.animationGroups = [];
+        this.canvas = document.getElementById(animationGroupSelectorId);
+        this.animationsCanvasId = animationsCanvasId;
+        this.spritesCanvasId = spritesCanvasId;
+        this.animationGroups.push(new Pair(new AnimationGroup(field, keyboardHandler, animationsCanvasId, spritesCanvasId, 5, spriteWidth, spriteHeight), 0));
+    }
+    animationGroup() {
+        if (this.selectedAnimationGroup >= 0 && this.selectedAnimationGroup < this.animationGroups.length) {
+            return this.animationGroups[this.selectedAnimationGroup].first;
+        }
+        return null;
+    }
+    pushAnimationToSelected(animation) {
+        this.animationGroup().pushAnimation(animation);
+    }
+    inSelectedAnimationBounds(animationIndex) {
+        return (animationIndex >= 0 && animationIndex < this.animationGroup().animations.length);
+    }
+    cloneAnimationFromSelected(animationIndex) {
+        this.animationGroup().cloneAnimation(animationIndex);
+    }
+    deleteAnimationFromSelected(animationIndex) {
+        this.animationGroup().deleteAnimation(animationIndex);
+    }
+    pushSpriteToSelected() {
+        this.animationGroup().pushSprite();
+    }
+    pushSelectedSpriteToCanvas() {
+        this.animationGroup().spriteSelector.pushSelectedToCanvas();
+    }
+    deleteSelectedSprite() {
+        this.animationGroup().spriteSelector.deleteSelectedSprite();
+    }
+    draw() {
+        this.animationGroup().draw();
+    }
+}
+;
 async function fetchImage(url) {
     const img = new Image();
     img.src = URL.createObjectURL(await (await fetch(url)).blob());
@@ -1842,6 +1901,14 @@ async function main() {
     const newColor = document.getElementById("newColor");
     const keyboardHandler = new KeyboardHandler();
     const field = new DrawingScreen(document.getElementById("screen"), keyboardHandler, [0, 0], dim, newColor);
+    const imageData = field.canvas.getContext("2d").getImageData(0, 0, field.canvas.width, field.canvas.height);
+    const sprite = new Sprite([], imageData.width, imageData.height, true);
+    const start = Date.now();
+    const c = new RGB(23, 43, 65);
+    for (let i = 0; i < sprite.height * sprite.width; i++) {
+        sprite.fillRect(c, i % sprite.width, Math.floor(i / sprite.width), 1, 1);
+    }
+    console.log("Frame time: ", Date.now() - start);
     const pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler, newColor);
     const setPalletteColorButton = document.getElementById("setPalletteColorButton");
     const palletteColorButtonListener = new SingleTouchListener(setPalletteColorButton, true, true);
@@ -1852,7 +1919,7 @@ async function main() {
     });
     pallette.canvas.addEventListener("mouseup", e => { field.color = pallette.calcColor(); });
     pallette.listeners.registerCallBack("touchend", e => true, e => { field.color = pallette.calcColor(); });
-    const animations = new AnimationGroup(field, keyboardHandler, "animations", "sprites", 5, dim[0], dim[1]);
+    const animations = new AnimationGroup(field, keyboardHandler, "animations", "sprites_canvas", 5, dim[0], dim[1]);
     const add_animationButton = document.getElementById("add_animation");
     const add_animationTouchListener = new SingleTouchListener(add_animationButton, false, true);
     add_animationTouchListener.registerCallBack("touchstart", e => true, e => {
@@ -1908,7 +1975,8 @@ async function main() {
             animations.draw();
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
-        //console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
+        if (1000 / (Date.now() - start) < 20)
+            console.log("Frame time: ", Date.now() - start, "avgfps:", 1000 / (Date.now() - start));
     }
 }
 main();
