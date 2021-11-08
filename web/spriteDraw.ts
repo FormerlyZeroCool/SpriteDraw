@@ -497,6 +497,7 @@ class DrawingScreen {
     canvas:HTMLCanvasElement;
     offScreenBufferSprite:Sprite;
     dragDataBufferSprite:Sprite;
+    spriteScreenBuf:Sprite;
     screenBuffer:Array<RGB>;
     screenLastBuffer:Array<RGB>;
     clipBoard:ClipBoard;
@@ -525,6 +526,7 @@ class DrawingScreen {
         this.lineWidth = dimensions[0] / bounds[0] * 4;
         this.offScreenBufferSprite = new Sprite([], this.canvas.width, this.canvas.height, false);
         this.dragDataBufferSprite = new Sprite([], canvas.width, canvas.height, false);
+        this.spriteScreenBuf = new Sprite([], this.offScreenBufferSprite.width, this.offScreenBufferSprite.height, false);
         this.keyboardHandler = keyboardHandler;
         this.toolSelector = new ToolSelector(keyboardHandler);
         this.updatesStack = new Array<Array<Pair<number,RGB>>>();
@@ -602,7 +604,7 @@ class DrawingScreen {
                 this.selectionRect = [e.touchPos[0], e.touchPos[1],0,0];
                 break;
                 case("paste"):                
-                this.pasteRect = [e.touchPos[0], e.touchPos[1],this.pasteRect[2],this.pasteRect[3]];
+                this.pasteRect = [e.touchPos[0] - this.pasteRect[2]/2, e.touchPos[1] - this.pasteRect[3]/2,this.pasteRect[2],this.pasteRect[3]];
                 break;
                 case("undo"):               
                 this.undoLast();
@@ -1246,6 +1248,8 @@ class DrawingScreen {
     {
         this.clipBoard.draw();
         const ctx:any = this.canvas.getContext("2d");
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         const cellHeight:number = (this.bounds.second / this.dimensions.second);
         const cellWidth:number = (this.bounds.first / this.dimensions.first);
         const white:RGB = new RGB(255,255,255);
@@ -1264,7 +1268,8 @@ class DrawingScreen {
                 
             }
         }
-        this.offScreenBufferSprite.putPixels(ctx);
+        const spriteScreenBuf:Sprite = this.spriteScreenBuf;
+        spriteScreenBuf.copySprite(this.offScreenBufferSprite);
         const reassignableColor:RGB = new RGB(0,0,0,0);
         if(this.dragData)
         {
@@ -1272,13 +1277,15 @@ class DrawingScreen {
             const dragDataColors:number[] = this.dragData.second;
             this.dragDataBufferSprite.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
             for(let i:number = 0; i < this.dragData.second.length; i += 9){
-                const sx:number = (dragDataColors[i] + this.dragData.first.first) * cellWidth;
-                const sy:number = (dragDataColors[i+1] + this.dragData.first.second) * cellHeight;
+                const sx:number = Math.floor((dragDataColors[i] + this.dragData.first.first) * cellWidth);
+                const sy:number = Math.floor((dragDataColors[i+1] + this.dragData.first.second) * cellHeight);
                 reassignableColor.color = dragDataColors[i + 8];
                 this.dragDataBufferSprite.fillRect(reassignableColor, sx, sy, cellWidth, cellHeight);
             };
-            this.dragDataBufferSprite.putPixels(ctx);
+            
+            spriteScreenBuf.copySpriteBlendAlpha(this.dragDataBufferSprite);
         }
+        spriteScreenBuf.putPixels(ctx);
         if(this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line")
         {
             let touchStart = [this.listeners.touchStart["offsetX"], this.listeners.touchStart["offsetY"]];
@@ -1729,12 +1736,12 @@ class Sprite {
     {
         const idata = ctx.createImageData(this.width, this.height);
         idata.data.set(this.pixels);
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, this.width, this.height);
         ctx.putImageData(idata, 0, 0);
     }
     fillRect(color:RGB, x:number, y:number, width:number, height:number)
     {
+        if((x < 0 || x >= this.width) || (y < 0 || y >= this.height))
+        return null;
         for(let xi = x; xi < x+width; xi++)
         {
             for(let yi = y; yi < y+height; yi++)
@@ -1793,7 +1800,7 @@ class Sprite {
         this.image = new Image();
         this.image.src = canvas.toDataURL();
     }
-    copySprite(sprite:Sprite)
+    copySprite(sprite:Sprite):void
     {
         if(this.pixels.length !== sprite.pixels.length)
             this.pixels = new Uint8ClampedArray(sprite.pixels.length);
@@ -1803,7 +1810,32 @@ class Sprite {
         {
             this.pixels[i] = sprite.pixels[i];
         }
-        this.refreshImage();
+    }
+    copySpriteBlendAlpha(sprite:Sprite):void
+    {
+        if(this.pixels.length !== sprite.pixels.length)
+            this.pixels = new Uint8ClampedArray(sprite.pixels.length);
+        this.width = sprite.width;
+        this.height = sprite.height;
+        const o:RGB = new RGB(0,0,0);
+        const t:RGB = new RGB(0,0,0);
+
+        for(let i = 0; i < this.pixels.length; i += 4)
+        {
+            o.setRed(sprite.pixels[i]);
+            o.setGreen(sprite.pixels[i+1]);
+            o.setBlue(sprite.pixels[i+2]);
+            o.setAlpha(sprite.pixels[i+3]);
+            t.setRed(this.pixels[i]);
+            t.setGreen(this.pixels[i+1]);
+            t.setBlue(this.pixels[i+2]);
+            t.setAlpha(this.pixels[i+3]);
+            t.blendAlphaCopy(o);
+            this.pixels[i] = t.red();
+            this.pixels[i+1] = t.green();
+            this.pixels[i+2] = t.blue();
+            this.pixels[i+3] = t.alpha();
+        }
     }
     draw(ctx, x:number, y:number, width:number, height:number):void
     {
