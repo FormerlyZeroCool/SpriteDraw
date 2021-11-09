@@ -1031,27 +1031,37 @@ class DrawingScreen {
         const white = new RGB(255, 255, 255);
         const spriteScreenBuf = this.spriteScreenBuf;
         spriteScreenBuf.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
-        for (let y = 0; y < this.dimensions.second; y++) {
-            for (let x = 0; x < this.dimensions.first; x++) {
-                const sy = y * cellHeight;
-                const sx = x * cellWidth;
-                spriteScreenBuf.fillRect(this.screenBuffer[x + y * this.dimensions.first], sx, sy, cellWidth, cellHeight);
+        if (this.dimensions.first == this.canvas.width && this.dimensions.second == this.canvas.height) {
+            for (let y = 0; y < this.dimensions.second; y++) {
+                for (let x = 0; x < this.dimensions.first; x++) {
+                    const index = x + y * this.dimensions.first;
+                    spriteScreenBuf.pixels[(index << 2)] = this.screenBuffer[index].red();
+                    spriteScreenBuf.pixels[(index << 2) + 1] = this.screenBuffer[index].green();
+                    spriteScreenBuf.pixels[(index << 2) + 2] = this.screenBuffer[index].blue();
+                    spriteScreenBuf.pixels[(index << 2) + 3] = this.screenBuffer[index].alpha();
+                }
             }
         }
-        const reassignableColor = new RGB(0, 0, 0, 0);
-        const reassignableColor1 = new RGB(0, 0, 0, 0);
+        else
+            for (let y = 0; y < this.dimensions.second; y++) {
+                for (let x = 0; x < this.dimensions.first; x++) {
+                    spriteScreenBuf.fillRect(this.screenBuffer[x + y * this.dimensions.first], x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+                }
+            }
         if (this.dragData) {
+            const source = new RGB(0, 0, 0, 0);
+            const toCopy = new RGB(0, 0, 0, 0);
             const dragDataColors = this.dragData.second;
             for (let i = 0; i < this.dragData.second.length; i += 9) {
-                const sx = Math.floor((dragDataColors[i] + this.dragData.first.first) * cellWidth);
                 const bx = Math.floor(dragDataColors[i] + this.dragData.first.first);
-                const sy = Math.floor((dragDataColors[i + 1] + this.dragData.first.second) * cellHeight);
+                const sx = Math.floor(bx * cellWidth);
                 const by = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
+                const sy = Math.floor(by * cellHeight);
                 if (this.screenBuffer[bx + by * this.dimensions.first]) {
-                    reassignableColor.color = this.screenBuffer[bx + by * this.dimensions.first].color;
-                    reassignableColor1.color = dragDataColors[i + 8];
-                    reassignableColor.blendAlphaCopy(reassignableColor1);
-                    spriteScreenBuf.fillRect(reassignableColor, sx, sy, cellWidth, cellHeight);
+                    source.color = this.screenBuffer[bx + by * this.dimensions.first].color;
+                    toCopy.color = dragDataColors[i + 8];
+                    source.blendAlphaCopy(toCopy);
+                    spriteScreenBuf.fillRect(source, sx, sy, cellWidth, cellHeight);
                 }
             }
             ;
@@ -1408,15 +1418,13 @@ class Sprite {
         ctx.putImageData(idata, 0, 0);
     }
     fillRect(color, x, y, width, height) {
-        if ((x < 0 || x >= this.width) || (y < 0 || y >= this.height))
-            return null;
         for (let xi = x; xi < x + width; xi++) {
             for (let yi = y; yi < y + height; yi++) {
-                const index = (xi << 2) + (yi * this.width << 2);
+                let index = (xi << 2) + (yi * this.width << 2);
                 this.pixels[index] = color.red();
-                this.pixels[index + 1] = color.green();
-                this.pixels[index + 2] = color.blue();
-                this.pixels[index + 3] = color.alpha();
+                this.pixels[++index] = color.green();
+                this.pixels[++index] = color.blue();
+                this.pixels[++index] = color.alpha();
             }
         }
     }
@@ -1563,6 +1571,7 @@ class SpriteSelector {
                 if (this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"]) {
                     const dragSprite = new Sprite([], 1, 1);
                     dragSprite.copySprite(this.sprites()[clickedSprite]);
+                    dragSprite.refreshImage();
                     this.dragSprite = dragSprite;
                 }
                 else
@@ -1730,6 +1739,7 @@ class AnimationGroup {
             original.sprites.forEach(sprite => {
                 const clonedSprite = new Sprite([], sprite.width, sprite.height);
                 clonedSprite.copySprite(sprite);
+                clonedSprite.refreshImage();
                 cloned.sprites.push(clonedSprite);
             });
             //resize canvas if necessary

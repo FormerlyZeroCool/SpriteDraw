@@ -2,7 +2,7 @@ function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
-const dim = [528,528];
+const dim = [128,128];
 function threeByThreeMat(a:number[], b:number[]):number[]
 {
     return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 
@@ -510,7 +510,6 @@ class DrawingScreen {
     dragDataMaxPoint:number;
     dragDataMinPoint:number;
     lineWidth:number;
-
 
     constructor(canvas:any, keyboardHandler:KeyboardHandler, offset:Array<number>, dimensions:Array<number>, newColorTextBox:HTMLInputElement)
     {
@@ -1246,25 +1245,39 @@ class DrawingScreen {
         const white:RGB = new RGB(255,255,255);
         const spriteScreenBuf:Sprite = this.spriteScreenBuf;
         spriteScreenBuf.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
-        for(let y = 0; y < this.dimensions.second; y++)
+        
+        if(this.dimensions.first == this.canvas.width && this.dimensions.second == this.canvas.height)
         {
-            for(let x = 0; x < this.dimensions.first; x++)
+            for(let y = 0; y < this.dimensions.second; y++)
             {
-                const sy:number = y * cellHeight;
-                const sx:number = x * cellWidth;
-                spriteScreenBuf.fillRect(this.screenBuffer[x + y*this.dimensions.first], sx, sy, cellWidth, cellHeight);   
+                for(let x = 0; x < this.dimensions.first; x++)
+                {
+                    const index:number = x + y*this.dimensions.first;
+                    spriteScreenBuf.pixels[(index<<2)] = this.screenBuffer[index].red();  
+                    spriteScreenBuf.pixels[(index<<2)+1] = this.screenBuffer[index].green();   
+                    spriteScreenBuf.pixels[(index<<2)+2] = this.screenBuffer[index].blue();   
+                    spriteScreenBuf.pixels[(index<<2)+3] = this.screenBuffer[index].alpha();   
+                }
             }
         }
+        else
+            for(let y = 0; y < this.dimensions.second; y++)
+            {
+                for(let x = 0; x < this.dimensions.first; x++)
+                {
+                    spriteScreenBuf.fillRect(this.screenBuffer[x + y*this.dimensions.first], x * cellWidth, y * cellHeight, cellWidth, cellHeight);   
+                }
+            }
         if(this.dragData)
         {
             const source:RGB = new RGB(0,0,0,0);
             const toCopy:RGB = new RGB(0,0,0,0);
             const dragDataColors:number[] = this.dragData.second;
             for(let i:number = 0; i < this.dragData.second.length; i += 9){
-                const sx:number = Math.floor((dragDataColors[i] + this.dragData.first.first) * cellWidth);
                 const bx:number = Math.floor(dragDataColors[i] + this.dragData.first.first);
-                const sy:number = Math.floor((dragDataColors[i+1] + this.dragData.first.second) * cellHeight);
+                const sx:number = Math.floor(bx * cellWidth);
                 const by:number = Math.floor(dragDataColors[i+1] + this.dragData.first.second);
+                const sy:number = Math.floor(by * cellHeight);
                 if(this.screenBuffer[bx + by*this.dimensions.first]){
                     source.color = this.screenBuffer[bx + by*this.dimensions.first].color;
                     toCopy.color = dragDataColors[i + 8];
@@ -1273,6 +1286,7 @@ class DrawingScreen {
                 }
                 
             };
+
         }
         spriteScreenBuf.putPixels(ctx);
         if(this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line")
@@ -1729,17 +1743,15 @@ class Sprite {
     }
     fillRect(color:RGB, x:number, y:number, width:number, height:number)
     {
-        if((x < 0 || x >= this.width) || (y < 0 || y >= this.height))
-        return null;
         for(let xi = x; xi < x+width; xi++)
         {
             for(let yi = y; yi < y+height; yi++)
             {
-                const index:number = (xi<<2) + (yi*this.width<<2);
+                let index:number = (xi<<2) + (yi*this.width<<2);
                 this.pixels[index] = color.red();
-                this.pixels[index + 1] = color.green();
-                this.pixels[index + 2] = color.blue();
-                this.pixels[index + 3] = color.alpha();
+                this.pixels[++index] = color.green();
+                this.pixels[++index] = color.blue();
+                this.pixels[++index] = color.alpha();
             }
         }
     }
@@ -1930,6 +1942,7 @@ class SpriteSelector {
                 {
                     const dragSprite = new Sprite([],1,1);
                     dragSprite.copySprite(this.sprites()[clickedSprite]);
+                    dragSprite.refreshImage();
                     this.dragSprite = dragSprite;
 
                 }
@@ -2145,6 +2158,7 @@ class AnimationGroup {
             original.sprites.forEach(sprite => {
                 const clonedSprite:Sprite = new Sprite([], sprite.width, sprite.height);
                 clonedSprite.copySprite(sprite);
+                clonedSprite.refreshImage();
                 cloned.sprites.push(clonedSprite);
             });
 
