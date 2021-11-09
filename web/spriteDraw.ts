@@ -923,7 +923,6 @@ class DrawingScreen {
         const max = [this.dragDataMaxPoint%this.dimensions.first, Math.floor(this.dragDataMaxPoint/this.dimensions.first)];
         const dx:number = (min[0] + max[0])/2;
         const dy:number = (min[1] + max[1])/2;
-        console.log(dx,dy);
         this.dragDataMinPoint = this.dimensions.first * this.dimensions.second;
         this.dragDataMaxPoint = 0;
         const initTransMatrix:number[] = [1,0,dx,
@@ -2342,7 +2341,7 @@ async function main()
         field.color.copy(pallette.calcColor());
     });
     
-    const fps = 40;
+    const fps = 60;
     const goalSleep = 1000/fps;
     let counter = 0;
     while(true)
@@ -2354,7 +2353,8 @@ async function main()
             animations.draw();
         const adjustment:number = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
-        //console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
+        if(1000/(Date.now() - start) < fps-10)
+            console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
     }
 }
 main();
