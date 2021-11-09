@@ -497,7 +497,6 @@ class DrawingScreen {
     canvas:HTMLCanvasElement;
     spriteScreenBuf:Sprite;
     screenBuffer:Array<RGB>;
-    screenLastBuffer:Array<RGB>;
     clipBoard:ClipBoard;
     color:RGB;
     listeners:SingleTouchListener;
@@ -532,14 +531,12 @@ class DrawingScreen {
         this.bounds = new Pair<number>(bounds[0], bounds[1]);
         this.dimensions = new Pair<number>(dimensions[0], dimensions[1]);
         this.screenBuffer = new Array<RGB>();
-        this.screenLastBuffer = new Array<RGB>();
         this.selectionRect = [0,0,0,0];
         this.pasteRect = [0,0,0,0];
         this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
         for(let i = 0; i < dimensions[0] * dimensions[1]; i++)
         {
             this.screenBuffer.push(new RGB(255,255,255,0));
-            this.screenLastBuffer.push(new RGB(1, 0,0,0));
         }
         const noColor:RGB = new RGB(1, 0, 0, 0);
         const colorBackup:RGB = new RGB(0, 0, 0, 0);

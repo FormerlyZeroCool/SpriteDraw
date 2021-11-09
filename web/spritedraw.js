@@ -413,13 +413,11 @@ class DrawingScreen {
         this.bounds = new Pair(bounds[0], bounds[1]);
         this.dimensions = new Pair(dimensions[0], dimensions[1]);
         this.screenBuffer = new Array();
-        this.screenLastBuffer = new Array();
         this.selectionRect = [0, 0, 0, 0];
         this.pasteRect = [0, 0, 0, 0];
         this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
         for (let i = 0; i < dimensions[0] * dimensions[1]; i++) {
             this.screenBuffer.push(new RGB(255, 255, 255, 0));
-            this.screenLastBuffer.push(new RGB(1, 0, 0, 0));
         }
         const noColor = new RGB(1, 0, 0, 0);
         const colorBackup = new RGB(0, 0, 0, 0);
@@ -1035,8 +1033,8 @@ class DrawingScreen {
         spriteScreenBuf.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
         for (let y = 0; y < this.dimensions.second; y++) {
             for (let x = 0; x < this.dimensions.first; x++) {
-                const sy = (this.offset.second + y * cellHeight);
-                const sx = (this.offset.first + x * cellWidth);
+                const sy = y * cellHeight;
+                const sx = x * cellWidth;
                 spriteScreenBuf.fillRect(this.screenBuffer[x + y * this.dimensions.first], sx, sy, cellWidth, cellHeight);
             }
         }
