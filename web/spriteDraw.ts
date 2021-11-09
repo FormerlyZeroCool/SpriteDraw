@@ -1255,8 +1255,8 @@ class DrawingScreen {
                 spriteScreenBuf.fillRect(this.screenBuffer[x + y*this.dimensions.first], sx, sy, cellWidth, cellHeight);   
             }
         }
-        const reassignableColor:RGB = new RGB(0,0,0,0);
-        const reassignableColor1:RGB = new RGB(0,0,0,0);
+        const source:RGB = new RGB(0,0,0,0);
+        const toCopy:RGB = new RGB(0,0,0,0);
         if(this.dragData)
         {
             const dragDataColors:number[] = this.dragData.second;
@@ -1266,10 +1266,10 @@ class DrawingScreen {
                 const sy:number = Math.floor((dragDataColors[i+1] + this.dragData.first.second) * cellHeight);
                 const by:number = Math.floor(dragDataColors[i+1] + this.dragData.first.second);
                 if(this.screenBuffer[bx + by*this.dimensions.first]){
-                    reassignableColor.color = this.screenBuffer[bx + by*this.dimensions.first].color;
-                    reassignableColor1.color = dragDataColors[i + 8];
-                    reassignableColor.blendAlphaCopy(reassignableColor1);
-                    spriteScreenBuf.fillRect(reassignableColor, sx, sy, cellWidth, cellHeight);
+                    source.color = this.screenBuffer[bx + by*this.dimensions.first].color;
+                    toCopy.color = dragDataColors[i + 8];
+                    source.blendAlphaCopy(toCopy);
+                    spriteScreenBuf.fillRect(source, sx, sy, cellWidth, cellHeight);
                 }
                 
             };
