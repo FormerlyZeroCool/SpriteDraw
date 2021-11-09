@@ -495,8 +495,6 @@ class DrawingScreen {
     bounds:Pair<number>;
     dimensions:Pair<number>;
     canvas:HTMLCanvasElement;
-    offScreenBufferSprite:Sprite;
-    dragDataBufferSprite:Sprite;
     spriteScreenBuf:Sprite;
     screenBuffer:Array<RGB>;
     screenLastBuffer:Array<RGB>;
@@ -524,9 +522,7 @@ class DrawingScreen {
         this.canvas = canvas;
         this.dragData = null;
         this.lineWidth = dimensions[0] / bounds[0] * 4;
-        this.offScreenBufferSprite = new Sprite([], this.canvas.width, this.canvas.height, false);
-        this.dragDataBufferSprite = new Sprite([], canvas.width, canvas.height, false);
-        this.spriteScreenBuf = new Sprite([], this.offScreenBufferSprite.width, this.offScreenBufferSprite.height, false);
+        this.spriteScreenBuf = new Sprite([], this.canvas.width, this.canvas.height, false);
         this.keyboardHandler = keyboardHandler;
         this.toolSelector = new ToolSelector(keyboardHandler);
         this.updatesStack = new Array<Array<Pair<number,RGB>>>();
@@ -1248,42 +1244,38 @@ class DrawingScreen {
     {
         this.clipBoard.draw();
         const ctx:any = this.canvas.getContext("2d");
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         const cellHeight:number = (this.bounds.second / this.dimensions.second);
         const cellWidth:number = (this.bounds.first / this.dimensions.first);
         const white:RGB = new RGB(255,255,255);
+        const spriteScreenBuf:Sprite = this.spriteScreenBuf;
+        spriteScreenBuf.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
         for(let y = 0; y < this.dimensions.second; y++)
         {
             for(let x = 0; x < this.dimensions.first; x++)
             {
-                const sy:number = (this.offset.second + y * cellHeight);
-                const sx:number = (this.offset.first + x * cellWidth);
-                if(this.screenLastBuffer[x + y*this.dimensions.first].color != this.screenBuffer[x + y*this.dimensions.first].color)
-                {
-                    this.offScreenBufferSprite.fillRect(white, sx, sy, cellWidth, cellHeight);
-                    this.offScreenBufferSprite.fillRect(this.screenBuffer[x + y*this.dimensions.first], sx, sy, cellWidth, cellHeight);
-                    this.screenLastBuffer[x + y*this.dimensions.first].color = this.screenBuffer[x + y*this.dimensions.first].color;
-                }
-                
+                const sy:number = y * cellHeight;
+                const sx:number = x * cellWidth;
+                spriteScreenBuf.fillRect(this.screenBuffer[x + y*this.dimensions.first], sx, sy, cellWidth, cellHeight);   
             }
         }
-        const spriteScreenBuf:Sprite = this.spriteScreenBuf;
-        spriteScreenBuf.copySprite(this.offScreenBufferSprite);
         const reassignableColor:RGB = new RGB(0,0,0,0);
+        const reassignableColor1:RGB = new RGB(0,0,0,0);
         if(this.dragData)
         {
-            const offset = (Math.floor(this.dragData.first.first) + Math.floor(this.dragData.first.second) * this.dimensions.first);
             const dragDataColors:number[] = this.dragData.second;
-            this.dragDataBufferSprite.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
             for(let i:number = 0; i < this.dragData.second.length; i += 9){
                 const sx:number = Math.floor((dragDataColors[i] + this.dragData.first.first) * cellWidth);
+                const bx:number = Math.floor(dragDataColors[i] + this.dragData.first.first);
                 const sy:number = Math.floor((dragDataColors[i+1] + this.dragData.first.second) * cellHeight);
-                reassignableColor.color = dragDataColors[i + 8];
-                this.dragDataBufferSprite.fillRect(reassignableColor, sx, sy, cellWidth, cellHeight);
+                const by:number = Math.floor(dragDataColors[i+1] + this.dragData.first.second);
+                if(this.screenBuffer[bx + by*this.dimensions.first]){
+                    reassignableColor.color = this.screenBuffer[bx + by*this.dimensions.first].color;
+                    reassignableColor1.color = dragDataColors[i + 8];
+                    reassignableColor.blendAlphaCopy(reassignableColor1);
+                    spriteScreenBuf.fillRect(reassignableColor, sx, sy, cellWidth, cellHeight);
+                }
+                
             };
-            
-            spriteScreenBuf.copySpriteBlendAlpha(this.dragDataBufferSprite);
         }
         spriteScreenBuf.putPixels(ctx);
         if(this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line")
@@ -2464,11 +2456,11 @@ async function main()
             newColor.value = pallette.calcColor().htmlRBGA();
         }
     });
-    keyboardHandler.registerCallBack("keyup", e=> true, e => {
+    keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
     
-    const fps = 40;
+    const fps = 60;
     const goalSleep = 1000/fps;
     let counter = 0;
     while(true)
@@ -2480,8 +2472,8 @@ async function main()
             animations.draw();
         const adjustment:number = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
-        if(1000/(Date.now() - start) < 20)
-        console.log("Frame time: ",Date.now() - start, "avgfps:",1000/(Date.now() - start))
+        if(1000/(Date.now() - start) < fps - 5)
+            console.log("avgfps:",Math.floor(1000/(Date.now() - start)))
     }
 }
 main();
