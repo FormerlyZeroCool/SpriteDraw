@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [528, 528];
+const dim = [1028, 1028];
 function threeByThreeMat(a, b) {
     return [a[0] * b[0] + a[1] * b[3] + a[2] * b[6],
         a[0] * b[1] + a[1] * b[4] + a[2] * b[7],
@@ -495,7 +495,7 @@ class DrawingScreen {
                     }
                     break;
                 case ('KeyV'):
-                    this.copy();
+                    this.paste();
                     break;
                 case ('KeyU'):
                     this.undoLast();
@@ -544,7 +544,7 @@ class DrawingScreen {
                     this.selectionRect = [0, 0, 0, 0];
                     break;
                 case ("paste"):
-                    this.copy();
+                    this.paste();
                     break;
                 case ("rect"):
                     this.drawRect([this.selectionRect[0], this.selectionRect[1]], [this.selectionRect[0] + this.selectionRect[2], this.selectionRect[1] + this.selectionRect[3]]);
@@ -618,7 +618,7 @@ class DrawingScreen {
         }
         return new Pair(width, height);
     }
-    copy() {
+    paste() {
         const dest_x = Math.floor((this.pasteRect[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
         const dest_y = Math.floor((this.pasteRect[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
         const width = this.clipBoard.currentDim[0];
@@ -659,13 +659,11 @@ class DrawingScreen {
     }
     async fillArea(startCoordinate) {
         const altHeld = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
-        const stack = [];
-        let checkedMap = {};
-        checkedMap = {};
+        const stack = new Queue(1024);
+        const checkedMap = new Array(this.dimensions.first * this.dimensions.second).fill(false);
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
         const startPixel = this.screenBuffer[startIndex];
         const spc = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
-        const blank = new RGB(0, 0, 0, 0);
         stack.push(startIndex);
         while (stack.length > 0) {
             const cur = stack.pop();
@@ -697,8 +695,7 @@ class DrawingScreen {
         const stack = [];
         const data = [];
         const defaultColor = new RGB(255, 255, 255, 0);
-        let checkedMap = {};
-        checkedMap = {};
+        const checkedMap = new Array(this.dimensions.first * this.dimensions.second).fill(false);
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
         const startPixel = this.screenBuffer[startIndex];
         const spc = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());

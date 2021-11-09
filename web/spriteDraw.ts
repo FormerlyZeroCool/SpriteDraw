@@ -2,7 +2,7 @@ function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
-const dim = [528,528];
+const dim = [1028,1028];
 function threeByThreeMat(a:number[], b:number[]):number[]
 {
     return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 
@@ -619,7 +619,7 @@ class DrawingScreen {
                 }
                 break;
                 case('KeyV'):
-                this.copy();
+                this.paste();
                 break;
                 case('KeyU'):
                 this.undoLast();
@@ -672,7 +672,7 @@ class DrawingScreen {
 
                 break;
                 case("paste"):
-                this.copy();
+                this.paste();
 
                 break;
                 case("rect"):
@@ -762,7 +762,7 @@ class DrawingScreen {
         return new Pair(width, height);
     }
 
-    copy()
+    paste()
     {
         
         const dest_x:number = Math.floor((this.pasteRect[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
@@ -812,13 +812,12 @@ class DrawingScreen {
     async fillArea(startCoordinate:Pair<number>)
     {
         const altHeld:boolean = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
-        const stack:number[] = [];
-        let checkedMap:any = {};
-        checkedMap = {};
+        const stack:Queue<number> = new Queue<number>(1024);
+        const checkedMap:Array<boolean> = new Array<boolean>(this.dimensions.first * this.dimensions.second).fill(false);
         const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
         const startPixel:RGB = this.screenBuffer[startIndex];
         const spc:RGB = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
-        const blank:RGB = new RGB(0, 0, 0, 0);
+
         stack.push(startIndex);
         while(stack.length > 0)
         {
@@ -853,8 +852,8 @@ class DrawingScreen {
         const stack:number[] = [];
         const data:number[] = [];
         const defaultColor = new RGB(255,255,255,0);
-        let checkedMap:any = {};
-        checkedMap = {};
+        const checkedMap:Array<boolean> = new Array<boolean>(this.dimensions.first * this.dimensions.second).fill(false);
+        
         const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
         const startPixel:RGB = this.screenBuffer[startIndex];
         const spc:RGB = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
