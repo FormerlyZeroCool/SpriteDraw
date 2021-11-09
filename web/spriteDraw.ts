@@ -1255,10 +1255,10 @@ class DrawingScreen {
                 spriteScreenBuf.fillRect(this.screenBuffer[x + y*this.dimensions.first], sx, sy, cellWidth, cellHeight);   
             }
         }
-        const source:RGB = new RGB(0,0,0,0);
-        const toCopy:RGB = new RGB(0,0,0,0);
         if(this.dragData)
         {
+            const source:RGB = new RGB(0,0,0,0);
+            const toCopy:RGB = new RGB(0,0,0,0);
             const dragDataColors:number[] = this.dragData.second;
             for(let i:number = 0; i < this.dragData.second.length; i += 9){
                 const sx:number = Math.floor((dragDataColors[i] + this.dragData.first.first) * cellWidth);
