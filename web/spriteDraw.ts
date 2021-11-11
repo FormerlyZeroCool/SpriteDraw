@@ -2,7 +2,7 @@ function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
-const dim = [528,528];
+const dim = [128,128];
 function threeByThreeMat(a:number[], b:number[]):number[]
 {
     return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 
@@ -497,6 +497,7 @@ class DrawingScreen {
     bounds:Pair<number>;
     dimensions:Pair<number>;
     canvas:HTMLCanvasElement;
+    ctx:CanvasRenderingContext2D;
     spriteScreenBuf:Sprite;
     screenBuffer:Array<RGB>;
     clipBoard:ClipBoard;
@@ -516,6 +517,7 @@ class DrawingScreen {
     constructor(canvas:any, keyboardHandler:KeyboardHandler, offset:Array<number>, dimensions:Array<number>, newColorTextBox:HTMLInputElement)
     {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
+        this.ctx = canvas.getContext("2d");
         canvas.width = bounds[0];
         canvas.height = bounds[1];
         this.dragDataMaxPoint = 0;
@@ -932,9 +934,6 @@ class DrawingScreen {
                                           0,0,1];
         const cos:number = Math.cos(theta);
         const sin:number = Math.sin(theta);
-        const identity:number[] = [1,0,0,
-                                   0,1,0,
-                                   0,0,1];
         const rotationMatrix:number[] = [cos, -sin, 0, 
                                          sin, cos, 0,
                                          0, 0, 1];
@@ -1079,14 +1078,18 @@ class DrawingScreen {
             const data = this.updatesStack.pop();
             const backedUpFrame = new Array<Pair<number, RGB>>();
             this.undoneUpdatesStack.push(backedUpFrame);
+            const divisor:number =  60*10;
+            const interval:number = data.length/divisor == 0 ? 1 : Math.floor(data.length / divisor);
+            let intervalCounter:number = 0;
             for(let i = 0; i < data.length; i++)
             {
+                intervalCounter++;
                 const el:Pair<number, RGB> = data[i];
                     backedUpFrame.push(el);
                     const color:number = (this.screenBuffer[el.first]).color;
                     this.screenBuffer[el.first].copy(el.second);
                     el.second.color = color;
-                    if(this.keyboardHandler.keysHeld["KeyS"])
+                    if(intervalCounter % interval == 0 && this.keyboardHandler.keysHeld["KeyS"])
                     {
                         this.draw();
                         await sleep(1);
@@ -1105,14 +1108,19 @@ class DrawingScreen {
             const data = this.undoneUpdatesStack.pop();
             const backedUpFrame = new Array<Pair<number, RGB>>();
             this.updatesStack.push(backedUpFrame);
+            const divisor:number =  60*10;
+            const interval:number = data.length/divisor == 0 ? 1 : Math.floor(data.length / divisor);
+            console.log(interval);
+            let intervalCounter:number = 0;
             for(let i = 0; i < data.length; i++)
             {
+                intervalCounter++;
                 const el:Pair<number, RGB> = data[i];
                     backedUpFrame.push(el);
                     const color:number = this.screenBuffer[el.first].color;
                     this.screenBuffer[el.first].copy(el.second);
                     el.second.color = color;
-                    if(this.keyboardHandler.keysHeld["KeyS"])
+                    if(intervalCounter % interval == 0 && this.keyboardHandler.keysHeld["KeyS"])
                     {
                         this.draw();
                         await sleep(1);
@@ -1249,7 +1257,7 @@ class DrawingScreen {
     draw():void
     {
         this.clipBoard.draw();
-        const ctx:any = this.canvas.getContext("2d");
+        const ctx:any = this.ctx;
         const cellHeight:number = (this.bounds.second / this.dimensions.second);
         const cellWidth:number = (this.bounds.first / this.dimensions.first);
         const white:RGB = new RGB(255,255,255);
@@ -1290,13 +1298,13 @@ class DrawingScreen {
                 const sy:number = Math.floor(by * cellHeight);
                 if(this.screenBuffer[bx + by*this.dimensions.first]){
                     toCopy.color = dragDataColors[i + 8];
-                    if(toCopy.alpha() !== 255)
-                    {
+                    //if(toCopy.alpha() !== 255)
+                    //{
                         source.color = this.screenBuffer[bx + by*this.dimensions.first].color;
                         source.blendAlphaCopy(toCopy);
-                    }
-                    else
-                        source.color = toCopy.color;
+                    //}
+                    //else
+                      //  source.color = toCopy.color;
                     spriteScreenBuf.fillRect(source, sx, sy, cellWidth, cellHeight);
                 }
                 
@@ -2360,8 +2368,11 @@ class AnimationGroupsSelector {
         this.canvas = <HTMLCanvasElement> document.getElementById(animationGroupSelectorId);
         this.animationsCanvasId = animationsCanvasId;
         this.spritesCanvasId = spritesCanvasId;
-        this.animationGroups.push(new Pair(new AnimationGroup(field, keyboardHandler, animationsCanvasId, spritesCanvasId, 5, spriteWidth, spriteHeight), new Pair(0,0)));
-        
+    }
+    createAnimationGroup()
+    {
+
+        //this.animationGroups.push(new Pair(new AnimationGroup(this.field, this.keyboardHandler, animationsCanvasId, spritesCanvasId, 5, spriteWidth, spriteHeight), new Pair(0,0)));
     }
     animationGroup():AnimationGroup
     {
