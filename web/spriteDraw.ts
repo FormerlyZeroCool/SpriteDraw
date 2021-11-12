@@ -2,7 +2,7 @@ function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
-const dim = [128,128];
+const dim = [528,528];
 function threeByThreeMat(a:number[], b:number[]):number[]
 {
     return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 
@@ -100,10 +100,14 @@ class RGB {
         const a:number = (1 - alphanc);
         const a0:number = (alphanc + alphant * a);
         const a1:number = 1/a0;
-        this.setRed  ((alphanc*color.red() +   alphant*this.red() * a ) *a1);
+        this.color = (((alphanc*color.red() +   alphant*this.red() * a ) *a1) << 24) |
+            (((alphanc*color.green() + alphant*this.green() * a)*a1) << 16) | 
+            (((alphanc*color.blue() +  alphant*this.blue() * a) *a1) << 8) |
+            (a0 * 255);
+        /*this.setRed  ((alphanc*color.red() +   alphant*this.red() * a ) *a1);
         this.setBlue ((alphanc*color.blue() +  alphant*this.blue() * a) *a1);
         this.setGreen((alphanc*color.green() + alphant*this.green() * a)*a1);
-        this.setAlpha(a0*255);
+        this.setAlpha(a0*255);*/
     }
     compare(color:RGB):boolean
     {
@@ -1326,14 +1330,22 @@ class DrawingScreen {
             ctx.stroke();
         }
         this.toolSelector.draw();
-        ctx.lineWidth = 6;
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
-        ctx.strokeRect(this.pasteRect[0], this.pasteRect[1], this.pasteRect[2], this.pasteRect[3]);
-        ctx.strokeStyle = "#FF0000";
-        ctx.strokeRect(this.selectionRect[0]+2, this.selectionRect[1]+2, this.selectionRect[2]-4, this.selectionRect[3]-4);
-        ctx.strokeStyle = "#0000FF";
-        ctx.strokeRect(this.pasteRect[0]+2, this.pasteRect[1]+2, this.pasteRect[2]-4, this.pasteRect[3]-4);
+        if(this.pasteRect[3] !== 0)
+        {
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = "#FFFFFF";
+            ctx.strokeRect(this.pasteRect[0]+2, this.pasteRect[1]+2, this.pasteRect[2]-4, this.pasteRect[3]-4);
+            ctx.strokeStyle = "#0000FF";
+            ctx.strokeRect(this.pasteRect[0], this.pasteRect[1], this.pasteRect[2], this.pasteRect[3]);
+        }
+        if(this.selectionRect[3] !== 0)
+        {
+            ctx.strokeStyle = "#FFFFFF";
+            ctx.strokeRect(this.selectionRect[0]+2, this.selectionRect[1]+2, this.selectionRect[2]-4, this.selectionRect[3]-4);
+            ctx.strokeStyle = "#FF0000";
+            ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
+       
+        }
         
     }
 };
@@ -2530,7 +2542,7 @@ async function main()
         field.color.copy(pallette.calcColor());
     });
     
-    const fps = 60;
+    const fps = 20;
     const goalSleep = 1000/fps;
     let counter = 0;
     while(true)
