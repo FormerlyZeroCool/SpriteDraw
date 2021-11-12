@@ -1340,11 +1340,45 @@ class DrawingScreen {
         }
         if(this.selectionRect[3] !== 0)
         {
+            ctx.lineWidth = 6;
             ctx.strokeStyle = "#FFFFFF";
-            ctx.strokeRect(this.selectionRect[0]+2, this.selectionRect[1]+2, this.selectionRect[2]-4, this.selectionRect[3]-4);
-            ctx.strokeStyle = "#FF0000";
-            ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
-       
+            const xr:number = Math.abs(this.selectionRect[2]/2);
+            const yr:number = Math.abs(this.selectionRect[3]/2);
+            if(this.toolSelector.selectedToolName() !== "oval")
+            {
+                ctx.strokeRect(this.selectionRect[0]+2, this.selectionRect[1]+2, this.selectionRect[2]-4, this.selectionRect[3]-4);
+                ctx.strokeStyle = this.color.htmlRBG();
+                ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
+           
+            }
+            else if(this.selectionRect[2] / 2 > 0 && this.selectionRect[3] / 2 > 0)
+            {
+                ctx.beginPath();
+                ctx.strokeStyle = this.color.htmlRBG();
+                ctx.ellipse(this.selectionRect[0] + xr, this.selectionRect[1]+yr, xr, yr, 0, 0, 2*Math.PI);
+                ctx.stroke();
+            }
+            else if(this.selectionRect[2] < 0 && this.selectionRect[3] >= 0)
+            {
+                ctx.beginPath();
+                ctx.strokeStyle = this.color.htmlRBG();
+                ctx.ellipse(this.selectionRect[0] - xr, this.selectionRect[1] + yr, xr, yr, 0, 0, 2*Math.PI);
+                ctx.stroke();
+            }
+            else if(this.selectionRect[2] < 0 && this.selectionRect[3] < 0)
+            {
+                ctx.beginPath();
+                ctx.strokeStyle = this.color.htmlRBG();
+                ctx.ellipse(this.selectionRect[0] - xr, this.selectionRect[1] - yr, xr, yr, 0, 0, 2*Math.PI);
+                ctx.stroke();
+            }
+            else 
+            {
+                ctx.beginPath();
+                ctx.strokeStyle = this.color.htmlRBG();
+                ctx.ellipse(this.selectionRect[0] + xr, this.selectionRect[1] - yr, xr, yr, 0, 0, 2*Math.PI);
+                ctx.stroke();
+            }
         }
         
     }
