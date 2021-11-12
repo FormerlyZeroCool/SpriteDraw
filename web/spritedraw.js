@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [128, 128];
+const dim = [528, 528];
 function threeByThreeMat(a, b) {
     return [a[0] * b[0] + a[1] * b[3] + a[2] * b[6],
         a[0] * b[1] + a[1] * b[4] + a[2] * b[7],
@@ -80,10 +80,14 @@ class RGB {
         const a = (1 - alphanc);
         const a0 = (alphanc + alphant * a);
         const a1 = 1 / a0;
-        this.setRed((alphanc * color.red() + alphant * this.red() * a) * a1);
-        this.setBlue((alphanc * color.blue() + alphant * this.blue() * a) * a1);
-        this.setGreen((alphanc * color.green() + alphant * this.green() * a) * a1);
-        this.setAlpha(a0 * 255);
+        this.color = (((alphanc * color.red() + alphant * this.red() * a) * a1) << 24) |
+            (((alphanc * color.green() + alphant * this.green() * a) * a1) << 16) |
+            (((alphanc * color.blue() + alphant * this.blue() * a) * a1) << 8) |
+            (a0 * 255);
+        /*this.setRed  ((alphanc*color.red() +   alphant*this.red() * a ) *a1);
+        this.setBlue ((alphanc*color.blue() +  alphant*this.blue() * a) *a1);
+        this.setGreen((alphanc*color.green() + alphant*this.green() * a)*a1);
+        this.setAlpha(a0*255);*/
     }
     compare(color) {
         return this.color === color.color;
@@ -1101,14 +1105,48 @@ class DrawingScreen {
             ctx.stroke();
         }
         this.toolSelector.draw();
-        ctx.lineWidth = 6;
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
-        ctx.strokeRect(this.pasteRect[0], this.pasteRect[1], this.pasteRect[2], this.pasteRect[3]);
-        ctx.strokeStyle = "#FF0000";
-        ctx.strokeRect(this.selectionRect[0] + 2, this.selectionRect[1] + 2, this.selectionRect[2] - 4, this.selectionRect[3] - 4);
-        ctx.strokeStyle = "#0000FF";
-        ctx.strokeRect(this.pasteRect[0] + 2, this.pasteRect[1] + 2, this.pasteRect[2] - 4, this.pasteRect[3] - 4);
+        if (this.pasteRect[3] !== 0) {
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = "#FFFFFF";
+            ctx.strokeRect(this.pasteRect[0] + 2, this.pasteRect[1] + 2, this.pasteRect[2] - 4, this.pasteRect[3] - 4);
+            ctx.strokeStyle = "#0000FF";
+            ctx.strokeRect(this.pasteRect[0], this.pasteRect[1], this.pasteRect[2], this.pasteRect[3]);
+        }
+        if (this.selectionRect[3] !== 0) {
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = "#FFFFFF";
+            const xr = Math.abs(this.selectionRect[2] / 2);
+            const yr = Math.abs(this.selectionRect[3] / 2);
+            if (this.toolSelector.selectedToolName() !== "oval") {
+                ctx.strokeRect(this.selectionRect[0] + 2, this.selectionRect[1] + 2, this.selectionRect[2] - 4, this.selectionRect[3] - 4);
+                ctx.strokeStyle = this.color.htmlRBG();
+                ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
+            }
+            else if (this.selectionRect[2] / 2 > 0 && this.selectionRect[3] / 2 > 0) {
+                ctx.beginPath();
+                ctx.strokeStyle = this.color.htmlRBG();
+                ctx.ellipse(this.selectionRect[0] + xr, this.selectionRect[1] + yr, xr, yr, 0, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+            else if (this.selectionRect[2] < 0 && this.selectionRect[3] >= 0) {
+                ctx.beginPath();
+                ctx.strokeStyle = this.color.htmlRBG();
+                ctx.ellipse(this.selectionRect[0] - xr, this.selectionRect[1] + yr, xr, yr, 0, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+            else if (this.selectionRect[2] < 0 && this.selectionRect[3] < 0) {
+                ctx.beginPath();
+                ctx.strokeStyle = this.color.htmlRBG();
+                ctx.ellipse(this.selectionRect[0] - xr, this.selectionRect[1] - yr, xr, yr, 0, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+            else {
+                ctx.beginPath();
+                ctx.strokeStyle = this.color.htmlRBG();
+                ctx.ellipse(this.selectionRect[0] + xr, this.selectionRect[1] - yr, xr, yr, 0, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+        }
     }
 }
 ;
@@ -1887,7 +1925,8 @@ class AnimationGroup {
                 x = (dragSpriteAdjustment) % this.animationsPerRow;
                 y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
             }
-            this.animations[i].draw(ctx, x * this.animationWidth, y * this.animationHeight, this.animationWidth, this.animationHeight);
+            if (this.animations[i])
+                this.animations[i].draw(ctx, x * this.animationWidth, y * this.animationHeight, this.animationWidth, this.animationHeight);
             dragSpriteAdjustment++;
         }
         if (this.animations.length) {
@@ -2043,7 +2082,7 @@ async function main() {
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    const fps = 60;
+    const fps = 20;
     const goalSleep = 1000 / fps;
     let counter = 0;
     while (true) {

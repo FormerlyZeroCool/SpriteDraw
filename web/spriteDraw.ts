@@ -2379,7 +2379,8 @@ class AnimationGroup {
                 x = (dragSpriteAdjustment) % this.animationsPerRow;
                 y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
             }
-            this.animations[i].draw(ctx, x*this.animationWidth, y*this.animationHeight, this.animationWidth, this.animationHeight);
+            if(this.animations[i])
+                this.animations[i].draw(ctx, x*this.animationWidth, y*this.animationHeight, this.animationWidth, this.animationHeight);
             dragSpriteAdjustment++;
         }
         if(this.animations.length){
