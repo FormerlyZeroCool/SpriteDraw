@@ -2082,7 +2082,7 @@ async function main() {
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    const fps = 20;
+    const fps = 60;
     const goalSleep = 1000 / fps;
     let counter = 0;
     while (true) {
