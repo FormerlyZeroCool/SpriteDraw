@@ -512,10 +512,10 @@ class DrawingScreen {
                     break;
             }
         });
-        this.listeners.registerCallBack("touchend", e => true, e => {
+        this.listeners.registerCallBack("touchend", e => true, async (e) => {
             switch (this.toolSelector.selectedToolName()) {
                 case ("oval"):
-                    this.handleEllipse(e);
+                    await this.handleEllipse(e);
                     this.selectionRect = [0, 0, 0, 0];
                     break;
                 case ("pen"):
@@ -543,7 +543,7 @@ class DrawingScreen {
                     this.handleTap(e);
                     const x1 = e.touchPos[0] - e.deltaX;
                     const y1 = e.touchPos[1] - e.deltaY;
-                    this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
+                    await this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                     break;
                 case ("copy"):
                     const bounds = this.saveToBuffer(this.selectionRect, this.clipBoard.clipBoardBuffer);
@@ -554,7 +554,7 @@ class DrawingScreen {
                     this.paste();
                     break;
                 case ("rect"):
-                    this.drawRect([this.selectionRect[0], this.selectionRect[1]], [this.selectionRect[0] + this.selectionRect[2], this.selectionRect[1] + this.selectionRect[3]]);
+                    await this.drawRect([this.selectionRect[0], this.selectionRect[1]], [this.selectionRect[0] + this.selectionRect[2], this.selectionRect[1] + this.selectionRect[3]]);
                     this.selectionRect = [0, 0, 0, 0];
                     break;
             }
@@ -2057,6 +2057,9 @@ class AnimationGroupsSelector {
     }
     deleteSelectedAnimationGroup() {
         this.animationGroups.splice(this.selectedAnimationGroup, 1);
+        if (this.selectedAnimationGroup >= this.animationGroups.length) {
+            this.selectedAnimationGroup--;
+        }
         this.autoResizeCanvas();
     }
     selectedAnimation() {
