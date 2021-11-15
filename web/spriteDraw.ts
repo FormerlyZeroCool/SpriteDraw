@@ -2470,16 +2470,17 @@ class AnimationGroupsSelector {
         this.listener.registerCallBack("touchend", e => true, e => {
             const clickedIndex:number = Math.floor(e.touchPos[0] / this.renderWidth) + Math.floor(e.touchPos[1] / this.renderHeight);
             
-            if(this.dragAnimationGroup)
+            if(clickedIndex >= 0 && clickedIndex <= this.animationGroups.length)
             {
-                this.animationGroups.splice(clickedIndex, 0, this.dragAnimationGroup);
-                this.dragAnimationGroup = null;
-                this.dragAnimationGroupPos[0] = -1;
-                this.dragAnimationGroupPos[1] = -1;
-            }
-            if(clickedIndex >= 0 && clickedIndex < this.animationGroups.length)
-            {
-                this.selectedAnimationGroup = clickedIndex;
+                if(this.dragAnimationGroup)
+                {
+                    this.animationGroups.splice(clickedIndex, 0, this.dragAnimationGroup);
+                    this.dragAnimationGroup = null;
+                    this.dragAnimationGroupPos[0] = -1;
+                    this.dragAnimationGroupPos[1] = -1;
+                }
+                if(clickedIndex < this.animationGroups.length)
+                    this.selectedAnimationGroup = clickedIndex;
             }
         });
     }  
@@ -2613,8 +2614,9 @@ class AnimationGroupsSelector {
         {
             const x:number = this.selectedAnimationGroup % this.spritesPerRow;
             const y:number = Math.floor(this.selectedAnimationGroup / this.spritesPerRow);
+            
             ctx.strokeStyle = "#000000";
-            ctx.strokeRect(x + 1, y + 1, this.renderWidth - 2, this.renderHeight - 2);
+            ctx.strokeRect(x * this.renderWidth + 1, y * this.renderHeight + 1, this.renderWidth - 2, this.renderHeight - 2);
             this.animationGroup().draw();
         }
     }
