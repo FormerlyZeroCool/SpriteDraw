@@ -2453,7 +2453,7 @@ class AnimationGroupsSelector {
         });
         this.listener.registerCallBack("touchmove", e => true, e => {
             const clickedIndex:number = Math.floor(e.touchPos[0] / this.renderWidth) + Math.floor(e.touchPos[1] / this.renderHeight);
-            if(e.moveCount == 1)
+            if(e.moveCount == 1 && this.animationGroups.length > 1)
             {
                 this.dragAnimationGroup = this.animationGroups.splice(clickedIndex, 1)[0];
                 if(this.selectedAnimationGroup > 0 && this.selectedAnimationGroup >= this.animationGroups.length)
