@@ -1061,7 +1061,7 @@ class DrawingScreen {
         const h:number = start_x + (end_x - start_x) / 2;
         const k:number = min_y + (max_y - min_y) / 2;
 
-        let last:Array<number> = [h + width*Math.cos(0), k + height*Math.sin(0)];
+        let last:number[] = [h + width*Math.cos(0), k + height*Math.sin(0)];
         for(let x = -0.1; x < 2*Math.PI; x += 0.05)
         { 
             const cur = [h + width*Math.cos(x), k + height*Math.sin(x)];
@@ -2456,7 +2456,7 @@ class AnimationGroupsSelector {
             if(e.moveCount == 1)
             {
                 this.dragAnimationGroup = this.animationGroups.splice(clickedIndex, 1)[0];
-                if(this.selectedAnimationGroup >= this.animationGroups.length)
+                if(this.selectedAnimationGroup > 0 && this.selectedAnimationGroup >= this.animationGroups.length)
                 {
                     this.selectedAnimationGroup--;
                 }
