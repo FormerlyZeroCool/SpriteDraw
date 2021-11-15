@@ -2477,6 +2477,10 @@ class AnimationGroupsSelector {
                 this.dragAnimationGroupPos[0] = -1;
                 this.dragAnimationGroupPos[1] = -1;
             }
+            if(clickedIndex >= 0 && clickedIndex < this.animationGroups.length)
+            {
+                this.selectedAnimationGroup = clickedIndex;
+            }
         });
     }  
     maxAnimationsOnCanvas():number
