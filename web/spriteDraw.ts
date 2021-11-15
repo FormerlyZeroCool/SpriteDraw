@@ -2456,7 +2456,7 @@ class AnimationGroupsSelector {
             if(e.moveCount == 1)
             {
                 this.dragAnimationGroup = this.animationGroups.splice(clickedIndex, 1)[0];
-                if(this.selectedAnimationGroup > this.animationGroups.length)
+                if(this.selectedAnimationGroup >= this.animationGroups.length)
                 {
                     this.selectedAnimationGroup--;
                 }

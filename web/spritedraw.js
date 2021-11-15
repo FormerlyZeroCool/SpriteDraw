@@ -1978,7 +1978,7 @@ class AnimationGroupsSelector {
             const clickedIndex = Math.floor(e.touchPos[0] / this.renderWidth) + Math.floor(e.touchPos[1] / this.renderHeight);
             if (e.moveCount == 1) {
                 this.dragAnimationGroup = this.animationGroups.splice(clickedIndex, 1)[0];
-                if (this.selectedAnimationGroup > this.animationGroups.length) {
+                if (this.selectedAnimationGroup >= this.animationGroups.length) {
                     this.selectedAnimationGroup--;
                 }
             }
