@@ -2222,7 +2222,8 @@ async function main() {
     while (true) {
         const start = Date.now();
         field.draw();
-        if (counter++ % 2 == 0) {
+        //if(counter++ % 1 == 0)
+        {
             if (animationGroupSelector.animationGroup())
                 animationGroupSelector.draw();
             pallette.draw();
