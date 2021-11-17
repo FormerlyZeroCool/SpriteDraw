@@ -2042,6 +2042,8 @@ class SpriteSelector {
         });
         listener.registerCallBack("touchend", e => true, e => {
             const clickedSprite:number = Math.floor(e.touchPos[0]/canvas.width*this.spritesPerRow) + spritesPerRow*Math.floor(e.touchPos[1] / this.spriteHeight);
+            this.ctx.fillStyle = "#FFFFFF";
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             if(clickedSprite >= 0)
             {
                 if(this.dragSprite !== null)
@@ -2051,7 +2053,7 @@ class SpriteSelector {
                 this.dragSpriteLocation[0] = -1;
                 this.dragSpriteLocation[1] = -1;
             }
-            if(clickedSprite >= 0 && clickedSprite < this.sprites().length)
+            if(this.sprites() && clickedSprite >= 0 && clickedSprite < this.sprites().length)
             {
                 this.selectedSprite = clickedSprite;
                 this.sprites()[clickedSprite].copyToBuffer(this.drawingField.screenBuffer);
@@ -2367,8 +2369,6 @@ class AnimationGroup {
     {
         if(animationIndex < this.animations.length && spriteIndex < this.animations[animationIndex].sprites.length)
         {
-            ctx.fillStyle = "#FFFFFF";
-            ctx.fillRect(x, y, width, height);
             this.animations[animationIndex].sprites[spriteIndex].draw(ctx, x, y, width, height);
         }
     }
@@ -2567,37 +2567,51 @@ class AnimationGroupsSelector {
     {
         return this.animationGroup().animations[this.animationGroup().selectedAnimation];
     }
+    drawIndex(ctx:CanvasRenderingContext2D,animationGroupIndex:number, encodedLocation:number):void
+    {
+        const group:AnimationGroup = this.animationGroups[animationGroupIndex].first;
+        let animationIndex:number = this.animationGroups[animationGroupIndex].second.first;
+        if(group)
+        {
+            let spriteIndex:number = this.animationGroups[animationGroupIndex].second.second++;
+            
+            if(group.animations[animationIndex] && group.animations[animationIndex].sprites.length <= spriteIndex)
+            {
+                animationIndex++;
+                this.animationGroups[animationGroupIndex].second.second = 0;
+                spriteIndex = 0;
+                if(animationIndex >= group.animations.length){
+                    animationIndex = 0;
+                    this.animationGroups[animationGroupIndex].second.first = 0;
+                }
+            }
+            else if(!group.animations[animationIndex])
+            {
+                this.animationGroups[animationGroupIndex].second.second = 0;
+                spriteIndex = 0;
+                animationIndex = 0;
+                this.animationGroups[animationGroupIndex].second.first = 0;
+            }
+            this.animationGroups[animationGroupIndex].second.first = animationIndex;
+            const x:number = encodedLocation % this.spritesPerRow;
+            const y:number = Math.floor(encodedLocation / this.spritesPerRow);
+            group.drawAnimation(ctx, animationIndex, spriteIndex, x*this.renderWidth, y*this.renderHeight, this.renderWidth, this.renderHeight);    
+
+        }
+    }
     draw():void
     {
         const ctx:CanvasRenderingContext2D = this.ctx;
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        let offSetI = 0;
         const clickedIndex:number = Math.floor(this.listener.touchPos[0] / this.renderWidth) + Math.floor(this.listener.touchPos[1] / this.renderHeight);
-        
+        let offSetI = 0;
         for(let i = 0; i < this.animationGroups.length; i++, offSetI++)
         {
-            const group:AnimationGroup = this.animationGroups[i].first;
-
-            let animationIndex:number = this.animationGroups[i].second.first;
-            if(group.animations[animationIndex])
-            {
-                let spriteIndex:number = this.animationGroups[i].second.second++;
-                if(i == clickedIndex && this.dragAnimationGroup)
-                    offSetI++;
-                if(group.animations[animationIndex].sprites.length == spriteIndex)
-                {
-                    animationIndex++;
-                    this.animationGroups[i].second.second = 0;
-                }
-                this.animationGroups[i].second.first = animationIndex;
-                if(group.animations.length == animationIndex)
-                    this.animationGroups[i].second.first = 0;
-                const x:number = offSetI % this.spritesPerRow;
-                const y:number = Math.floor(offSetI / this.spritesPerRow);
-                group.drawAnimation(ctx, animationIndex, spriteIndex, x*this.renderWidth, y*this.renderHeight, this.renderWidth, this.renderHeight);    
-
-            }
+            if(i == clickedIndex && this.dragAnimationGroup)
+                offSetI++;
+            if(this.animationGroup())
+                this.drawIndex(ctx, i, offSetI);
         }
         if(this.dragAnimationGroup)
         {
