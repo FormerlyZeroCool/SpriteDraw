@@ -820,9 +820,10 @@ class DrawingScreen {
     {
         const altHeld:boolean = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
         let stack:any;
-        if(this.keyboardHandler.keysHeld["KeyS"])
+        /*if(this.keyboardHandler.keysHeld["KeyS"])//possibly more visiually appealling algo (bfs), 
+        //but slower because it makes much worse use of the cache with very high random access
             stack = new Queue<number>(this.screenBuffer.length >> 4);
-        else
+        else*/
             stack = new Array<number>(this.screenBuffer.length >> 4);
         const checkedMap:Array<boolean> = new Array<boolean>(this.dimensions.first * this.dimensions.second).fill(false);
         const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
@@ -1040,7 +1041,7 @@ class DrawingScreen {
             }
         }
     }
-    async handleEllipse(event):Promise<void>
+    handleEllipse(event):void
     {
         const start_x:number = Math.min(event.touchPos[0] - event.deltaX, event.touchPos[0]);
         const end_x:number = Math.max(event.touchPos[0] - event.deltaX, event.touchPos[0]);
@@ -1055,7 +1056,7 @@ class DrawingScreen {
         for(let x = -0.1; x < 2*Math.PI; x += 0.05)
         { 
             const cur = [h + width*Math.cos(x), k + height*Math.sin(x)];
-            await this.drawLine([last[0], last[1]], [cur[0], cur[1]]);
+            this.drawLine([last[0], last[1]], [cur[0], cur[1]]);
             last = cur;
         }
     }
