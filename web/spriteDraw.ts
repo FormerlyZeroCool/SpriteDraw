@@ -974,11 +974,11 @@ class DrawingScreen {
         this.drawLine([start[0], end[1]], end);
         this.drawLine([end[0], start[1]], end);
     }
-    async drawLine(start:Array<number>, end:Array<number>):Promise<void>
+    drawLine(start:Array<number>, end:Array<number>):void
     {
-        await this.handleDraw(start[0], end[0], start[1], end[1]);
+        this.handleDraw(start[0], end[0], start[1], end[1]);
     }
-    async handleDraw(x1:number, x2:number, y1:number, y2:number):Promise<void>
+    handleDraw(x1:number, x2:number, y1:number, y2:number):void
     {
         //draw line from current touch pos to the touchpos minus the deltas
         //calc equation for line
@@ -1010,11 +1010,6 @@ class DrawingScreen {
                             }
                         }
                     }
-                    if(this.keyboardHandler.keysHeld["KeyS"])
-                    {
-                        this.draw();
-                        await sleep(1);
-                    }
                 }
             }
         }
@@ -1040,11 +1035,6 @@ class DrawingScreen {
                                 pixel.copy(this.color);
                             }
                         }
-                    }
-                    if(this.keyboardHandler.keysHeld["KeyS"])
-                    {
-                        this.draw();
-                        await sleep(1);
                     }
                 }
             }
@@ -1160,7 +1150,7 @@ class DrawingScreen {
         const frac:number = a - Math.floor(a);
         return 1 - frac;
     }
-    async saveDragDataToScreen():Promise<void>
+    saveDragDataToScreen():void
     {
         if(this.dragData)
         {
@@ -1183,7 +1173,7 @@ class DrawingScreen {
             }
         }
     }
-    async saveDragDataToScreenAntiAliased():Promise<void>
+    saveDragDataToScreenAntiAliased():void
     {
         if(this.dragData)
         {
@@ -1243,11 +1233,6 @@ class DrawingScreen {
                 {
                     this.updatesStack[this.updatesStack.length-1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
                     this.screenBuffer[key].blendAlphaCopy(color0);
-                    if(this.keyboardHandler.keysHeld["KeyS"])
-                    {
-                        this.draw();
-                        await sleep(1);
-                    }
                 }
             };
         }
