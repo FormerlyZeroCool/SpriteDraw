@@ -2578,25 +2578,21 @@ class AnimationGroupsSelector {
             if(group.animations[animationIndex] && group.animations[animationIndex].sprites.length <= spriteIndex)
             {
                 animationIndex++;
-                this.animationGroups[animationGroupIndex].second.second = 0;
                 spriteIndex = 0;
                 if(animationIndex >= group.animations.length){
                     animationIndex = 0;
-                    this.animationGroups[animationGroupIndex].second.first = 0;
                 }
             }
             else if(!group.animations[animationIndex])
             {
-                this.animationGroups[animationGroupIndex].second.second = 0;
                 spriteIndex = 0;
                 animationIndex = 0;
-                this.animationGroups[animationGroupIndex].second.first = 0;
             }
             this.animationGroups[animationGroupIndex].second.first = animationIndex;
+            this.animationGroups[animationGroupIndex].second.second = spriteIndex;
             const x:number = encodedLocation % this.spritesPerRow;
             const y:number = Math.floor(encodedLocation / this.spritesPerRow);
-            group.drawAnimation(ctx, animationIndex, spriteIndex, x*this.renderWidth, y*this.renderHeight, this.renderWidth, this.renderHeight);    
-
+            group.drawAnimation(ctx, animationIndex, spriteIndex, x*this.renderWidth, y*this.renderHeight, this.renderWidth, this.renderHeight);
         }
     }
     draw():void
@@ -2621,12 +2617,14 @@ class AnimationGroupsSelector {
             if(group.animations[animationIndex].sprites.length == spriteIndex)
             {
                 animationIndex++;
-                this.dragAnimationGroup.second.second = 0;
+                spriteIndex = 0;
             }
-            this.dragAnimationGroup.second.first = animationIndex;
             if(group.animations.length == animationIndex)
-                this.dragAnimationGroup.second.first = 0;
-            this.dragAnimationGroup.first.drawAnimation(ctx, this.dragAnimationGroup.second.first, this.dragAnimationGroup.second.second, this.listener.touchPos[0] - this.renderWidth/2, this.listener.touchPos[1] - this.renderHeight/2, this.renderWidth, this.renderHeight)
+                animationIndex = 0;
+            
+            this.dragAnimationGroup.second.first = animationIndex;
+            this.dragAnimationGroup.second.second = spriteIndex;
+            this.dragAnimationGroup.first.drawAnimation(ctx, animationIndex, spriteIndex, this.listener.touchPos[0] - this.renderWidth/2, this.listener.touchPos[1] - this.renderHeight/2, this.renderWidth, this.renderHeight)
         }
         if(this.animationGroup())
         {
