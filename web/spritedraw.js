@@ -962,7 +962,7 @@ class DrawingScreen {
         const frac = a - Math.floor(a);
         return 1 - frac;
     }
-    async saveDragDataToScreen() {
+    saveDragDataToScreen() {
         if (this.dragData) {
             const color = new RGB(0, 0, 0, 0);
             const dragDataColors = this.dragData.second;
@@ -981,7 +981,7 @@ class DrawingScreen {
             }
         }
     }
-    async saveDragDataToScreenAntiAliased() {
+    saveDragDataToScreenAntiAliased() {
         if (this.dragData) {
             const color0 = new RGB(0, 0, 0, 0);
             const color1 = new RGB(0, 0, 0, 0);
@@ -1030,10 +1030,6 @@ class DrawingScreen {
                 if (this.screenBuffer[key]) {
                     this.updatesStack[this.updatesStack.length - 1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
                     this.screenBuffer[key].blendAlphaCopy(color0);
-                    if (this.keyboardHandler.keysHeld["KeyS"]) {
-                        this.draw();
-                        await sleep(1);
-                    }
                 }
             }
             ;
@@ -1070,20 +1066,16 @@ class DrawingScreen {
             const dragDataColors = this.dragData.second;
             for (let i = 0; i < this.dragData.second.length; i += 9) {
                 const bx = Math.floor(dragDataColors[i] + this.dragData.first.first);
-                const sx = Math.floor(bx * cellWidth);
                 const by = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
-                const sy = Math.floor(by * cellHeight);
-                if (this.screenBuffer[bx + by * this.dimensions.first]) {
-                    toCopy.color = dragDataColors[i + 8];
-                    //if(toCopy.alpha() !== 255)
-                    //{
-                    source.color = this.screenBuffer[bx + by * this.dimensions.first].color;
-                    source.blendAlphaCopy(toCopy);
-                    //}
-                    //else
-                    //  source.color = toCopy.color;
-                    spriteScreenBuf.fillRect(source, sx, sy, cellWidth, cellHeight);
-                }
+                let key = (bx + by * this.dimensions.first) % (this.dimensions.first * this.dimensions.second);
+                if (key < 0)
+                    key += this.dimensions.first * this.dimensions.second;
+                toCopy.color = dragDataColors[i + 8];
+                source.color = this.screenBuffer[key].color;
+                source.blendAlphaCopy(toCopy);
+                const sy = Math.floor(Math.floor(key / this.dimensions.first) * cellHeight);
+                const sx = Math.floor((key % this.dimensions.first) * cellWidth);
+                spriteScreenBuf.fillRect(source, sx, sy, cellWidth, cellHeight);
             }
             ;
         }
@@ -2230,7 +2222,7 @@ async function main() {
         }
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
-        if (1000 / (Date.now() - start) < fps - 10) {
+        if (1000 / (Date.now() - start) < fps - 5) {
             console.log("avgfps:", Math.floor(1000 / (Date.now() - start)));
             if (1000 / (Date.now() - start) == 0)
                 console.log("frame time:", 1000 / (Date.now() - start));
