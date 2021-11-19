@@ -962,6 +962,12 @@ class DrawingScreen {
         const frac = a - Math.floor(a);
         return 1 - frac;
     }
+    reboundKey(key) {
+        /*let newKey:number = (key) % (this.dimensions.first * this.dimensions.second);
+        if(newKey < 0)
+            newKey += this.dimensions.first * this.dimensions.second;*/
+        return (key) % (this.screenBuffer.length) + +(key < 0) * this.screenBuffer.length;
+    }
     saveDragDataToScreen() {
         if (this.dragData) {
             const color = new RGB(0, 0, 0, 0);
@@ -969,9 +975,7 @@ class DrawingScreen {
             for (let i = 0; i < this.dragData.second.length; i += 9) {
                 const x = Math.floor(dragDataColors[i + 0] + this.dragData.first.first);
                 const y = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
-                let key = (x + y * this.dimensions.first) % (this.dimensions.first * this.dimensions.second);
-                if (key < 0)
-                    key += this.dimensions.first * this.dimensions.second;
+                let key = this.reboundKey(x + y * this.dimensions.first);
                 color.color = dragDataColors[i + 8];
                 this.updatesStack[this.updatesStack.length - 1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
                 if (color.alpha() != 255)
@@ -1027,9 +1031,10 @@ class DrawingScreen {
                 color0.setGreen(value[1]);
                 color0.setBlue(value[2]);
                 color0.setAlpha(value[3]);
-                if (this.screenBuffer[key]) {
-                    this.updatesStack[this.updatesStack.length - 1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
-                    this.screenBuffer[key].blendAlphaCopy(color0);
+                let newKey = this.reboundKey(key);
+                if (this.screenBuffer[newKey]) {
+                    this.updatesStack[this.updatesStack.length - 1].push(new Pair(newKey, new RGB(this.screenBuffer[newKey].red(), this.screenBuffer[newKey].green(), this.screenBuffer[newKey].blue(), this.screenBuffer[newKey].alpha())));
+                    this.screenBuffer[newKey].blendAlphaCopy(color0);
                 }
             }
             ;
@@ -1067,9 +1072,7 @@ class DrawingScreen {
             for (let i = 0; i < this.dragData.second.length; i += 9) {
                 const bx = Math.floor(dragDataColors[i] + this.dragData.first.first);
                 const by = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
-                let key = (bx + by * this.dimensions.first) % (this.dimensions.first * this.dimensions.second);
-                if (key < 0)
-                    key += this.dimensions.first * this.dimensions.second;
+                let key = this.reboundKey(bx + by * this.dimensions.first);
                 toCopy.color = dragDataColors[i + 8];
                 source.color = this.screenBuffer[key].color;
                 source.blendAlphaCopy(toCopy);
