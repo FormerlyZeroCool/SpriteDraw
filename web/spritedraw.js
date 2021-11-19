@@ -667,10 +667,11 @@ class DrawingScreen {
     async fillArea(startCoordinate) {
         const altHeld = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
         let stack;
-        if (this.keyboardHandler.keysHeld["KeyS"])
-            stack = new Queue(this.screenBuffer.length >> 4);
-        else
-            stack = new Array(this.screenBuffer.length >> 4);
+        /*if(this.keyboardHandler.keysHeld["KeyS"])//possibly more visiually appealling algo (bfs),
+        //but slower because it makes much worse use of the cache with very high random access
+            stack = new Queue<number>(this.screenBuffer.length >> 4);
+        else*/
+        stack = new Array(this.screenBuffer.length >> 4);
         const checkedMap = new Array(this.dimensions.first * this.dimensions.second).fill(false);
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
         const startPixel = this.screenBuffer[startIndex];
@@ -808,10 +809,10 @@ class DrawingScreen {
         this.drawLine([start[0], end[1]], end);
         this.drawLine([end[0], start[1]], end);
     }
-    async drawLine(start, end) {
-        await this.handleDraw(start[0], end[0], start[1], end[1]);
+    drawLine(start, end) {
+        this.handleDraw(start[0], end[0], start[1], end[1]);
     }
-    async handleDraw(x1, x2, y1, y2) {
+    handleDraw(x1, x2, y1, y2) {
         //draw line from current touch pos to the touchpos minus the deltas
         //calc equation for line
         const deltaY = y2 - y1;
@@ -837,10 +838,6 @@ class DrawingScreen {
                             }
                         }
                     }
-                    if (this.keyboardHandler.keysHeld["KeyS"]) {
-                        this.draw();
-                        await sleep(1);
-                    }
                 }
             }
         }
@@ -863,15 +860,11 @@ class DrawingScreen {
                             }
                         }
                     }
-                    if (this.keyboardHandler.keysHeld["KeyS"]) {
-                        this.draw();
-                        await sleep(1);
-                    }
                 }
             }
         }
     }
-    async handleEllipse(event) {
+    handleEllipse(event) {
         const start_x = Math.min(event.touchPos[0] - event.deltaX, event.touchPos[0]);
         const end_x = Math.max(event.touchPos[0] - event.deltaX, event.touchPos[0]);
         const min_y = Math.min(event.touchPos[1] - event.deltaY, event.touchPos[1]);
@@ -883,7 +876,7 @@ class DrawingScreen {
         let last = [h + width * Math.cos(0), k + height * Math.sin(0)];
         for (let x = -0.1; x < 2 * Math.PI; x += 0.05) {
             const cur = [h + width * Math.cos(x), k + height * Math.sin(x)];
-            await this.drawLine([last[0], last[1]], [cur[0], cur[1]]);
+            this.drawLine([last[0], last[1]], [cur[0], cur[1]]);
             last = cur;
         }
     }
@@ -968,6 +961,7 @@ class DrawingScreen {
             newKey += this.dimensions.first * this.dimensions.second;*/
         return (key) % (this.screenBuffer.length) + +(key < 0) * this.screenBuffer.length;
     }
+
     saveDragDataToScreen() {
         if (this.dragData) {
             const color = new RGB(0, 0, 0, 0);
@@ -2067,20 +2061,17 @@ class AnimationGroupsSelector {
             let spriteIndex = this.animationGroups[animationGroupIndex].second.second++;
             if (group.animations[animationIndex] && group.animations[animationIndex].sprites.length <= spriteIndex) {
                 animationIndex++;
-                this.animationGroups[animationGroupIndex].second.second = 0;
                 spriteIndex = 0;
                 if (animationIndex >= group.animations.length) {
                     animationIndex = 0;
-                    this.animationGroups[animationGroupIndex].second.first = 0;
                 }
             }
             else if (!group.animations[animationIndex]) {
-                this.animationGroups[animationGroupIndex].second.second = 0;
                 spriteIndex = 0;
                 animationIndex = 0;
-                this.animationGroups[animationGroupIndex].second.first = 0;
             }
             this.animationGroups[animationGroupIndex].second.first = animationIndex;
+            this.animationGroups[animationGroupIndex].second.second = spriteIndex;
             const x = encodedLocation % this.spritesPerRow;
             const y = Math.floor(encodedLocation / this.spritesPerRow);
             group.drawAnimation(ctx, animationIndex, spriteIndex, x * this.renderWidth, y * this.renderHeight, this.renderWidth, this.renderHeight);
@@ -2104,12 +2095,13 @@ class AnimationGroupsSelector {
             const group = this.dragAnimationGroup.first;
             if (group.animations[animationIndex].sprites.length == spriteIndex) {
                 animationIndex++;
-                this.dragAnimationGroup.second.second = 0;
+                spriteIndex = 0;
             }
-            this.dragAnimationGroup.second.first = animationIndex;
             if (group.animations.length == animationIndex)
-                this.dragAnimationGroup.second.first = 0;
-            this.dragAnimationGroup.first.drawAnimation(ctx, this.dragAnimationGroup.second.first, this.dragAnimationGroup.second.second, this.listener.touchPos[0] - this.renderWidth / 2, this.listener.touchPos[1] - this.renderHeight / 2, this.renderWidth, this.renderHeight);
+                animationIndex = 0;
+            this.dragAnimationGroup.second.first = animationIndex;
+            this.dragAnimationGroup.second.second = spriteIndex;
+            this.dragAnimationGroup.first.drawAnimation(ctx, animationIndex, spriteIndex, this.listener.touchPos[0] - this.renderWidth / 2, this.listener.touchPos[1] - this.renderHeight / 2, this.renderWidth, this.renderHeight);
         }
         if (this.animationGroup()) {
             const x = this.selectedAnimationGroup % this.spritesPerRow;
