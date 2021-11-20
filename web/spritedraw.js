@@ -72,26 +72,40 @@ class Queue {
 class RollingStack {
     constructor(size = 35) {
         this.data = [];
-        this.size = size;
+        this.start = 0;
+        this.end = 0;
+        this.reserve = size;
+        this.size = 0;
+        for (let i = 0; i < size; i++)
+            this.data.push();
     }
     length() {
-        return this.data.length;
+        return this.size;
     }
     pop() {
-        if (this.data.length)
-            return this.data.pop();
+        if (this.size) {
+            this.size--;
+            this.end--;
+            if (this.end < 0)
+                this.end = this.reserve - 1;
+            return this.data[this.end];
+        }
     }
     push(val) {
-        if (this.size <= this.data.length) {
-            this.data.shift();
+        if (this.size >= this.reserve) {
+            this.start++;
+            this.start %= this.reserve;
+            this.size--;
         }
-        this.data.push(val);
+        this.size++;
+        this.data[this.end++] = val;
+        this.end %= this.reserve;
     }
     set(index, obj) {
-        this.data[index] = obj;
+        this.data[(this.start + index) % this.reserve] = obj;
     }
     get(index) {
-        return this.data[index];
+        return this.data[(this.start + index) % this.reserve];
     }
 }
 ;
