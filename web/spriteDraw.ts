@@ -22,7 +22,7 @@ function matByVec(mat:number[], vec:number[]):number[]
             mat[6]*vec[0]+mat[7]*vec[1]+mat[8]*vec[2]];
 }
 class Queue<T> {
-    data:Array<T>;
+    data:T[];
     start:number;
     end:number;
     length:number;
@@ -38,7 +38,7 @@ class Queue<T> {
     {
         if(this.length == this.data.length)
         {
-            const newData:Array<T> = [];
+            const newData:T[] = [];
             newData.length = this.data.length << 1;
             for(let i = 0; i < this.data.length; i++)
             {
@@ -84,6 +84,40 @@ class Queue<T> {
             this.data[(index+this.start)%this.data.length] = obj;
         }
 		throw new Error(`Could not set value at index ${index}`);
+    }
+};
+class RollingStack<T> {
+    data:T[];
+    size:number;
+    constructor(size:number = 35)
+    {
+        this.data = [];
+        this.size = size;
+    }
+    length():number
+    {
+        return this.data.length;
+    }
+    pop():T
+    {
+        if(this.data.length)
+            return this.data.pop();
+    }
+    push(val:T):void
+    {
+        if(this.size <= this.data.length)
+        {
+            this.data.shift();
+        }
+        this.data.push(val);
+    }
+    set(index:number, obj:T):void
+    {
+        this.data[index] = obj;
+    }
+    get(index:number):T
+    {
+        return this.data[index];
     }
 };
 class RGB {
@@ -510,8 +544,8 @@ class DrawingScreen {
     keyboardHandler:KeyboardHandler;
     selectionRect:Array<number>;
     pasteRect:Array<number>;
-    updatesStack:Array<Array<Pair<number,RGB>>>;
-    undoneUpdatesStack:Array<Array<Pair<number,RGB>>>;
+    updatesStack:RollingStack<Array<Pair<number,RGB>>>;
+    undoneUpdatesStack:RollingStack<Array<Pair<number,RGB>>>;
     toolSelector:ToolSelector;
     dragData:Pair<Pair<number>, number[] >;
     dragDataMaxPoint:number;
@@ -531,8 +565,8 @@ class DrawingScreen {
         this.spriteScreenBuf = new Sprite([], this.canvas.width, this.canvas.height, false);
         this.keyboardHandler = keyboardHandler;
         this.toolSelector = new ToolSelector(keyboardHandler);
-        this.updatesStack = new Array<Array<Pair<number,RGB>>>();
-        this.undoneUpdatesStack = new Array<Array<Pair<number,RGB>>>();
+        this.updatesStack = new RollingStack<Array<Pair<number,RGB>>>();
+        this.undoneUpdatesStack = new RollingStack<Array<Pair<number,RGB>>>();
         this.selectionRect = new Array<number>();
         this.offset = new Pair<number>(offset[0], offset[1]);
         this.bounds = new Pair<number>(bounds[0], bounds[1]);
@@ -550,7 +584,7 @@ class DrawingScreen {
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
-            if(this.updatesStack.length == 0 || this.updatesStack[this.updatesStack.length - 1].length)
+            if(this.updatesStack.length() == 0 || this.updatesStack.get(this.updatesStack.length() - 1).length)
             {
                 if(this.toolSelector.selectedToolName() !== "redo" && this.toolSelector.selectedToolName() !== "undo")
                 this.updatesStack.push(new Array<Pair<number,RGB>>());
@@ -787,7 +821,7 @@ class DrawingScreen {
             const source:RGB = this.clipBoard.clipBoardBuffer[i].first;
             if(this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && (!dest.compare(source) || source.alpha() != 255))
             {
-                this.updatesStack[this.updatesStack.length-1].push(new Pair(destIndex, new RGB(dest.red(),dest.green(),dest.blue(), dest.alpha()))); 
+                this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(destIndex, new RGB(dest.red(),dest.green(),dest.blue(), dest.alpha()))); 
                 if(altHeld)
                     dest.copy(source);
                 else
@@ -809,7 +843,7 @@ class DrawingScreen {
                     const ngy:number = (gy+Math.floor(i+0.5));
                     const pixel:RGB = this.screenBuffer[ngx + ngy*this.dimensions.first];
                     if(pixel && !pixel.compare(this.color)){
-                        this.updatesStack[this.updatesStack.length-1].push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
+                        this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
                         pixel.copy(this.color);
                     }
                 }
@@ -843,7 +877,7 @@ class DrawingScreen {
             {
                 checkedMap[cur] = true;
                 if(!pixelColor.compare(this.color)){
-                    this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
+                    this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                     pixelColor.copy(this.color);
                 }
                 if(intervalCounter % drawInterval == 0 && this.keyboardHandler.keysHeld["KeyS"]){
@@ -883,7 +917,7 @@ class DrawingScreen {
                 (pixelColor.alpha() !== 0 && (!countColor || pixelColor.color === spc.color)) && !checkedMap[cur])
             {
                 checkedMap[cur] = true;
-                this.updatesStack[this.updatesStack.length-1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
+                this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                 //top left
                 data.push(cur % this.dimensions.first);
                 data.push(Math.floor(cur / this.dimensions.first));
@@ -1006,7 +1040,7 @@ class DrawingScreen {
                             const ngy:number = (gy+Math.floor(i+0.5));
                             const pixel:RGB = this.screenBuffer[ngx + ngy*this.dimensions.first];
                             if(pixel && !pixel.compare(this.color)){
-                                this.updatesStack[this.updatesStack.length-1].push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
+                                this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
                                 pixel.copy(this.color);
                             }
                         }
@@ -1032,7 +1066,7 @@ class DrawingScreen {
                             const ngy:number = (gy+Math.floor(i+0.5));
                             const pixel:RGB = this.screenBuffer[ngx + ngy*this.dimensions.first];
                             if(pixel && !pixel.compare(this.color)){
-                                this.updatesStack[this.updatesStack.length-1].push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
+                                this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
                                 pixel.copy(this.color);
                             }
                         }
@@ -1062,7 +1096,7 @@ class DrawingScreen {
     }
     async undoLast()
     {
-        if(this.updatesStack.length)
+        if(this.updatesStack.length())
         {
             const data = this.updatesStack.pop();
             const backedUpFrame = new Array<Pair<number, RGB>>();
@@ -1092,7 +1126,7 @@ class DrawingScreen {
     }
     async redoLast()
     {
-        if(this.undoneUpdatesStack.length)
+        if(this.undoneUpdatesStack.length())
         {
             const data = this.undoneUpdatesStack.pop();
             const backedUpFrame = new Array<Pair<number, RGB>>();
@@ -1170,7 +1204,7 @@ class DrawingScreen {
                 const y:number = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
                 let key:number = this.reboundKey(x + y * this.dimensions.first);
                 color.color = dragDataColors[i + 8];
-                this.updatesStack[this.updatesStack.length-1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
+                this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
                 if(color.alpha() != 255)
                     this.screenBuffer[key].blendAlphaCopy(color);
                 else
@@ -1238,7 +1272,7 @@ class DrawingScreen {
                 let newKey:number = this.reboundKey(key);
                 if(this.screenBuffer[newKey])
                 {
-                    this.updatesStack[this.updatesStack.length-1].push(new Pair(newKey, new RGB(this.screenBuffer[newKey].red(), this.screenBuffer[newKey].green(), this.screenBuffer[newKey].blue(), this.screenBuffer[newKey].alpha())));
+                    this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(newKey, new RGB(this.screenBuffer[newKey].red(), this.screenBuffer[newKey].green(), this.screenBuffer[newKey].blue(), this.screenBuffer[newKey].alpha())));
                     this.screenBuffer[newKey].blendAlphaCopy(color0);
                 }
             };
@@ -1252,6 +1286,8 @@ class DrawingScreen {
         const cellWidth:number = (this.bounds.first / this.dimensions.first);
         const white:RGB = new RGB(255,255,255);
         const spriteScreenBuf:Sprite = this.spriteScreenBuf;
+        const source:RGB = new RGB(0,0,0,0);
+        const toCopy:RGB = new RGB(0,0,0,0);
         spriteScreenBuf.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
         
         if(this.dimensions.first == this.canvas.width && this.dimensions.second == this.canvas.height)
@@ -1278,8 +1314,6 @@ class DrawingScreen {
             }
         if(this.dragData)
         {
-            const source:RGB = new RGB(0,0,0,0);
-            const toCopy:RGB = new RGB(0,0,0,0);
             const dragDataColors:number[] = this.dragData.second;
             for(let i:number = 0; i < this.dragData.second.length; i += 9){
                 const bx:number = Math.floor(dragDataColors[i] + this.dragData.first.first);
@@ -1295,6 +1329,19 @@ class DrawingScreen {
             };
 
         }
+
+            for(let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++)
+            {
+                const x:number = i % this.clipBoard.pixelCountX;
+                const y:number = Math.floor(i / this.clipBoard.pixelCountX);
+                source.color = this.screenBuffer[x + y*this.dimensions.first].color;
+                const clipKey:number = Math.floor(x / cellWidth ) + this.clipBoard.pixelCountX * Math.floor((y - Math.floor(this.pasteRect[1]))/cellHeight);
+                console.log(clipKey)
+                toCopy.color = this.clipBoard.clipBoardBuffer[clipKey].first.color;
+                source.blendAlphaCopy(toCopy);
+                spriteScreenBuf.fillRect(source, x, y, cellWidth, cellHeight);
+            }
+        
         spriteScreenBuf.putPixels(ctx);
         if(this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line")
         {

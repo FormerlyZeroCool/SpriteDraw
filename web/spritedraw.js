@@ -69,6 +69,32 @@ class Queue {
     }
 }
 ;
+class RollingStack {
+    constructor(size = 35) {
+        this.data = [];
+        this.size = size;
+    }
+    length() {
+        return this.data.length;
+    }
+    pop() {
+        if (this.data.length)
+            return this.data.pop();
+    }
+    push(val) {
+        if (this.size <= this.data.length) {
+            this.data.shift();
+        }
+        this.data.push(val);
+    }
+    set(index, obj) {
+        this.data[index] = obj;
+    }
+    get(index) {
+        return this.data[index];
+    }
+}
+;
 class RGB {
     constructor(r = 0, g = 0, b, a = 0) {
         this.color = 0;
@@ -413,8 +439,8 @@ class DrawingScreen {
         this.spriteScreenBuf = new Sprite([], this.canvas.width, this.canvas.height, false);
         this.keyboardHandler = keyboardHandler;
         this.toolSelector = new ToolSelector(keyboardHandler);
-        this.updatesStack = new Array();
-        this.undoneUpdatesStack = new Array();
+        this.updatesStack = new RollingStack();
+        this.undoneUpdatesStack = new RollingStack();
         this.selectionRect = new Array();
         this.offset = new Pair(offset[0], offset[1]);
         this.bounds = new Pair(bounds[0], bounds[1]);
@@ -431,7 +457,7 @@ class DrawingScreen {
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
-            if (this.updatesStack.length == 0 || this.updatesStack[this.updatesStack.length - 1].length) {
+            if (this.updatesStack.length() == 0 || this.updatesStack.get(this.updatesStack.length() - 1).length) {
                 if (this.toolSelector.selectedToolName() !== "redo" && this.toolSelector.selectedToolName() !== "undo")
                     this.updatesStack.push(new Array());
             }
@@ -639,7 +665,7 @@ class DrawingScreen {
             const dest = this.screenBuffer[destIndex];
             const source = this.clipBoard.clipBoardBuffer[i].first;
             if (this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && (!dest.compare(source) || source.alpha() != 255)) {
-                this.updatesStack[this.updatesStack.length - 1].push(new Pair(destIndex, new RGB(dest.red(), dest.green(), dest.blue(), dest.alpha())));
+                this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(destIndex, new RGB(dest.red(), dest.green(), dest.blue(), dest.alpha())));
                 if (altHeld)
                     dest.copy(source);
                 else
@@ -657,7 +683,7 @@ class DrawingScreen {
                     const ngy = (gy + Math.floor(i + 0.5));
                     const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
                     if (pixel && !pixel.compare(this.color)) {
-                        this.updatesStack[this.updatesStack.length - 1].push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
+                        this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
                         pixel.copy(this.color);
                     }
                 }
@@ -687,7 +713,7 @@ class DrawingScreen {
                 (pixelColor.compare(spc) || (altHeld && pixelColor.alpha() === 0)) && !checkedMap[cur]) {
                 checkedMap[cur] = true;
                 if (!pixelColor.compare(this.color)) {
-                    this.updatesStack[this.updatesStack.length - 1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
+                    this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                     pixelColor.copy(this.color);
                 }
                 if (intervalCounter % drawInterval == 0 && this.keyboardHandler.keysHeld["KeyS"]) {
@@ -723,7 +749,7 @@ class DrawingScreen {
             if (cur >= 0 && cur < this.dimensions.first * this.dimensions.second &&
                 (pixelColor.alpha() !== 0 && (!countColor || pixelColor.color === spc.color)) && !checkedMap[cur]) {
                 checkedMap[cur] = true;
-                this.updatesStack[this.updatesStack.length - 1].push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
+                this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                 //top left
                 data.push(cur % this.dimensions.first);
                 data.push(Math.floor(cur / this.dimensions.first));
@@ -833,7 +859,7 @@ class DrawingScreen {
                             const ngy = (gy + Math.floor(i + 0.5));
                             const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
                             if (pixel && !pixel.compare(this.color)) {
-                                this.updatesStack[this.updatesStack.length - 1].push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
+                                this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
                                 pixel.copy(this.color);
                             }
                         }
@@ -855,7 +881,7 @@ class DrawingScreen {
                             const ngy = (gy + Math.floor(i + 0.5));
                             const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
                             if (pixel && !pixel.compare(this.color)) {
-                                this.updatesStack[this.updatesStack.length - 1].push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
+                                this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
                                 pixel.copy(this.color);
                             }
                         }
@@ -881,7 +907,7 @@ class DrawingScreen {
         }
     }
     async undoLast() {
-        if (this.updatesStack.length) {
+        if (this.updatesStack.length()) {
             const data = this.updatesStack.pop();
             const backedUpFrame = new Array();
             this.undoneUpdatesStack.push(backedUpFrame);
@@ -906,7 +932,7 @@ class DrawingScreen {
         }
     }
     async redoLast() {
-        if (this.undoneUpdatesStack.length) {
+        if (this.undoneUpdatesStack.length()) {
             const data = this.undoneUpdatesStack.pop();
             const backedUpFrame = new Array();
             this.updatesStack.push(backedUpFrame);
@@ -961,7 +987,6 @@ class DrawingScreen {
             newKey += this.dimensions.first * this.dimensions.second;*/
         return (key) % (this.screenBuffer.length) + +(key < 0) * this.screenBuffer.length;
     }
-
     saveDragDataToScreen() {
         if (this.dragData) {
             const color = new RGB(0, 0, 0, 0);
@@ -971,7 +996,7 @@ class DrawingScreen {
                 const y = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
                 let key = this.reboundKey(x + y * this.dimensions.first);
                 color.color = dragDataColors[i + 8];
-                this.updatesStack[this.updatesStack.length - 1].push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
+                this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
                 if (color.alpha() != 255)
                     this.screenBuffer[key].blendAlphaCopy(color);
                 else
@@ -1027,7 +1052,7 @@ class DrawingScreen {
                 color0.setAlpha(value[3]);
                 let newKey = this.reboundKey(key);
                 if (this.screenBuffer[newKey]) {
-                    this.updatesStack[this.updatesStack.length - 1].push(new Pair(newKey, new RGB(this.screenBuffer[newKey].red(), this.screenBuffer[newKey].green(), this.screenBuffer[newKey].blue(), this.screenBuffer[newKey].alpha())));
+                    this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(newKey, new RGB(this.screenBuffer[newKey].red(), this.screenBuffer[newKey].green(), this.screenBuffer[newKey].blue(), this.screenBuffer[newKey].alpha())));
                     this.screenBuffer[newKey].blendAlphaCopy(color0);
                 }
             }
@@ -1041,6 +1066,8 @@ class DrawingScreen {
         const cellWidth = (this.bounds.first / this.dimensions.first);
         const white = new RGB(255, 255, 255);
         const spriteScreenBuf = this.spriteScreenBuf;
+        const source = new RGB(0, 0, 0, 0);
+        const toCopy = new RGB(0, 0, 0, 0);
         spriteScreenBuf.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
         if (this.dimensions.first == this.canvas.width && this.dimensions.second == this.canvas.height) {
             for (let y = 0; y < this.dimensions.second; y++) {
@@ -1060,8 +1087,6 @@ class DrawingScreen {
                 }
             }
         if (this.dragData) {
-            const source = new RGB(0, 0, 0, 0);
-            const toCopy = new RGB(0, 0, 0, 0);
             const dragDataColors = this.dragData.second;
             for (let i = 0; i < this.dragData.second.length; i += 9) {
                 const bx = Math.floor(dragDataColors[i] + this.dragData.first.first);
@@ -1075,6 +1100,16 @@ class DrawingScreen {
                 spriteScreenBuf.fillRect(source, sx, sy, cellWidth, cellHeight);
             }
             ;
+        }
+        for (let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++) {
+            const x = i % this.clipBoard.pixelCountX;
+            const y = Math.floor(i / this.clipBoard.pixelCountX);
+            source.color = this.screenBuffer[x + y * this.dimensions.first].color;
+            const clipKey = Math.floor(x / cellWidth) + this.clipBoard.pixelCountX * Math.floor((y - Math.floor(this.pasteRect[1])) / cellHeight);
+            console.log(clipKey);
+            toCopy.color = this.clipBoard.clipBoardBuffer[clipKey].first.color;
+            source.blendAlphaCopy(toCopy);
+            spriteScreenBuf.fillRect(source, x, y, cellWidth, cellHeight);
         }
         spriteScreenBuf.putPixels(ctx);
         if (this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line") {
