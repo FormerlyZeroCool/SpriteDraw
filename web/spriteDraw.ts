@@ -584,7 +584,7 @@ class DrawingScreen {
         this.keyboardHandler = keyboardHandler;
         this.toolSelector = new ToolSelector(keyboardHandler);
         this.updatesStack = new RollingStack<Array<Pair<number,RGB>>>();
-        this.undoneUpdatesStack = new RollingStack<Array<Pair<number,RGB>>>();
+        this.undoneUpdatesStack = new RollingStack<Array<Pair<number,RGB>>>(5);
         this.selectionRect = new Array<number>();
         this.offset = new Pair<number>(offset[0], offset[1]);
         this.bounds = new Pair<number>(bounds[0], bounds[1]);
