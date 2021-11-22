@@ -752,7 +752,6 @@ class DrawingScreen {
                     pixelColor.copy(this.color);
                 }
                 if (intervalCounter % drawInterval == 0 && this.keyboardHandler.keysHeld["KeyS"]) {
-                    this.draw();
                     await sleep(1);
                 }
                 if (!checkedMap[cur + this.dimensions.first])
@@ -956,7 +955,6 @@ class DrawingScreen {
                 this.screenBuffer[el.first].copy(el.second);
                 el.second.color = color;
                 if (intervalCounter % interval == 0 && this.keyboardHandler.keysHeld["KeyS"]) {
-                    this.draw();
                     await sleep(1);
                 }
             }
@@ -981,7 +979,6 @@ class DrawingScreen {
                 this.screenBuffer[el.first].copy(el.second);
                 el.second.color = color;
                 if (intervalCounter % interval == 0 && this.keyboardHandler.keysHeld["KeyS"]) {
-                    this.draw();
                     await sleep(1);
                 }
             }

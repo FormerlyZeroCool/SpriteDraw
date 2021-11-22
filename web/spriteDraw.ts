@@ -863,11 +863,12 @@ class DrawingScreen {
                     dest.copy(source);
                 else
                     dest.blendAlphaCopy(source);
-                if(oldColor !== dest.color){
+                
+                if(oldColor !== dest.color)
+                {
                     const color:RGB = new RGB(0, 0, 0, 0);
                     color.color = oldColor
                     this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(destIndex, color)); 
-                
                 }
             }
         }
@@ -924,7 +925,6 @@ class DrawingScreen {
                     pixelColor.copy(this.color);
                 }
                 if(intervalCounter % drawInterval == 0 && this.keyboardHandler.keysHeld["KeyS"]){
-                    this.draw();
                     await sleep(1);
                 }
                 if(!checkedMap[cur + this.dimensions.first])
@@ -1156,7 +1156,6 @@ class DrawingScreen {
                     el.second.color = color;
                     if(intervalCounter % interval == 0 && this.keyboardHandler.keysHeld["KeyS"])
                     {
-                        this.draw();
                         await sleep(1);
                     }
             }
@@ -1186,7 +1185,6 @@ class DrawingScreen {
                     el.second.color = color;
                     if(intervalCounter % interval == 0 && this.keyboardHandler.keysHeld["KeyS"])
                     {
-                        this.draw();
                         await sleep(1);
                     }
             }
