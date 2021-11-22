@@ -309,7 +309,7 @@ class ToolSelector {
     imgWidth:number;
     imgHeight:number;
     keyboardHandler:KeyboardHandler;
-    constructor(keyboardHandler:KeyboardHandler, imgWidth:number = 50, imgHeight:number = 50)
+    constructor(field:DrawingScreen, keyboardHandler:KeyboardHandler, imgWidth:number = 50, imgHeight:number = 50)
     {
         this.imgWidth = imgWidth;
         this.imgHeight = imgHeight;
@@ -317,29 +317,32 @@ class ToolSelector {
         this.keyboardHandler = keyboardHandler;
         this.keyboardHandler.registerCallBack("keydown", e => {if(e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "ArrowLeft" || e.code === "ArrowRight") return true;},
             e => {
-                e.preventDefault();
                 const imgPerColumn:number = (this.canvas.height / this.imgHeight);
-                if(e.code === "ArrowUp")
-                    if(this.selectedTool !== 0)    
-                        this.selectedTool--;
-                    else
-                        this.selectedTool = this.toolArray.length - 1;
-                else if(e.code === "ArrowDown"){
-                    this.selectedTool++;
-                    this.selectedTool %= this.toolArray.length;
-                }
-                else if(e.code === "ArrowLeft"){
-                    if(this.selectedTool >= imgPerColumn)
-                        this.selectedTool -= imgPerColumn;
-                    else
-                        this.selectedTool = 0;
-                }
-                else if(e.code === "ArrowRight"){
-                    if(this.toolArray.length - this.selectedTool > imgPerColumn)
-                        this.selectedTool += imgPerColumn;
-                    else
-                        this.selectedTool = this.toolArray.length - 1;
-                }
+                if(document.activeElement.id === "body" || field.canvas === document.activeElement || this.canvas === document.activeElement)
+                {
+                    e.preventDefault();
+                    if(e.code === "ArrowUp")
+                        if(this.selectedTool !== 0)    
+                            this.selectedTool--;
+                        else
+                            this.selectedTool = this.toolArray.length - 1;
+                    else if(e.code === "ArrowDown"){
+                        this.selectedTool++;
+                        this.selectedTool %= this.toolArray.length;
+                    }
+                    else if(e.code === "ArrowLeft"){
+                        if(this.selectedTool >= imgPerColumn)
+                            this.selectedTool -= imgPerColumn;
+                        else
+                            this.selectedTool = 0;
+                    }
+                    else if(e.code === "ArrowRight"){
+                        if(this.toolArray.length - this.selectedTool > imgPerColumn)
+                            this.selectedTool += imgPerColumn;
+                        else
+                            this.selectedTool = this.toolArray.length - 1;
+                    }
+                }  
             });
         this.toolArray = new Array<Pair<string, HTMLImageElement> >();
         fetchImage("images/penSprite.png").then(img => { 
@@ -397,7 +400,7 @@ class ToolSelector {
         this.canvas = <HTMLCanvasElement> document.getElementById("tool_selector_screen");
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
         this.touchListener.registerCallBack("touchstart", e => true, e => {
-
+            (<any>document.activeElement).blur();
             const imgPerColumn:number = (this.canvas.height / this.imgHeight);
             const y:number = Math.floor(e.touchPos[1] / this.imgHeight);
             const x:number = Math.floor(e.touchPos[0] / this.imgWidth);
@@ -591,7 +594,7 @@ class DrawingScreen {
         this.lineWidth = dimensions[0] / bounds[0] * 4;
         this.spriteScreenBuf = new Sprite([], this.canvas.width, this.canvas.height, false);
         this.keyboardHandler = keyboardHandler;
-        this.toolSelector = new ToolSelector(keyboardHandler);
+        this.toolSelector = new ToolSelector(this, keyboardHandler);
         this.updatesStack = new RollingStack<Array<Pair<number,RGB>>>();
         this.undoneUpdatesStack = new RollingStack<Array<Pair<number,RGB>>>(5);
         this.selectionRect = new Array<number>();
@@ -616,7 +619,7 @@ class DrawingScreen {
                 if(this.toolSelector.selectedToolName() !== "redo" && this.toolSelector.selectedToolName() !== "undo")
                 this.updatesStack.push(new Array<Pair<number,RGB>>());
             }
-            this.canvas.focus();
+            (<any>document.activeElement).blur();
             if(this.toolSelector.selectedToolName() != "paste")
             {
                 this.pasteRect = [0,0,0,0];
@@ -1781,7 +1784,10 @@ class Pallette {
                 this.colors.push(new RGB(r%256, g%256, b%256, 255));
             }
         }
-        this.listeners.registerCallBack("touchstart", e => true, e => this.handleClick(e));
+        this.listeners.registerCallBack("touchstart", e => true, e => {
+            (<any>document.activeElement).blur();
+            this.handleClick(e);
+        });
 
     }
     calcColor(i:number = this.highLightedCell):RGB
@@ -2099,6 +2105,8 @@ class SpriteSelector {
         this.listener = listener;
         this.spritesCount = this.sprites()?this.sprites().length:0;
         listener.registerCallBack("touchstart", e => true, e => {
+
+            (<any>document.activeElement).blur();
             const clickedSprite:number = Math.floor(e.touchPos[0]/canvas.width*this.spritesPerRow) + spritesPerRow*Math.floor(e.touchPos[1] / this.spriteHeight);
             
             
@@ -2106,7 +2114,7 @@ class SpriteSelector {
         listener.registerCallBack("touchmove", e => true, e => {
             const clickedSprite:number = Math.floor(e.touchPos[0]/canvas.width*this.spritesPerRow) + spritesPerRow*Math.floor(e.touchPos[1] / this.spriteHeight);
             
-            if(e.moveCount == 1)
+            if(e.moveCount == 1 && this.sprites()[clickedSprite])
             {
                 if(this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"])
                 {
@@ -2131,20 +2139,19 @@ class SpriteSelector {
             const clickedSprite:number = Math.floor(e.touchPos[0]/canvas.width*this.spritesPerRow) + spritesPerRow*Math.floor(e.touchPos[1] / this.spriteHeight);
             this.ctx.fillStyle = "#FFFFFF";
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            if(clickedSprite >= 0)
+            if(clickedSprite >= 0 && this.dragSprite !== null)
             {
-                if(this.dragSprite !== null)
-                    this.sprites().splice(clickedSprite, 0, this.dragSprite);
+                this.sprites().splice(clickedSprite, 0, this.dragSprite);
                 this.spritesCount = this.sprites().length;
                 this.dragSprite = null;
-                this.dragSpriteLocation[0] = -1;
-                this.dragSpriteLocation[1] = -1;
             }
-            if(this.sprites() && clickedSprite >= 0 && clickedSprite < this.sprites().length)
+            if(this.sprites() && this.sprites()[clickedSprite])
             {
                 this.selectedSprite = clickedSprite;
                 this.sprites()[clickedSprite].copyToBuffer(this.drawingField.screenBuffer);
             }
+            else
+                this.selectedSprite = 0;
         });
     }
     update()
@@ -2258,8 +2265,7 @@ class AnimationGroup {
         const listener:SingleTouchListener = new SingleTouchListener(this.animationCanvas, false, true);
         this.listener = listener;
         listener.registerCallBack("touchstart", e => true, e => {
-            //const clickedSprite:number = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
-
+            (<any>document.activeElement).blur();
         });
         listener.registerCallBack("touchmove", e => true, e => {
             if(e.moveCount == 1)
@@ -2536,7 +2542,7 @@ class AnimationGroupsSelector {
         this.keyboardHandler = keyboardHandler;
         this.listener = new SingleTouchListener(this.canvas, true, true);
         this.listener.registerCallBack("touchstart", e => true, e => {
-
+            (<any>document.activeElement).blur();
         });
         this.listener.registerCallBack("touchmove", e => true, e => {
             const clickedIndex:number = Math.floor(e.touchPos[0] / this.renderWidth) + Math.floor(e.touchPos[1] / this.renderHeight);
