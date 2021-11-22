@@ -437,8 +437,8 @@ class ClipBoard {
         this.offscreenCanvas.height = this.canvas.height;
         ctx.fillStyle = "rgba(255,255,255,1)";
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        const start_x = (this.centerX / this.canvas.width * this.pixelCountX) - (width * (this.pixelWidth / 4) / 2);
-        const start_y = (this.centerY / this.canvas.height * this.pixelCountY) - (height * (this.pixelHeight / 4) / 2);
+        const start_x = 0; //(this.centerX / this.canvas.width * this.pixelCountX) - ((width * this.pixelWidth/4)/2);
+        const start_y = 0; //(this.centerY / this.canvas.height * this.pixelCountY) - ((height * this.pixelHeight/4)/2);
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 const sx = ((x + start_x) * this.pixelWidth / 4);
@@ -695,11 +695,16 @@ class DrawingScreen {
             const dest = this.screenBuffer[destIndex];
             const source = this.clipBoard.clipBoardBuffer[i].first;
             if (this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && (!dest.compare(source) || source.alpha() != 255)) {
-                this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(destIndex, new RGB(dest.red(), dest.green(), dest.blue(), dest.alpha())));
+                const oldColor = dest.color;
                 if (altHeld)
                     dest.copy(source);
                 else
                     dest.blendAlphaCopy(source);
+                if (oldColor !== dest.color) {
+                    const color = new RGB(0, 0, 0, 0);
+                    color.color = oldColor;
+                    this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(destIndex, color));
+                }
             }
         }
     }
@@ -1129,13 +1134,12 @@ class DrawingScreen {
             }
             ;
         }
-        if (this.pasteRect[3] != 0 && this.listeners.registeredTouch) {
+        if (this.pasteRect[3] !== 0 && this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "paste") {
             const dest_x = Math.floor((this.pasteRect[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
             const dest_y = Math.floor((this.pasteRect[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
             const width = this.clipBoard.currentDim[0];
             const height = this.clipBoard.currentDim[1];
             const initialIndex = dest_x + dest_y * this.dimensions.first;
-            const altHeld = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
             for (let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++) {
                 const copyAreaX = i % width;
                 const copyAreaY = Math.floor(i / width);
