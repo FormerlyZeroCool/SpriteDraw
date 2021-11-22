@@ -138,6 +138,23 @@ class RollingStack<T> {
         return this.data[(this.start + index) % this.reserve];
     }
 };
+
+function blendAlphaCopy(color0:RGB, color:RGB):void
+{
+    const alphant:number = color0.alphaNormal();
+    const alphanc:number = color.alphaNormal();
+    const a:number = (1 - alphanc);
+    const a0:number = (alphanc + alphant * a);
+    const a1:number = 1/a0;
+    color0.color = (((alphanc*color.red() +   alphant*color0.red() * a ) *a1) << 24) |
+        (((alphanc*color.green() + alphant*color0.green() * a)*a1) << 16) | 
+        (((alphanc*color.blue() +  alphant*color0.blue() * a) *a1) << 8) |
+        (a0 * 255);
+    /*this.setRed  ((alphanc*color.red() +   alphant*this.red() * a ) *a1);
+    this.setBlue ((alphanc*color.blue() +  alphant*this.blue() * a) *a1);
+    this.setGreen((alphanc*color.green() + alphant*this.green() * a)*a1);
+    this.setAlpha(a0*255);*/
+}
 class RGB {
     color:number;
     constructor(r:number = 0, g:number = 0, b:number, a:number = 0)
@@ -147,15 +164,7 @@ class RGB {
     }
     blendAlphaCopy(color:RGB):void
     {
-        const alphant:number = this.alphaNormal();
-        const alphanc:number = color.alphaNormal();
-        const a:number = (1 - alphanc);
-        const a0:number = (alphanc + alphant * a);
-        const a1:number = 1/a0;
-        this.color = (((alphanc*color.red() +   alphant*this.red() * a ) *a1) << 24) |
-            (((alphanc*color.green() + alphant*this.green() * a)*a1) << 16) | 
-            (((alphanc*color.blue() +  alphant*this.blue() * a) *a1) << 8) |
-            (a0 * 255);
+        blendAlphaCopy(this, color);
         /*this.setRed  ((alphanc*color.red() +   alphant*this.red() * a ) *a1);
         this.setBlue ((alphanc*color.blue() +  alphant*this.blue() * a) *a1);
         this.setGreen((alphanc*color.green() + alphant*this.green() * a)*a1);
@@ -982,7 +991,6 @@ class DrawingScreen {
         const max = [this.dragDataMaxPoint%this.dimensions.first, Math.floor(this.dragDataMaxPoint/this.dimensions.first)];
         const dx:number = (min[0] + max[0])/2;
         const dy:number = (min[1] + max[1])/2;
-        console.log(dx,dy);
         this.dragDataMinPoint = this.dimensions.first * this.dimensions.second;
         this.dragDataMaxPoint = 0;
         const initTransMatrix:number[] = [1,0,dx,
@@ -1151,7 +1159,6 @@ class DrawingScreen {
             this.updatesStack.push(backedUpFrame);
             const divisor:number =  60*10;
             const interval:number = data.length/divisor == 0 ? 1 : Math.floor(data.length / divisor);
-            console.log(interval);
             let intervalCounter:number = 0;
             for(let i = 0; i < data.length; i++)
             {
@@ -1348,17 +1355,29 @@ class DrawingScreen {
 
         }
 
+        if(this.pasteRect[3] != 0 && this.listeners.registeredTouch)
+        {
+            const dest_x:number = Math.floor((this.pasteRect[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
+            const dest_y:number = Math.floor((this.pasteRect[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
+            const width:number = this.clipBoard.currentDim[0];
+            const height:number = this.clipBoard.currentDim[1];
+            const initialIndex:number = dest_x + dest_y*this.dimensions.first;
+            const altHeld:boolean = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
             for(let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++)
             {
-                const x:number = i % this.clipBoard.pixelCountX;
-                const y:number = Math.floor(i / this.clipBoard.pixelCountX);
-                source.color = this.screenBuffer[x + y*this.dimensions.first].color;
-                const clipKey:number = Math.floor(x / cellWidth ) + this.clipBoard.pixelCountX * Math.floor((y - Math.floor(this.pasteRect[1]))/cellHeight);
-                console.log(clipKey)
-                toCopy.color = this.clipBoard.clipBoardBuffer[clipKey].first.color;
-                source.blendAlphaCopy(toCopy);
-                spriteScreenBuf.fillRect(source, x, y, cellWidth, cellHeight);
+                const copyAreaX:number = i%width;
+                const copyAreaY:number = Math.floor(i/width);
+                const destIndex:number = initialIndex + copyAreaX + copyAreaY*this.dimensions.first;
+                const x:number = destIndex % this.clipBoard.pixelCountX;
+                const y:number = Math.floor(destIndex/this.clipBoard.pixelCountX);
+                source.color = this.clipBoard.clipBoardBuffer[i].first.color;
+                if(this.screenBuffer[destIndex])
+                {
+                    toCopy.color = this.screenBuffer[destIndex].color;
+                    spriteScreenBuf.fillRectAlphaBlend(toCopy, source, x, y, cellWidth, cellHeight);
+                }
             }
+        }
         
         spriteScreenBuf.putPixels(ctx);
         if(this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line")
@@ -1873,6 +1892,23 @@ class Sprite {
                 this.pixels[++index] = color.green();
                 this.pixels[++index] = color.blue();
                 this.pixels[++index] = color.alpha();
+            }
+        }
+    }
+    fillRectAlphaBlend(source:RGB, color:RGB, x:number, y:number, width:number, height:number)
+    {
+        for(let xi = x; xi < x+width; xi++)
+        {
+            for(let yi = y; yi < y+height; yi++)
+            {
+                let index:number = (xi<<2) + (yi*this.width<<2);
+                source.color = (this.pixels[index] << 24) | (this.pixels[index+1] << 16) |
+                    (this.pixels[index+2] << 8) | this.pixels[index+3];
+                source.blendAlphaCopy(color);
+                this.pixels[index] = source.red();
+                this.pixels[++index] = source.green();
+                this.pixels[++index] = source.blue();
+                this.pixels[++index] = source.alpha();
             }
         }
     }

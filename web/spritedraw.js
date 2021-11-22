@@ -109,21 +109,28 @@ class RollingStack {
     }
 }
 ;
+function blendAlphaCopy(color0, color) {
+    const alphant = color0.alphaNormal();
+    const alphanc = color.alphaNormal();
+    const a = (1 - alphanc);
+    const a0 = (alphanc + alphant * a);
+    const a1 = 1 / a0;
+    color0.color = (((alphanc * color.red() + alphant * color0.red() * a) * a1) << 24) |
+        (((alphanc * color.green() + alphant * color0.green() * a) * a1) << 16) |
+        (((alphanc * color.blue() + alphant * color0.blue() * a) * a1) << 8) |
+        (a0 * 255);
+    /*this.setRed  ((alphanc*color.red() +   alphant*this.red() * a ) *a1);
+    this.setBlue ((alphanc*color.blue() +  alphant*this.blue() * a) *a1);
+    this.setGreen((alphanc*color.green() + alphant*this.green() * a)*a1);
+    this.setAlpha(a0*255);*/
+}
 class RGB {
     constructor(r = 0, g = 0, b, a = 0) {
         this.color = 0;
         this.color = r << 24 | g << 16 | b << 8 | a;
     }
     blendAlphaCopy(color) {
-        const alphant = this.alphaNormal();
-        const alphanc = color.alphaNormal();
-        const a = (1 - alphanc);
-        const a0 = (alphanc + alphant * a);
-        const a1 = 1 / a0;
-        this.color = (((alphanc * color.red() + alphant * this.red() * a) * a1) << 24) |
-            (((alphanc * color.green() + alphant * this.green() * a) * a1) << 16) |
-            (((alphanc * color.blue() + alphant * this.blue() * a) * a1) << 8) |
-            (a0 * 255);
+        blendAlphaCopy(this, color);
         /*this.setRed  ((alphanc*color.red() +   alphant*this.red() * a ) *a1);
         this.setBlue ((alphanc*color.blue() +  alphant*this.blue() * a) *a1);
         this.setGreen((alphanc*color.green() + alphant*this.green() * a)*a1);
@@ -808,7 +815,6 @@ class DrawingScreen {
         const max = [this.dragDataMaxPoint % this.dimensions.first, Math.floor(this.dragDataMaxPoint / this.dimensions.first)];
         const dx = (min[0] + max[0]) / 2;
         const dy = (min[1] + max[1]) / 2;
-        console.log(dx, dy);
         this.dragDataMinPoint = this.dimensions.first * this.dimensions.second;
         this.dragDataMaxPoint = 0;
         const initTransMatrix = [1, 0, dx,
@@ -952,7 +958,6 @@ class DrawingScreen {
             this.updatesStack.push(backedUpFrame);
             const divisor = 60 * 10;
             const interval = data.length / divisor == 0 ? 1 : Math.floor(data.length / divisor);
-            console.log(interval);
             let intervalCounter = 0;
             for (let i = 0; i < data.length; i++) {
                 intervalCounter++;
@@ -1115,15 +1120,25 @@ class DrawingScreen {
             }
             ;
         }
-        for (let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++) {
-            const x = i % this.clipBoard.pixelCountX;
-            const y = Math.floor(i / this.clipBoard.pixelCountX);
-            source.color = this.screenBuffer[x + y * this.dimensions.first].color;
-            const clipKey = Math.floor(x / cellWidth) + this.clipBoard.pixelCountX * Math.floor((y - Math.floor(this.pasteRect[1])) / cellHeight);
-            console.log(clipKey);
-            toCopy.color = this.clipBoard.clipBoardBuffer[clipKey].first.color;
-            source.blendAlphaCopy(toCopy);
-            spriteScreenBuf.fillRect(source, x, y, cellWidth, cellHeight);
+        if (this.pasteRect[3] != 0 && this.listeners.registeredTouch) {
+            const dest_x = Math.floor((this.pasteRect[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
+            const dest_y = Math.floor((this.pasteRect[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
+            const width = this.clipBoard.currentDim[0];
+            const height = this.clipBoard.currentDim[1];
+            const initialIndex = dest_x + dest_y * this.dimensions.first;
+            const altHeld = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
+            for (let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++) {
+                const copyAreaX = i % width;
+                const copyAreaY = Math.floor(i / width);
+                const destIndex = initialIndex + copyAreaX + copyAreaY * this.dimensions.first;
+                const x = destIndex % this.clipBoard.pixelCountX;
+                const y = Math.floor(destIndex / this.clipBoard.pixelCountX);
+                source.color = this.clipBoard.clipBoardBuffer[i].first.color;
+                if (this.screenBuffer[destIndex]) {
+                    toCopy.color = this.screenBuffer[destIndex].color;
+                    spriteScreenBuf.fillRectAlphaBlend(toCopy, source, x, y, cellWidth, cellHeight);
+                }
+            }
         }
         spriteScreenBuf.putPixels(ctx);
         if (this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line") {
@@ -1524,6 +1539,20 @@ class Sprite {
                 this.pixels[++index] = color.green();
                 this.pixels[++index] = color.blue();
                 this.pixels[++index] = color.alpha();
+            }
+        }
+    }
+    fillRectAlphaBlend(source, color, x, y, width, height) {
+        for (let xi = x; xi < x + width; xi++) {
+            for (let yi = y; yi < y + height; yi++) {
+                let index = (xi << 2) + (yi * this.width << 2);
+                source.color = (this.pixels[index] << 24) | (this.pixels[index + 1] << 16) |
+                    (this.pixels[index + 2] << 8) | this.pixels[index + 3];
+                source.blendAlphaCopy(color);
+                this.pixels[index] = source.red();
+                this.pixels[++index] = source.green();
+                this.pixels[++index] = source.blue();
+                this.pixels[++index] = source.alpha();
             }
         }
     }
