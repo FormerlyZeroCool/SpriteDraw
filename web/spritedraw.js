@@ -328,6 +328,12 @@ class ToolSelector {
             if (clicked < this.toolArray.length) {
                 this.selectedTool = clicked;
             }
+            if (this.selectedToolName() == "undo") {
+                field.undoLast();
+            }
+            else if (this.selectedToolName() == "redo") {
+                field.redoLast();
+            }
         });
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
