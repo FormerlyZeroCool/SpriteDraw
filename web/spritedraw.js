@@ -480,9 +480,9 @@ class DrawingScreen {
         this.pasteRect = [0, 0, 0, 0];
         this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
         for (let i = 0; i < dimensions[0] * dimensions[1]; i++) {
-            this.screenBuffer.push(new RGB(255, 255, 255, 0));
+            this.screenBuffer.push(new RGB(0, 0, 0, 0));
         }
-        const noColor = new RGB(1, 0, 0, 0);
+        const noColor = new RGB(0, 0, 0, 0);
         const colorBackup = new RGB(0, 0, 0, 0);
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
