@@ -717,7 +717,50 @@ class DrawingScreen {
                 this.redoLast();
                 break;
             }
-        })
+        });
+
+        this.listeners.registerCallBack("touchmove",e => true,e => {
+            const x1:number = e.touchPos[0] - e.deltaX;
+            const y1:number = e.touchPos[1] - e.deltaY;
+            switch (this.toolSelector.selectedToolName())
+            {
+                case("pen"):
+                this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
+                break;
+                case("eraser"):
+                this.color.copy(noColor);
+                this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
+                break;
+                case("drag"):
+                this.dragData.first.first += (e.deltaX / this.bounds.first) * this.dimensions.first;
+                this.dragData.first.second += (e.deltaY / this.bounds.second) * this.dimensions.second;
+                break;
+                case("rotate"):
+                if(e.moveCount % 2 == 0)
+                    this.rotateSelectedPixelGroup(Math.PI/32);
+                break;
+                case("fill"):
+                break;
+                case("oval"):
+                case("rect"):
+                this.selectionRect[2] += e.deltaX;
+                this.selectionRect[3] += e.deltaY;
+                break;
+                case("copy"):
+                this.selectionRect[2] += e.deltaX;
+                this.selectionRect[3] += e.deltaY;
+                this.pasteRect[2] = this.selectionRect[2];
+                this.pasteRect[3] = this.selectionRect[3];
+                break;
+                case("paste"):
+                this.pasteRect[0] += e.deltaX;
+                this.pasteRect[1] += e.deltaY;
+
+                break;
+            }
+            
+        });
+
         this.listeners.registerCallBack("touchend",e => true, async e => {
             switch (this.toolSelector.selectedToolName())
             {
@@ -772,48 +815,6 @@ class DrawingScreen {
             }
         });
         
-        this.listeners.registerCallBack("touchmove",e => true,e => {
-            const x1:number = e.touchPos[0] - e.deltaX;
-            const y1:number = e.touchPos[1] - e.deltaY;
-            switch (this.toolSelector.selectedToolName())
-            {
-                case("pen"):
-                this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
-                break;
-                case("eraser"):
-                this.color.copy(noColor);
-                this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
-                break;
-                case("drag"):
-                this.dragData.first.first += (e.deltaX / this.bounds.first) * this.dimensions.first;
-                this.dragData.first.second += (e.deltaY / this.bounds.second) * this.dimensions.second;
-                break;
-                case("rotate"):
-                if(e.moveCount % 2 == 0)
-                    this.rotateSelectedPixelGroup(Math.PI/32);
-                break;
-                case("fill"):
-                break;
-                case("oval"):
-                case("rect"):
-                this.selectionRect[2] += e.deltaX;
-                this.selectionRect[3] += e.deltaY;
-                break;
-                case("copy"):
-                this.selectionRect[2] += e.deltaX;
-                this.selectionRect[3] += e.deltaY;
-                this.pasteRect[2] = this.selectionRect[2];
-                this.pasteRect[3] = this.selectionRect[3];
-                break;
-                case("paste"):
-                this.pasteRect[0] += e.deltaX;
-                this.pasteRect[1] += e.deltaY;
-
-                break;
-            }
-            
-        });
-
         this.color = new RGB(0,0,0,255);
         
     }
