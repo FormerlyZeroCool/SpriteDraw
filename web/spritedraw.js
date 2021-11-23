@@ -616,7 +616,7 @@ class DrawingScreen {
         this.listeners.registerCallBack("touchend", e => true, async (e) => {
             switch (this.toolSelector.selectedToolName()) {
                 case ("oval"):
-                    await this.handleEllipse(e);
+                    this.handleEllipse(e);
                     this.selectionRect = [0, 0, 0, 0];
                     break;
                 case ("pen"):
@@ -1286,6 +1286,7 @@ class SingleTouchListener {
     constructor(component, preventDefault, mouseEmulation) {
         this.lastTouchTime = Date.now();
         this.offset = [];
+        this.startTouchPos = [0, 0];
         this.component = component;
         this.preventDefault = preventDefault;
         this.touchStart = null;
@@ -1331,6 +1332,7 @@ class SingleTouchListener {
         if (!this.touchPos[0]) {
             this.touchPos = [this.touchStart["clientX"] - this.component.getBoundingClientRect().left, this.touchStart["clientY"] - this.component.getBoundingClientRect().top];
         }
+        this.startTouchPos = [this.touchPos[0], this.touchPos[1]];
         event.touchPos = this.touchPos;
         this.touchMoveEvents = [];
         this.touchVelocity = 0;
@@ -1352,8 +1354,10 @@ class SingleTouchListener {
         }
         if (touchMove) {
             if (!touchMove["offsetY"]) {
-                touchMove.offsetX = touchMove["clientX"] - this.component.getBoundingClientRect().left;
                 touchMove.offsetY = touchMove["clientY"] - this.component.getBoundingClientRect().top;
+            }
+            if (!touchMove["offsetX"]) {
+                touchMove.offsetX = touchMove["clientX"] - this.component.getBoundingClientRect().left;
             }
             const deltaY = touchMove["offsetY"] - this.touchPos[1];
             const deltaX = touchMove["offsetX"] - this.touchPos[0];
@@ -1391,11 +1395,13 @@ class SingleTouchListener {
             }
             if (touchEnd) {
                 if (!touchEnd["offsetY"]) {
-                    touchEnd.offsetX = touchEnd["clientX"] - this.component.getBoundingClientRect().left;
                     touchEnd.offsetY = touchEnd["clientY"] - this.component.getBoundingClientRect().top;
                 }
-                const deltaY = touchEnd["offsetY"] - this.touchStart["offsetY"];
-                const deltaX = touchEnd["offsetX"] - this.touchStart["offsetX"];
+                if (!touchEnd["offsetX"]) {
+                    touchEnd.offsetX = touchEnd["clientX"] - this.component.getBoundingClientRect().left;
+                }
+                const deltaY = touchEnd["offsetY"] - this.startTouchPos[1];
+                const deltaX = touchEnd["offsetX"] - this.startTouchPos[0];
                 this.touchPos = [touchEnd["offsetX"], touchEnd["offsetY"]];
                 const mag = this.mag([deltaX, deltaY]);
                 const a = this.normalize([deltaX, deltaY]);

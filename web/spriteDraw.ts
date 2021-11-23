@@ -765,7 +765,7 @@ class DrawingScreen {
             switch (this.toolSelector.selectedToolName())
             {
                 case("oval"):
-                await this.handleEllipse(e);
+                this.handleEllipse(e);
                 this.selectionRect = [0,0,0,0];
                 break;
                 case("pen"):
@@ -1575,6 +1575,7 @@ class SingleTouchListener
     touchStart:any;
     registeredTouch:boolean;
     touchPos:Array<number>;
+    startTouchPos:number[];
     offset:Array<number>;
     touchVelocity:number;
     touchMoveCount:number;
@@ -1585,7 +1586,8 @@ class SingleTouchListener
     constructor(component:any, preventDefault:boolean, mouseEmulation:boolean)
     {
         this.lastTouchTime = Date.now();
-        this.offset = []
+        this.offset = [];
+        this.startTouchPos = [0, 0];
         this.component = component;
         this.preventDefault = preventDefault;
         this.touchStart = null;
@@ -1636,6 +1638,7 @@ class SingleTouchListener
         if(!this.touchPos[0]){
             this.touchPos = [this.touchStart["clientX"] - this.component.getBoundingClientRect().left, this.touchStart["clientY"] - this.component.getBoundingClientRect().top];
         }
+        this.startTouchPos = [this.touchPos[0], this.touchPos[1]];
         event.touchPos = this.touchPos;
         this.touchMoveEvents = [];
         this.touchVelocity = 0;
@@ -1661,9 +1664,13 @@ class SingleTouchListener
         
         if(touchMove)
         {
-            if(!touchMove["offsetY"]){
-                touchMove.offsetX = touchMove["clientX"] - this.component.getBoundingClientRect().left;
+            if(!touchMove["offsetY"])
+            {
                 touchMove.offsetY = touchMove["clientY"] - this.component.getBoundingClientRect().top;
+            }
+            if(!touchMove["offsetX"])
+            {
+                touchMove.offsetX = touchMove["clientX"] - this.component.getBoundingClientRect().left;
             }
             const deltaY:number = touchMove["offsetY"]-this.touchPos[1];
             const deltaX:number = touchMove["offsetX"]-this.touchPos[0];
@@ -1704,13 +1711,16 @@ class SingleTouchListener
             } 
             if(touchEnd)
             {
-                if(!touchEnd["offsetY"]){
-                    touchEnd.offsetX = touchEnd["clientX"] - this.component.getBoundingClientRect().left;
+                if(!touchEnd["offsetY"])
+                {
                     touchEnd.offsetY = touchEnd["clientY"] - this.component.getBoundingClientRect().top;
+                }if(!touchEnd["offsetX"])
+                {
+                    touchEnd.offsetX = touchEnd["clientX"] - this.component.getBoundingClientRect().left;
                 }
-                const deltaY:number = touchEnd["offsetY"]-this.touchStart["offsetY"];
+                const deltaY:number = touchEnd["offsetY"] - this.startTouchPos[1];
 
-                const deltaX:number = touchEnd["offsetX"]-this.touchStart["offsetX"];
+                const deltaX:number = touchEnd["offsetX"] - this.startTouchPos[0];
                 this.touchPos = [touchEnd["offsetX"], touchEnd["offsetY"]];
                 const mag:number = this.mag([deltaX, deltaY]);
                 const a:Array<number> = this.normalize([deltaX, deltaY]);
@@ -1730,6 +1740,7 @@ class SingleTouchListener
                 event.startTouchTime = this.lastTouchTime;
                 event.eventTime = Date.now();
                 event.moveCount = this.moveCount;
+                
                 this.callHandler("touchend", event);
             }
             this.registeredTouch = false;
