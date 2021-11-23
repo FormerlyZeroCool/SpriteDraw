@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [528, 528];
+const dim = [128, 128];
 function threeByThreeMat(a, b) {
     return [a[0] * b[0] + a[1] * b[3] + a[2] * b[6],
         a[0] * b[1] + a[1] * b[4] + a[2] * b[7],
@@ -1109,11 +1109,11 @@ class DrawingScreen {
         if (this.dimensions.first == this.canvas.width && this.dimensions.second == this.canvas.height) {
             for (let y = 0; y < this.dimensions.second; y++) {
                 for (let x = 0; x < this.dimensions.first; x++) {
-                    const index = x + y * this.dimensions.first;
-                    spriteScreenBuf.pixels[(index << 2)] = this.screenBuffer[index].red();
-                    spriteScreenBuf.pixels[(index << 2) + 1] = this.screenBuffer[index].green();
-                    spriteScreenBuf.pixels[(index << 2) + 2] = this.screenBuffer[index].blue();
-                    spriteScreenBuf.pixels[(index << 2) + 3] = this.screenBuffer[index].alpha();
+                    const index = (x + y * this.dimensions.first) << 2;
+                    spriteScreenBuf.pixels[index] = this.screenBuffer[index].red();
+                    spriteScreenBuf.pixels[index + 1] = this.screenBuffer[index].green();
+                    spriteScreenBuf.pixels[index + 2] = this.screenBuffer[index].blue();
+                    spriteScreenBuf.pixels[index + 3] = this.screenBuffer[index].alpha();
                 }
             }
         }
@@ -1153,7 +1153,7 @@ class DrawingScreen {
                 source.color = this.clipBoard.clipBoardBuffer[i].first.color;
                 if (this.screenBuffer[destIndex]) {
                     toCopy.color = this.screenBuffer[destIndex].color;
-                    spriteScreenBuf.fillRectAlphaBlend(toCopy, source, x, y, cellWidth, cellHeight);
+                    spriteScreenBuf.fillRectAlphaBlend(toCopy, source, x * cellWidth, y * cellHeight, cellWidth, cellHeight);
                 }
             }
         }
