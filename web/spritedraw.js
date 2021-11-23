@@ -79,6 +79,11 @@ class RollingStack {
         for (let i = 0; i < size; i++)
             this.data.push();
     }
+    empty() {
+        this.start = 0;
+        this.end = 0;
+        this.size = 0;
+    }
     length() {
         return this.size;
     }
@@ -488,8 +493,10 @@ class DrawingScreen {
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
             if (this.updatesStack.length() == 0 || this.updatesStack.get(this.updatesStack.length() - 1).length) {
-                if (this.toolSelector.selectedToolName() !== "redo" && this.toolSelector.selectedToolName() !== "undo")
+                if (this.toolSelector.selectedToolName() !== "redo" && this.toolSelector.selectedToolName() !== "undo") {
                     this.updatesStack.push(new Array());
+                    this.undoneUpdatesStack.empty();
+                }
             }
             document.activeElement.blur();
             if (this.toolSelector.selectedToolName() != "paste") {

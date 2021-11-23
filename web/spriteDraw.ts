@@ -102,6 +102,12 @@ class RollingStack<T> {
         for(let i = 0; i < size; i++)
             this.data.push();
     }
+    empty():void
+    {
+        this.start = 0;
+        this.end = 0;
+        this.size = 0;
+    }
     length():number
     {
         return this.size;
@@ -625,7 +631,10 @@ class DrawingScreen {
             if(this.updatesStack.length() == 0 || this.updatesStack.get(this.updatesStack.length() - 1).length)
             {
                 if(this.toolSelector.selectedToolName() !== "redo" && this.toolSelector.selectedToolName() !== "undo")
-                this.updatesStack.push(new Array<Pair<number,RGB>>());
+                {
+                    this.updatesStack.push(new Array<Pair<number,RGB>>());
+                    this.undoneUpdatesStack.empty();
+                }
             }
             (<any>document.activeElement).blur();
             if(this.toolSelector.selectedToolName() != "paste")
