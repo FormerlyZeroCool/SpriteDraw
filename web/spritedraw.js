@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [128, 128];
+const dim = [528, 528];
 function threeByThreeMat(a, b) {
     return [a[0] * b[0] + a[1] * b[3] + a[2] * b[6],
         a[0] * b[1] + a[1] * b[4] + a[2] * b[7],
@@ -235,6 +235,17 @@ class Pair {
     }
 }
 ;
+class ImageConatiner {
+    constructor(imageName, imagePath) {
+        this.image = null;
+        fetchImage(imagePath).then(img => {
+            this.image = img;
+        });
+        this.name = imageName;
+    }
+}
+;
+// To do refactor tools to make sure they load in the same order every time
 class ToolSelector {
     constructor(field, keyboardHandler, imgWidth = 50, imgHeight = 50) {
         this.imgWidth = imgWidth;
@@ -827,6 +838,7 @@ class DrawingScreen {
                     stack.push(cur - this.dimensions.first + 1);
             }
         }
+        this.updatesStack.get(this.updatesStack.length() - 1).sort((a, b) => a.first - b.first);
         this.updatesStack.push([]);
         return new Pair(new Pair(0, 0), data);
     }
@@ -1039,6 +1051,7 @@ class DrawingScreen {
                 else
                     this.screenBuffer[key].color = color.color;
             }
+            this.updatesStack.get(this.updatesStack.length() - 1).sort((a, b) => a.first - b.first);
         }
     }
     saveDragDataToScreenAntiAliased() {
@@ -1109,11 +1122,11 @@ class DrawingScreen {
         if (this.dimensions.first == this.canvas.width && this.dimensions.second == this.canvas.height) {
             for (let y = 0; y < this.dimensions.second; y++) {
                 for (let x = 0; x < this.dimensions.first; x++) {
-                    const index = (x + y * this.dimensions.first) << 2;
-                    spriteScreenBuf.pixels[index] = this.screenBuffer[index].red();
-                    spriteScreenBuf.pixels[index + 1] = this.screenBuffer[index].green();
-                    spriteScreenBuf.pixels[index + 2] = this.screenBuffer[index].blue();
-                    spriteScreenBuf.pixels[index + 3] = this.screenBuffer[index].alpha();
+                    const index = (x + y * this.dimensions.first);
+                    spriteScreenBuf.pixels[(index << 2)] = this.screenBuffer[index].red();
+                    spriteScreenBuf.pixels[(index << 2) + 1] = this.screenBuffer[index].green();
+                    spriteScreenBuf.pixels[(index << 2) + 2] = this.screenBuffer[index].blue();
+                    spriteScreenBuf.pixels[(index << 2) + 3] = this.screenBuffer[index].alpha();
                 }
             }
         }

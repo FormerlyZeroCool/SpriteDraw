@@ -2,7 +2,7 @@ function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
-const dim = [128,128];
+const dim = [528,528];
 function threeByThreeMat(a:number[], b:number[]):number[]
 {
     return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 
@@ -292,6 +292,19 @@ class Pair<T,U = T> {
     }
 
 };
+class ImageConatiner {
+    image:HTMLImageElement;
+    name:string;
+    constructor(imageName:string, imagePath:string)
+    {
+        this.image = null;
+        fetchImage(imagePath).then(img => { 
+            this.image = img;
+        });
+        this.name = imageName;
+    }
+};
+// To do refactor tools to make sure they load in the same order every time
 class ToolSelector {
     penTool:HTMLImageElement;
     fillTool:HTMLImageElement;
@@ -307,7 +320,7 @@ class ToolSelector {
     eraserTool:HTMLImageElement;
     rotationTool:HTMLImageElement;
 
-    toolArray:Array<Pair<string,HTMLImageElement> >;
+    toolArray:Array<Pair<string,ImageConatiner> >;
     canvas:HTMLCanvasElement;
     ctx:any;
     touchListener:SingleTouchListener;
@@ -350,7 +363,7 @@ class ToolSelector {
                     }
                 }  
             });
-        this.toolArray = new Array<Pair<string, HTMLImageElement> >();
+        this.toolArray = new Array<Pair<string, ImageConatiner> >();
         fetchImage("images/penSprite.png").then(img => { 
             this.penTool = img;
             this.toolArray.push(new Pair("pen", this.penTool));
@@ -1008,6 +1021,7 @@ class DrawingScreen {
                     stack.push(cur - this.dimensions.first + 1);
             }
         }
+        this.updatesStack.get(this.updatesStack.length()-1).sort((a, b) => a.first - b.first);
         this.updatesStack.push([]);
         return new Pair(new Pair(0,0), data);
     }
@@ -1260,6 +1274,7 @@ class DrawingScreen {
                     this.screenBuffer[key].color = color.color;
                 
             }
+            this.updatesStack.get(this.updatesStack.length()-1).sort((a, b) => a.first - b.first);
         }
     }
     saveDragDataToScreenAntiAliased():void
@@ -1345,11 +1360,11 @@ class DrawingScreen {
             {
                 for(let x = 0; x < this.dimensions.first; x++)
                 {
-                    const index:number = (x + y*this.dimensions.first) << 2;
-                    spriteScreenBuf.pixels[index] = this.screenBuffer[index].red();  
-                    spriteScreenBuf.pixels[index + 1] = this.screenBuffer[index].green();   
-                    spriteScreenBuf.pixels[index + 2] = this.screenBuffer[index].blue();   
-                    spriteScreenBuf.pixels[index + 3] = this.screenBuffer[index].alpha();   
+                    const index:number = (x + y*this.dimensions.first);
+                    spriteScreenBuf.pixels[(index<<2)] = this.screenBuffer[index].red();  
+                    spriteScreenBuf.pixels[(index<<2) + 1] = this.screenBuffer[index].green();   
+                    spriteScreenBuf.pixels[(index<<2) + 2] = this.screenBuffer[index].blue();   
+                    spriteScreenBuf.pixels[(index<<2) + 3] = this.screenBuffer[index].alpha();   
                 }
             }
         }
