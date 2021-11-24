@@ -251,6 +251,7 @@ class ToolSelector {
         this.imgWidth = imgWidth;
         this.imgHeight = imgHeight;
         this.selectedTool = 0;
+        this.canvas = document.getElementById("tool_selector_screen");
         this.keyboardHandler = keyboardHandler;
         this.keyboardHandler.registerCallBack("keydown", e => { if (e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "ArrowLeft" || e.code === "ArrowRight")
             return true; }, e => {
@@ -281,59 +282,19 @@ class ToolSelector {
             }
         });
         this.toolArray = new Array();
-        fetchImage("images/penSprite.png").then(img => {
-            this.penTool = img;
-            this.toolArray.push(new Pair("pen", this.penTool));
-        });
-        fetchImage("images/fillSprite.png").then(img => {
-            this.fillTool = img;
-            this.toolArray.push(new Pair("fill", this.fillTool));
-        });
-        fetchImage("images/LineDrawSprite.png").then(img => {
-            this.lineTool = img;
-            this.toolArray.push(new Pair("line", this.lineTool));
-        });
-        fetchImage("images/rectSprite.png").then(img => {
-            this.rectTool = img;
-            this.toolArray.push(new Pair("rect", this.rectTool));
-        });
-        fetchImage("images/ovalSprite.png").then(img => {
-            this.ovalTool = img;
-            this.toolArray.push(new Pair("oval", this.ovalTool));
-        });
-        fetchImage("images/copySprite.png").then(img => {
-            this.copyTool = img;
-            this.toolArray.push(new Pair("copy", this.copyTool));
-        });
-        fetchImage("images/pasteSprite.png").then(img => {
-            this.pasteTool = img;
-            this.toolArray.push(new Pair("paste", this.pasteTool));
-        });
-        fetchImage("images/dragSprite.png").then(img => {
-            this.dragTool = img;
-            this.toolArray.push(new Pair("drag", this.dragTool));
-        });
-        fetchImage("images/redoSprite.png").then(img => {
-            this.undoTool = img;
-            this.toolArray.push(new Pair("redo", this.undoTool));
-        });
-        fetchImage("images/undoSprite.png").then(img => {
-            this.redoTool = img;
-            this.toolArray.push(new Pair("undo", this.redoTool));
-        });
-        fetchImage("images/colorPickerSprite.png").then(img => {
-            this.colorPickerTool = img;
-            this.toolArray.push(new Pair("colorPicker", this.colorPickerTool));
-        });
-        fetchImage("images/eraserSprite.png").then(img => {
-            this.eraserTool = img;
-            this.toolArray.push(new Pair("eraser", this.eraserTool));
-        });
-        fetchImage("images/rotateSprite.png").then(img => {
-            this.rotationTool = img;
-            this.toolArray.push(new Pair("rotate", this.rotationTool));
-        });
-        this.canvas = document.getElementById("tool_selector_screen");
+        this.toolArray.push(new ImageConatiner("pen", "images/penSprite.png"));
+        this.toolArray.push(new ImageConatiner("fill", "images/fillSprite.png"));
+        this.toolArray.push(new ImageConatiner("line", "images/LineDrawSprite.png"));
+        this.toolArray.push(new ImageConatiner("rect", "images/rectSprite.png"));
+        this.toolArray.push(new ImageConatiner("oval", "images/ovalSprite.png"));
+        this.toolArray.push(new ImageConatiner("copy", "images/copySprite.png"));
+        this.toolArray.push(new ImageConatiner("paste", "images/pasteSprite.png"));
+        this.toolArray.push(new ImageConatiner("drag", "images/dragSprite.png"));
+        this.toolArray.push(new ImageConatiner("redo", "images/redoSprite.png"));
+        this.toolArray.push(new ImageConatiner("undo", "images/undoSprite.png"));
+        this.toolArray.push(new ImageConatiner("colorPicker", "images/colorPickerSprite.png"));
+        this.toolArray.push(new ImageConatiner("eraser", "images/eraserSprite.png"));
+        this.toolArray.push(new ImageConatiner("rotate", "images/rotateSprite.png"));
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             document.activeElement.blur();
@@ -366,16 +327,16 @@ class ToolSelector {
         }
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         for (let i = 0; i < this.toolArray.length; i++) {
-            const toolImage = this.toolArray[i].second;
+            const toolImage = this.toolArray[i].image;
             if (toolImage)
-                this.ctx.drawImage(toolImage, Math.floor(i / imgPerColumn) * this.imgWidth, i * this.penTool.height % (imgPerColumn * this.imgHeight));
+                this.ctx.drawImage(toolImage, Math.floor(i / imgPerColumn) * this.imgWidth, i * this.toolArray[i].image.height % (imgPerColumn * this.imgHeight));
         }
-        if (this.penTool)
+        if (this.toolArray[0].image)
             this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
     }
     selectedToolName() {
         if (this.toolArray[this.selectedTool])
-            return this.toolArray[this.selectedTool].first;
+            return this.toolArray[this.selectedTool].name;
         return null;
     }
 }
