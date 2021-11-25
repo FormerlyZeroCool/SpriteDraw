@@ -918,7 +918,7 @@ class DrawingScreen {
     {
         const stack:number[] = [];
         const data:number[] = [];
-        const defaultColor = new RGB(255,255,255,0);
+        const defaultColor = new RGB(0, 0, 0, 0);
         const checkedMap:Array<boolean> = new Array<boolean>(this.dimensions.first * this.dimensions.second).fill(false);
         
         const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;

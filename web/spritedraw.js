@@ -753,7 +753,7 @@ class DrawingScreen {
     getSelectedPixelGroup(startCoordinate, countColor) {
         const stack = [];
         const data = [];
-        const defaultColor = new RGB(255, 255, 255, 0);
+        const defaultColor = new RGB(0, 0, 0, 0);
         const checkedMap = new Array(this.dimensions.first * this.dimensions.second).fill(false);
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
         const startPixel = this.screenBuffer[startIndex];
