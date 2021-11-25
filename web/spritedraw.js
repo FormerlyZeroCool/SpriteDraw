@@ -1261,6 +1261,10 @@ class ListenerTypes {
         this.touchend = new Array();
     }
 }
+function isTouchSupported() {
+    return (('ontouchstart' in window) ||
+        (navigator.maxTouchPoints > 0));
+}
 class SingleTouchListener {
     constructor(component, preventDefault, mouseEmulation) {
         this.lastTouchTime = Date.now();
@@ -1282,7 +1286,7 @@ class SingleTouchListener {
         component.addEventListener('touchstart', event => { this.touchStartHandler(event); }, false);
         component.addEventListener('touchmove', event => this.touchMoveHandler(event), false);
         component.addEventListener('touchend', event => this.touchEndHandler(event), false);
-        if (mouseEmulation) {
+        if (mouseEmulation && !isTouchSupported()) {
             component.addEventListener('mousedown', event => { event.changedTouches = {}; event.changedTouches.item = x => event; this.touchStartHandler(event); });
             component.addEventListener('mousemove', event => { event.changedTouches = {}; event.changedTouches.item = x => event; this.touchMoveHandler(event); });
             component.addEventListener('mouseup', event => { event.changedTouches = {}; event.changedTouches.item = x => event; this.touchEndHandler(event); });
