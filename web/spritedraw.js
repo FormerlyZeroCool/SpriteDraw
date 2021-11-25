@@ -1712,7 +1712,7 @@ class SpriteSelector {
         });
         listener.registerCallBack("touchmove", e => true, e => {
             const clickedSprite = Math.floor(e.touchPos[0] / canvas.width * this.spritesPerRow) + spritesPerRow * Math.floor(e.touchPos[1] / this.spriteHeight);
-            if (e.moveCount == 1 && this.sprites()[clickedSprite]) {
+            if (e.moveCount == 1 && this.sprites()[clickedSprite] && this.sprites().length > 1) {
                 if (this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"]) {
                     const dragSprite = new Sprite([], 1, 1);
                     dragSprite.copySprite(this.sprites()[clickedSprite]);
@@ -1742,6 +1742,8 @@ class SpriteSelector {
                 this.selectedSprite = clickedSprite;
                 this.sprites()[clickedSprite].copyToBuffer(this.drawingField.screenBuffer);
             }
+            else if (this.sprites() && this.sprites().length > 1)
+                this.selectedSprite = this.sprites().length - 1;
             else
                 this.selectedSprite = 0;
         });

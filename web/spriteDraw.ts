@@ -2111,7 +2111,7 @@ class SpriteSelector {
         listener.registerCallBack("touchmove", e => true, e => {
             const clickedSprite:number = Math.floor(e.touchPos[0]/canvas.width*this.spritesPerRow) + spritesPerRow*Math.floor(e.touchPos[1] / this.spriteHeight);
             
-            if(e.moveCount == 1 && this.sprites()[clickedSprite])
+            if(e.moveCount == 1 && this.sprites()[clickedSprite] && this.sprites().length > 1)
             {
                 if(this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"])
                 {
@@ -2147,6 +2147,8 @@ class SpriteSelector {
                 this.selectedSprite = clickedSprite;
                 this.sprites()[clickedSprite].copyToBuffer(this.drawingField.screenBuffer);
             }
+            else if(this.sprites() && this.sprites().length > 1)
+                this.selectedSprite = this.sprites().length - 1;
             else
                 this.selectedSprite = 0;
         });
