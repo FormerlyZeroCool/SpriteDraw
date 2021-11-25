@@ -2669,7 +2669,8 @@ class AnimationGroupsSelector {
         let animationIndex:number = this.animationGroups[animationGroupIndex].second.first;
         if(group)
         {
-            let spriteIndex:number = this.animationGroups[animationGroupIndex].second.second++;
+            let spriteIndex:number = this.animationGroups[animationGroupIndex].second.second;
+            spriteIndex++;
             
             if(group.animations[animationIndex] && group.animations[animationIndex].sprites.length <= spriteIndex)
             {
