@@ -306,7 +306,7 @@ class ImageConatiner {
 };
 // To do refactor tools to make sure they load in the same order every time
 class ToolSelector {
-    toolArray:Array<ImageConatiner >;
+    toolArray:ImageConatiner[];
     canvas:HTMLCanvasElement;
     ctx:any;
     touchListener:SingleTouchListener;
@@ -350,7 +350,7 @@ class ToolSelector {
                     }
                 }  
             });
-        this.toolArray = new Array<ImageConatiner>();
+        this.toolArray = [];
         this.toolArray.push(new ImageConatiner("pen","images/penSprite.png"));
         this.toolArray.push(new ImageConatiner("fill", "images/fillSprite.png"));
         this.toolArray.push(new ImageConatiner("line", "images/LineDrawSprite.png"));
@@ -697,7 +697,12 @@ class DrawingScreen {
                 break;
                 case("rotate"):
                 if(e.moveCount % 2 == 0)
-                    this.rotateSelectedPixelGroup(Math.PI/32);
+                    if(e.deltaY > 0)
+                        this.rotateSelectedPixelGroup(Math.PI/32, [(this.listeners.startTouchPos[0] / this.bounds.first) * this.dimensions.first,
+                            (this.listeners.startTouchPos[1] / this.bounds.second) * this.dimensions.second]);
+                    else if(e.deltaY < 0)
+                        this.rotateSelectedPixelGroup(-Math.PI/32, [(this.listeners.startTouchPos[0] / this.bounds.first) * this.dimensions.first,
+                            (this.listeners.startTouchPos[1] / this.bounds.second) * this.dimensions.second]);
                 break;
                 case("fill"):
                 break;
@@ -972,12 +977,12 @@ class DrawingScreen {
         this.updatesStack.push([]);
         return new Pair(new Pair(0,0), data);
     }
-    rotateSelectedPixelGroup(theta:number, ):void
+    rotateSelectedPixelGroup(theta:number, centerPoint:number[]):void
     {
         const min = [this.dragDataMinPoint%this.dimensions.first, Math.floor(this.dragDataMinPoint/this.dimensions.first)];
         const max = [this.dragDataMaxPoint%this.dimensions.first, Math.floor(this.dragDataMaxPoint/this.dimensions.first)];
-        const dx:number = (min[0] + max[0])/2;
-        const dy:number = (min[1] + max[1])/2;
+        const dx:number = Math.floor(centerPoint[0]);
+        const dy:number = Math.floor(centerPoint[1]);
         this.dragDataMinPoint = this.dimensions.first * this.dimensions.second;
         this.dragDataMaxPoint = 0;
         const initTransMatrix:number[] = [1,0,dx,
