@@ -570,7 +570,7 @@ class DrawingScreen {
         this.keyboardHandler = keyboardHandler;
         this.toolSelector = new ToolSelector(this, keyboardHandler);
         this.updatesStack = new RollingStack<Array<Pair<number,RGB>>>();
-        this.undoneUpdatesStack = new RollingStack<Array<Pair<number,RGB>>>(5);
+        this.undoneUpdatesStack = new RollingStack<Array<Pair<number,RGB>>>();
         this.selectionRect = new Array<number>();
         this.offset = new Pair<number>(offset[0], offset[1]);
         this.bounds = new Pair<number>(bounds[0], bounds[1]);
@@ -1572,9 +1572,12 @@ class SingleTouchListener
             touchmove:[],
             touchend:[]
         };
-        component.addEventListener('touchstart', event => {this.touchStartHandler(event);}, false);
-        component.addEventListener('touchmove', event => this.touchMoveHandler(event), false);
-        component.addEventListener('touchend', event => this.touchEndHandler(event), false);
+        if(isTouchSupported())
+        {
+            component.addEventListener('touchstart', event => {this.touchStartHandler(event);}, false);
+            component.addEventListener('touchmove', event => this.touchMoveHandler(event), false);
+            component.addEventListener('touchend', event => this.touchEndHandler(event), false);
+        }
         if(mouseEmulation && !isTouchSupported()){
             component.addEventListener('mousedown', event => {event.changedTouches = {};event.changedTouches.item = x => event; this.touchStartHandler(event)});
             component.addEventListener('mousemove', event => {event.changedTouches = {};event.changedTouches.item = x => event; this.touchMoveHandler(event)});

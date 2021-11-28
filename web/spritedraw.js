@@ -447,7 +447,7 @@ class DrawingScreen {
         this.keyboardHandler = keyboardHandler;
         this.toolSelector = new ToolSelector(this, keyboardHandler);
         this.updatesStack = new RollingStack();
-        this.undoneUpdatesStack = new RollingStack(5);
+        this.undoneUpdatesStack = new RollingStack();
         this.selectionRect = new Array();
         this.offset = new Pair(offset[0], offset[1]);
         this.bounds = new Pair(bounds[0], bounds[1]);
@@ -1283,9 +1283,11 @@ class SingleTouchListener {
             touchmove: [],
             touchend: []
         };
-        component.addEventListener('touchstart', event => { this.touchStartHandler(event); }, false);
-        component.addEventListener('touchmove', event => this.touchMoveHandler(event), false);
-        component.addEventListener('touchend', event => this.touchEndHandler(event), false);
+        if (isTouchSupported()) {
+            component.addEventListener('touchstart', event => { this.touchStartHandler(event); }, false);
+            component.addEventListener('touchmove', event => this.touchMoveHandler(event), false);
+            component.addEventListener('touchend', event => this.touchEndHandler(event), false);
+        }
         if (mouseEmulation && !isTouchSupported()) {
             component.addEventListener('mousedown', event => { event.changedTouches = {}; event.changedTouches.item = x => event; this.touchStartHandler(event); });
             component.addEventListener('mousemove', event => { event.changedTouches = {}; event.changedTouches.item = x => event; this.touchMoveHandler(event); });
