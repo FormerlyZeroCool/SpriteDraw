@@ -292,7 +292,7 @@ class Pair<T,U = T> {
     }
 
 };
-class ImageConatiner {
+class ImageContainer {
     image:HTMLImageElement;
     name:string;
     constructor(imageName:string, imagePath:string)
@@ -304,10 +304,419 @@ class ImageConatiner {
         this.name = imageName;
     }
 };
+abstract class Tool {
+    toolImage:ImageContainer;
+    constructor(toolName:string, toolImagePath:string)
+    {
+        this.toolImage = new ImageContainer(toolName, toolImagePath);
+    }
+    width():number
+    {
+        return this.toolImage.image.width;
+    }
+    height():number
+    {
+        return this.toolImage.image.height;
+    }
+    image():HTMLImageElement
+    {
+        return this.toolImage.image;
+    }
+    name():string
+    {
+        return this.toolImage.name;
+    }
+    drawImage(ctx:CanvasRenderingContext2D, x:number, y:number, width:number, height:number)
+    {
+        if(this.toolImage.image)
+        {
+            ctx.drawImage(this.toolImage.image, x, y, width, height);
+        }
+    }
+    abstract optionPanelSize():number[];
+    abstract drawOptionPanel(ctx, x:number, y:number):void;
+
+};
+interface GuiElement {
+    active():boolean;
+    width():number;
+    height():number;
+    draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number, offsetY:number);
+};
+class LexicoGraphicNumericPair extends Pair<number, number> {
+    rollOver:number;
+    constructor(rollOver:number)
+    {
+        super(0, 0);
+        this.rollOver = rollOver;
+    }
+    incHigher(val:number = 1):number
+    {
+        this.first += val;
+        return this.first;
+    }
+    incLower(val:number = 1):number
+    {
+        this.first += Math.floor((this.second + val) / this.rollOver);
+        this.second = (this.second + val) % this.rollOver;
+        return this.second;
+    }
+    hash():number
+    {
+        return this.first * this.rollOver + this.second;
+    }
+}
+class SimpleGridLayoutManager implements GuiElement {
+    
+    elements:GuiElement[];
+    x:number;
+    y:number;
+    matrixDim:number[];
+    pixelDim:number[];
+    constructor(matrixDim:number[], pixelDim:number[], x:number = 0, y:number = 0)
+    {
+        this.matrixDim = matrixDim;
+        this.pixelDim = pixelDim;
+        this.x = x;
+        this.y = y;
+        this.elements = [];
+    }
+    active():boolean
+    {
+        return true;
+    }
+    width(): number {
+        return this.pixelDim[0];
+    }
+    height(): number {
+        return this.pixelDim[1];
+    }
+    rowHeight():number
+    {
+        return this.pixelDim[1] / this.matrixDim[1];
+    }
+    rowWidth():number
+    {
+        return this.pixelDim[0] / this.matrixDim[0];
+    }
+    usedRows():number {
+        for(let i = 0; i < this.elements.length; i++)
+        {
+            
+        }
+        return this.elements.length - 1;
+    }
+    hasSpace(element:GuiElement):boolean
+    {
+        const elWidth:number = Math.floor((element.width() / this.rowWidth()) * this.matrixDim[0]);
+        const elHeight:number = Math.floor((element.height() / this.rowHeight()) * this.matrixDim[1]);
+        if(this.elements.length)
+        {
+
+        }
+        return false;
+    }
+    addElement(element:GuiElement):boolean //error state
+    {
+        let inserted:boolean = false;
+        if(element.width() <= this.pixelDim[0] && this.hasSpace(element))
+        {
+             inserted = true;
+             this.elements.push(element);
+        }
+        return inserted;
+    }
+    elementPosition(element:GuiElement):number[]
+    {
+        let result:number[] = [-1, -1];
+        let running:boolean = true;
+        const width:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
+        const height:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
+        let counter:LexicoGraphicNumericPair = new LexicoGraphicNumericPair(this.matrixDim[0])
+        for(let i:number = 0; i < this.elements.length && running; i++)
+        {
+            const element:GuiElement = this.elements[i];
+            const columnsUsed:number = Math.ceil(element.width() / this.rowWidth());
+            const rowsUsed:number = Math.floor(element.height() / this.rowHeight());
+            let x:number = counter.second * width;
+            if(x + element.width() > this.pixelDim[0]){
+                 counter.incHigher();
+                 counter.second = 0;
+                 x = 0;
+            }
+            const y:number = counter.first * height;
+
+            counter.incHigher(rowsUsed);
+            if(rowsUsed)
+                counter.second = 0;
+            counter.incLower(columnsUsed);
+            if(this.elements[i] === element)
+            {
+                result = [x, y];
+                running = false;
+            }
+        }
+        return result;
+    }
+    draw(ctx:CanvasRenderingContext2D, xPos:number = this.x, yPos:number = this.y, offsetX:number = 0, offsetY:number = 0)
+    {
+        const width:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
+        const height:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
+        let counter:LexicoGraphicNumericPair = new LexicoGraphicNumericPair(this.matrixDim[0])
+        for(let i:number = 0; i < this.elements.length; i++)
+        {
+            const element:GuiElement = this.elements[i];
+            const columnsUsed:number = Math.ceil(element.width() / this.rowWidth());
+            const rowsUsed:number = Math.floor(element.height() / this.rowHeight());
+            let x:number = counter.second * width;
+            if(x + element.width() > this.pixelDim[0]){
+                 counter.incHigher();
+                 counter.second = 0;
+                 x = 0;
+            }
+            const y:number = counter.first * height;
+            element.draw(ctx,  x + xPos + offsetX, y + yPos + offsetY, this.x, this.y);
+            counter.incHigher(rowsUsed);
+            if(rowsUsed)
+                counter.second = 0;
+            counter.incLower(columnsUsed);
+        }
+    }
+};
+class GuiButton implements GuiElement {
+
+    text:string;
+    dimensions:number[];//[width, height]
+    fontSize:number;
+    constructor(text:string, width:number = 200, height:number = 50, fontSize:number = 12)
+    {
+        this.text = text;
+        this.fontSize = fontSize;
+        this.dimensions = [width, height];
+    }
+    active():boolean
+    {
+        return true;
+    }
+    width(): number {
+        return this.dimensions[0];
+    }
+    height(): number {
+        return this.dimensions[1];
+    }
+    setCtxState(ctx:CanvasRenderingContext2D):void
+    {
+        ctx.strokeStyle = "#000000";
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = this.fontSize + 'px Calibri';
+    }
+    draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0)
+    {
+        const fs = ctx.fillStyle;
+        this.setCtxState(ctx);
+        ctx.fillRect(x + offsetX, y + offsetY, this.width(), this.height());
+        ctx.fillStyle = "#000000";
+        ctx.strokeRect(x + offsetX, y + offsetY, this.width(), this.height());
+        ctx.fillText(this.text, x + offsetX + this.fontSize, y + offsetY + this.fontSize, this.width());
+        ctx.fillStyle = fs;
+    }
+};
+class TextRow { 
+    text:string;
+    x:number;
+    y:number;
+    width:number;
+    constructor(text:string, x:number, y:number, width:number)
+    {
+        this.text = text;
+        this.x = x;
+        this.y = y;
+        this.width = width;
+    }
+};
+class GuiTextBox implements GuiElement {
+    text:string;
+    rows:TextRow[];
+    canvas:HTMLCanvasElement;
+    ctx:CanvasRenderingContext2D;
+    cursor:number;
+    cursorPos:number[];
+    scroll:number[];
+    selected:boolean;
+    dimensions:number[];//[width, height]
+    fontSize:number;
+    constructor(keyListener:KeyboardHandler, width:number, height:number, fontSize:number = 26)
+    {
+        this.cursor = 0;
+        this.text = "";
+        this.scroll = [0, 0];
+        this.cursorPos = [0, 0];
+        this.rows = [];
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this.ctx = this.canvas.getContext("2d");
+        this.dimensions = [width, height];
+        this.fontSize = fontSize;
+        if(keyListener)
+            keyListener.registerCallBack("keydown", e => this.active(), 
+            e => {
+                switch(e.code)
+                {
+                    case("Space"):
+                        this.text = this.text.substring(0, this.cursor) + ' ' + this.text.substring(this.cursor, this.text.length);
+                        this.cursor++;
+                    break;
+                    case("Backspace"):
+                        this.text = this.text.substring(0, this.cursor-1) + this.text.substring(this.cursor, this.text.length);
+                        this.cursor--;
+                    break;
+                    case("ArrowLeft"):
+                        this.cursor -= +(this.cursor > 0);
+                    break;
+                    case("ArrowRight"):
+                        this.cursor += +(this.cursor < this.text.length);
+                    break;
+                    case("ArrowUp"):
+                        this.cursor = 0;
+                    break;
+                    case("ArrowDown"):
+                        this.cursor = (this.text.length);
+                    break;
+                    default:
+                    {
+                        let letter:string = e.code.substring(e.code.length - 1);
+                        if(!keyListener.keysHeld["ShiftRight"] && !keyListener.keysHeld["ShiftLeft"])
+                            letter = letter.toLowerCase();
+                        this.text = this.text.substring(0, this.cursor) + letter + this.text.substring(this.cursor, this.text.length);
+                        this.cursor++;
+                    }
+                }
+                this.drawInternalAndClear();
+            });
+    }
+    active(): boolean {
+        return this.selected || true;
+    }
+    textWidth():number
+    {
+        return this.ctx.measureText(this.text).width;
+    }
+    setCtxState():void
+    {
+        this.ctx.strokeStyle = "#000000";
+        this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.font = this.fontSize + 'px Calibri';
+    }
+    width(): number {
+        return this.dimensions[0];
+    }
+    height(): number {
+        return this.dimensions[1];
+    }
+    refreshMetaData(text:string = this.text, x:number = this.fontSize, y:number = this.fontSize):void
+    {
+        const textWidth:number = this.ctx.measureText(text).width;
+        const canvasWidth:number = this.canvas.width;
+        const rows:number = Math.ceil(textWidth / (canvasWidth - (20+x)));
+        const charsPerRow:number = Math.floor(text.length / rows);
+        let charIndex:number = 0;
+        let i = 0;
+        for(; i < rows - 1; i++)
+        {
+            const yPos:number = i * this.fontSize + y - this.scroll[1];
+            const xPos:number = x - this.scroll[0];
+            if(this.cursor >= charIndex && this.cursor <= charIndex + charsPerRow)
+            {
+                this.cursorPos[1] = yPos;
+                const substrWidth:number = this.ctx.measureText(this.text.substring(charIndex, this.cursor)).width
+                this.cursorPos[0] = substrWidth + x - this.scroll[0];
+            }
+            const substr:string = text.substring(charIndex, charIndex + charsPerRow);
+            this.ctx.fillText(substr, xPos, yPos, this.width() - x);
+            this.rows.push(new TextRow(substr, xPos, yPos, this.width() - x));
+            charIndex += charsPerRow;
+        }
+        const yPos = i * this.fontSize + y - this.scroll[1];
+        if(this.cursor >= charIndex && this.cursor <= charIndex + charsPerRow+1)
+        {
+            this.cursorPos[1] = yPos;
+            const substrWidth:number = this.ctx.measureText(this.text.substring(charIndex, this.cursor)).width
+            this.cursorPos[0] = substrWidth + x - this.scroll[0];
+        }
+        const substring:string = text.substring(charIndex, text.length);
+        const substrWidth:number = this.ctx.measureText(substring).width;
+        
+
+        if(substrWidth > this.width() - x)
+            this.refreshMetaData(substring, x, i * this.fontSize + y);
+        else if(substrWidth > 0)
+            this.rows.push(new TextRow(substring, x - this.scroll[0], yPos, this.width() - x));
+        
+    }
+    drawInternal():void
+    {
+        this.rows.forEach(row => {
+            this.ctx.fillText(row.text, row.x, row.y, row.width);
+        });
+        this.ctx.fillStyle = "#000000";
+        this.ctx.fillRect(this.cursorPos[0], this.cursorPos[1] - this.fontSize+3, 2, this.fontSize-2);
+
+    }
+    drawInternalAndClear():void
+    {
+        this.setCtxState();
+        this.ctx.fillRect(0, 0, this.width(), this.height());
+        this.ctx.strokeRect(0, 0, this.width(), this.height());
+        this.ctx.fillStyle = "#000000";
+        this.rows.splice(0, this.rows.length);
+        this.refreshMetaData();
+    }
+    draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0)
+    {
+        ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
+    }
+};
+
+class GenericTool extends Tool {
+    constructor(name:string, imagePath:string)
+    {
+        super(name, imagePath);
+    }
+    optionPanelSize():number[]
+    {
+        return [0, 0];
+    }
+    drawOptionPanel(ctx, x:number, y:number):void {}
+}
+class PenTool extends Tool {
+    lineWidth:number;
+    layoutManager:SimpleGridLayoutManager;
+    tbSize:GuiTextBox;
+    btUpdate:GuiButton;
+    constructor(keyListener:KeyboardHandler, toolName:string = "pen", pathToImage:string = "images/penSprite.png")
+    {
+        super(toolName, pathToImage);
+        this.layoutManager = new SimpleGridLayoutManager([2,2],[200,200]);
+        this.tbSize = new GuiTextBox(keyListener, 200, 100);
+        this.btUpdate = new GuiButton("update", 200, 50, 12);
+        this.layoutManager.elements.push(this.tbSize);
+        this.layoutManager.elements.push(this.btUpdate);
+    }
+    optionPanelSize():number[]
+    {
+        return [200, 200];
+    }
+    drawOptionPanel(ctx:CanvasRenderingContext2D, x:number, y:number):void 
+    {
+        this.layoutManager.draw(ctx, x, y);
+    }
+};
 // To do refactor tools to make sure they load in the same order every time
 class ToolSelector {
-    toolArray:ImageConatiner[];
+    toolArray:Tool[];
     canvas:HTMLCanvasElement;
+    toolPixelDim:number[];
     ctx:any;
     touchListener:SingleTouchListener;
     selectedTool:number;
@@ -319,6 +728,7 @@ class ToolSelector {
         this.imgWidth = imgWidth;
         this.imgHeight = imgHeight;
         this.selectedTool = 0;
+        this.toolPixelDim = [imgWidth,imgHeight*10];
         this.canvas = <HTMLCanvasElement> document.getElementById("tool_selector_screen");
         this.keyboardHandler = keyboardHandler;
         this.keyboardHandler.registerCallBack("keydown", e => {if(e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "ArrowLeft" || e.code === "ArrowRight") return true;},
@@ -351,19 +761,19 @@ class ToolSelector {
                 }  
             });
         this.toolArray = [];
-        this.toolArray.push(new ImageConatiner("pen","images/penSprite.png"));
-        this.toolArray.push(new ImageConatiner("fill", "images/fillSprite.png"));
-        this.toolArray.push(new ImageConatiner("line", "images/LineDrawSprite.png"));
-        this.toolArray.push(new ImageConatiner("rect", "images/rectSprite.png"));
-        this.toolArray.push(new ImageConatiner("oval", "images/ovalSprite.png"));
-        this.toolArray.push(new ImageConatiner("copy", "images/copySprite.png"));
-        this.toolArray.push(new ImageConatiner("paste", "images/pasteSprite.png"));
-        this.toolArray.push(new ImageConatiner("drag", "images/dragSprite.png"));
-        this.toolArray.push(new ImageConatiner("redo", "images/redoSprite.png"));
-        this.toolArray.push(new ImageConatiner("undo", "images/undoSprite.png"));
-        this.toolArray.push(new ImageConatiner("colorPicker", "images/colorPickerSprite.png"));
-        this.toolArray.push(new ImageConatiner("eraser", "images/eraserSprite.png"));
-        this.toolArray.push(new ImageConatiner("rotate", "images/rotateSprite.png"));
+        this.toolArray.push(new PenTool(keyboardHandler, "pen","images/penSprite.png"));
+        this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
+        this.toolArray.push(new GenericTool("line", "images/LineDrawSprite.png"));
+        this.toolArray.push(new GenericTool("rect", "images/rectSprite.png"));
+        this.toolArray.push(new GenericTool("oval", "images/ovalSprite.png"));
+        this.toolArray.push(new GenericTool("copy", "images/copySprite.png"));
+        this.toolArray.push(new GenericTool("paste", "images/pasteSprite.png"));
+        this.toolArray.push(new GenericTool("drag", "images/dragSprite.png"));
+        this.toolArray.push(new GenericTool("redo", "images/redoSprite.png"));
+        this.toolArray.push(new GenericTool("undo", "images/undoSprite.png"));
+        this.toolArray.push(new GenericTool("colorPicker", "images/colorPickerSprite.png"));
+        this.toolArray.push(new GenericTool("eraser", "images/eraserSprite.png"));
+        this.toolArray.push(new GenericTool("rotate", "images/rotateSprite.png"));
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             (<any>document.activeElement).blur();
@@ -389,29 +799,46 @@ class ToolSelector {
         this.ctx.strokeStyle = "#000000";
         this.ctx.fillStyle = "#FFFFFF";
     }
-    draw()
+    resizeCanvas():void
     {
-        const imgPerColumn:number = (this.canvas.height / this.imgHeight);
-        const imgPerRow:number = (this.canvas.width / this.imgWidth);
-        if(this.toolArray.length > imgPerColumn * imgPerRow){
-            this.canvas.width += this.imgWidth;
+        const imgPerColumn:number = (this.toolPixelDim[1] / this.imgHeight);
+        const imgPerRow:number = (this.toolPixelDim[0] / this.imgWidth);
+        if(this.tool() && this.tool().image() && this.toolArray.length > imgPerColumn * imgPerRow){
+            this.toolPixelDim[0] = this.imgWidth * Math.ceil(this.toolArray.length / imgPerColumn);
+            this.canvas.width = this.toolPixelDim[0] + this.tool().optionPanelSize()[0];
+            this.toolPixelDim[1] = this.imgHeight * 10;
+
+            this.canvas.height = this.toolPixelDim[1] > this.tool().height() ? this.toolPixelDim[1] : this.tool().height();
             this.ctx = this.canvas.getContext("2d");
             this.ctx.fillStyle = "#FFFFFF";
         }
+    }
+    draw()
+    {
+        this.resizeCanvas();
+        const imgPerColumn:number = (this.toolPixelDim[1] / this.imgHeight);
+        const imgPerRow:number = (this.toolPixelDim[0] / this.imgWidth);
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         for(let i = 0; i < this.toolArray.length; i++)
         {
-            const toolImage:HTMLImageElement = this.toolArray[i].image;
-            if(toolImage)
-                this.ctx.drawImage(toolImage, Math.floor(i / imgPerColumn) * this.imgWidth, i * this.toolArray[i].image.height % (imgPerColumn * this.imgHeight));
+            if(this.toolArray[i].image())
+                this.toolArray[i].drawImage(this.ctx, 
+                    Math.floor(i / imgPerColumn) * this.imgWidth, i * this.toolArray[i].image().height % (imgPerColumn * this.imgHeight), 
+                        this.imgWidth, this.imgHeight);
         }
-        if(this.toolArray[0].image)
-            this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
+        this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
+        this.tool().drawOptionPanel(this.ctx, this.imgWidth*imgPerRow, 0);
     }
     selectedToolName():string
     {
+        if(this.tool())
+            return this.tool().name();
+        return null;
+    }
+    tool():GenericTool
+    {
         if(this.toolArray[this.selectedTool])
-            return this.toolArray[this.selectedTool].name;
+            return this.toolArray[this.selectedTool];
         return null;
     }
 
@@ -585,6 +1012,25 @@ class DrawingScreen {
         }
         const noColor:RGB = new RGB(0, 0, 0, 0);
         const colorBackup:RGB = new RGB(0, 0, 0, 0);
+        this.keyboardHandler.registerCallBack("keydown", e => true, event => {
+            switch(event.code) {
+                case('KeyC'):
+                if(this.keyboardHandler.keysHeld["KeyC"] === 1) {
+                    this.selectionRect = [0,0,0,0];
+                    this.pasteRect = [0,0,0,0];
+                }
+                break;
+                case('KeyV'):
+                this.paste();
+                break;
+                case('KeyU'):
+                this.undoLast();
+                break;
+                case('KeyR'):
+                this.redoLast();
+                break;
+            }
+        });
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
@@ -659,25 +1105,6 @@ class DrawingScreen {
                 break;
             }
         });
-        this.keyboardHandler.registerCallBack("keydown", e => true, event => {
-            switch(event.code) {
-                case('KeyC'):
-                if(this.keyboardHandler.keysHeld["KeyC"] === 1) {
-                    this.selectionRect = [0,0,0,0];
-                    this.pasteRect = [0,0,0,0];
-                }
-                break;
-                case('KeyV'):
-                this.paste();
-                break;
-                case('KeyU'):
-                this.undoLast();
-                break;
-                case('KeyR'):
-                this.redoLast();
-                break;
-            }
-        });
 
         this.listeners.registerCallBack("touchmove",e => true,e => {
             const x1:number = e.touchPos[0] - e.deltaX;
@@ -705,6 +1132,10 @@ class DrawingScreen {
                             (this.listeners.startTouchPos[1] / this.bounds.second) * this.dimensions.second]);
                 break;
                 case("fill"):
+                const gx:number = Math.floor((e.touchPos[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
+                const gy:number = Math.floor((e.touchPos[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
+
+                this.fillArea(new Pair<number>(gx, gy));
                 break;
                 case("oval"):
                 case("rect"):
@@ -973,7 +1404,7 @@ class DrawingScreen {
                     stack.push(cur - this.dimensions.first + 1);
             }
         }
-        this.updatesStack.get(this.updatesStack.length()-1).sort((a, b) => a.first - b.first);
+        //this.updatesStack.get(this.updatesStack.length()-1).sort((a, b) => a.first - b.first);
         this.updatesStack.push([]);
         return new Pair(new Pair(0,0), data);
     }
@@ -1307,7 +1738,7 @@ class DrawingScreen {
         spriteScreenBuf.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
         
         if(this.dimensions.first == this.canvas.width && this.dimensions.second == this.canvas.height)
-        {
+        {//if drawing screen dimensions, and canvas dimensions are the same just update per pixel
             for(let y = 0; y < this.dimensions.second; y++)
             {
                 for(let x = 0; x < this.dimensions.first; x++)
@@ -1320,7 +1751,7 @@ class DrawingScreen {
                 }
             }
         }
-        else
+        else//use fill rect method to fill rectangle the size of pixels(more branch mispredicts, but more general)
             for(let y = 0; y < this.dimensions.second; y++)
             {
                 for(let x = 0; x < this.dimensions.first; x++)
@@ -2845,15 +3276,15 @@ async function main()
     {
         const start:number = Date.now();
         field.draw();
-        //if(counter++ % 1 == 0)
+        if(animationGroupSelector.animationGroup())
+            animationGroupSelector.draw();
+        if(counter++ % 2 == 0)
         {
-            if(animationGroupSelector.animationGroup())
-                animationGroupSelector.draw();
             pallette.draw();
         }
         const adjustment:number = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
-        if(1000/(Date.now() - start) < fps - 5){
+        if(1000/(Date.now() - start) < fps - 2){
             console.log("avgfps:",Math.floor(1000/(Date.now() - start)))
             if(1000/(Date.now() - start) == 0)
                 console.log("frame time:",1000/(Date.now() - start));
