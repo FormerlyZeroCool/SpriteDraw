@@ -625,7 +625,6 @@ class GuiTextBox implements GuiElement {
         for(; i < rows - 1; i++)
         {
             const yPos:number = i * this.fontSize + y - this.scroll[1];
-            const xPos:number = x - this.scroll[0];
             if(this.cursor >= charIndex && this.cursor <= charIndex + charsPerRow)
             {
                 this.cursorPos[1] = yPos;
@@ -633,8 +632,8 @@ class GuiTextBox implements GuiElement {
                 this.cursorPos[0] = substrWidth + x - this.scroll[0];
             }
             const substr:string = text.substring(charIndex, charIndex + charsPerRow);
-            this.ctx.fillText(substr, xPos, yPos, this.width() - x);
-            this.rows.push(new TextRow(substr, xPos, yPos, this.width() - x));
+            //this.ctx.fillText(substr, x - this.scroll[0], yPos, this.width() - x);
+            this.rows.push(new TextRow(substr, x - this.scroll[0], yPos, this.width() - x));
             charIndex += charsPerRow;
         }
         const yPos = i * this.fontSize + y - this.scroll[1];
@@ -650,18 +649,44 @@ class GuiTextBox implements GuiElement {
 
         if(substrWidth > this.width() - x)
             this.refreshMetaData(substring, x, i * this.fontSize + y);
-        else if(substrWidth > 0)
+        else if(substrWidth > 0){
+            //this.ctx.fillText(substring, x - this.scroll[0], yPos, this.width() - x);
             this.rows.push(new TextRow(substring, x - this.scroll[0], yPos, this.width() - x));
+        }
         
     }
-    drawInternal():void
+    adjustScrollToCursor():void
     {
+        let deltaY:number = 0;
+        let deltaX:number = 0;
+        if(this.cursorPos[1] < 0)
+        {
+            deltaY -= -1*this.cursorPos[1] + this.height() / 2;
+        }
+        else if(this.cursorPos[1] > this.height())
+        {
+            deltaY += this.cursorPos[1] - this.height() + this.height() / 2;
+        }
+        if(this.cursorPos[0] < 0)
+        {
+            deltaX -= -1*this.cursorPos[0] + this.width() / 2;
+        }
+        else if(this.cursorPos[0] > this.width())
+        {
+            deltaX += this.cursorPos[0] - this.width() + this.width() / 2;
+        }
         this.rows.forEach(row => {
-            this.ctx.fillText(row.text, row.x, row.y, row.width);
-        });
-        this.ctx.fillStyle = "#000000";
-        this.ctx.fillRect(this.cursorPos[0], this.cursorPos[1] - this.fontSize+3, 2, this.fontSize-2);
-
+            row.y += deltaY;
+            row.x += deltaX;
+        })
+        this.scroll[0] += deltaX;
+        this.scroll[1] += deltaY;
+        this.cursorPos[0] += deltaX;
+        this.cursorPos[1] += deltaY;
+    }
+    drawRows():void
+    {
+        this.rows.forEach(row => this.ctx.fillText(row.text, row.x, row.y, row.width));
     }
     drawInternalAndClear():void
     {
@@ -669,8 +694,13 @@ class GuiTextBox implements GuiElement {
         this.ctx.fillRect(0, 0, this.width(), this.height());
         this.ctx.strokeRect(0, 0, this.width(), this.height());
         this.ctx.fillStyle = "#000000";
-        this.rows.splice(0, this.rows.length);
+        this.rows.splice(0,this.rows.length);
         this.refreshMetaData();
+        this.adjustScrollToCursor();
+        this.drawRows();
+        this.ctx.fillStyle = "#000000";
+        this.ctx.fillRect(this.cursorPos[0], this.cursorPos[1] - this.fontSize+3, 2, this.fontSize-2);
+
     }
     draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0)
     {
