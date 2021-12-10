@@ -656,19 +656,12 @@ class GuiTextBox implements GuiElement {
     adjustScrollToCursor():void
     {
         let deltaY:number = 0;
-        let deltaX:number = 0;
-        console.log(this.cursor,this.cursorPos[1])
-       if(this.cursorPos[1] > this.height())
+        if(this.cursorPos[1] > this.height())
         {
             deltaY += this.cursorPos[1] - this.height() + 10;
         }
-        this.scroll[1] = deltaY;
-        console.log("delty:",deltaY);
-        this.rows.forEach(row => {
-            row.y -= this.scroll[1];
-        })
-        this.cursorPos[1] -= this.scroll[1];
-        console.log("rendered cursor pos: ",this.cursorPos[0],"\ny: ",this.cursorPos[1])
+        this.rows.forEach(row => row.y -= deltaY);
+        this.cursorPos[1] -= deltaY;
     }
     drawRows():void
     {
