@@ -646,7 +646,7 @@ class GuiTextBox implements GuiElement {
             if(this.cursor >= charIndex)
             {
                 this.cursorPos[1] = yPos;
-                const substrWidth:number = this.ctx.measureText(substring).width
+                const substrWidth:number = this.ctx.measureText(text.substring(charIndex, this.cursor)).width
                 this.cursorPos[0] = substrWidth + x;
             }
             this.rows.push(new TextRow(substring, x, yPos, this.width() - x));
