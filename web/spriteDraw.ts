@@ -628,17 +628,19 @@ class GuiTextBox implements GuiElement {
     cursor:number;
     cursorPos:number[];
     scroll:number[];
+    shouldScroll:boolean;
     selected:boolean;
     dimensions:number[];//[width, height]
     fontSize:number;
     static textLookup = {};
     static numbers = {};
     static specialChars = {};
-    constructor(keyListener:boolean, width:number, fontSize:number = 16, height:number = 2*fontSize)
+    constructor(keyListener:boolean, width:number, fontSize:number = 16, height:number = 2*fontSize, scroll:boolean = true)
     {
         this.cursor = 0;
         this.text = "";
         this.scroll = [0, 0];
+        this.shouldScroll = scroll;
         this.cursorPos = [0, 0];
         this.rows = [];
         this.canvas = document.createElement("canvas");
@@ -787,7 +789,7 @@ class GuiTextBox implements GuiElement {
     adjustScrollToCursor():void
     {
         let deltaY:number = 0;
-        if(this.cursorPos[1] > this.height())
+        if(this.shouldScroll && this.cursorPos[1] > this.height())
         {
             deltaY += this.cursorPos[1] - this.height() + this.height() / 2;
         }
