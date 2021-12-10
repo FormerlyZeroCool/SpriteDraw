@@ -366,13 +366,31 @@ class LexicoGraphicNumericPair extends Pair<number, number> {
         return this.first * this.rollOver + this.second;
     }
 }
+class RowRecord {
+    x:number;
+    y:number;
+    width:number;
+    height:number;
+    element:GuiElement;
+    constructor(x:number, y:number, width:number, height:number, element)
+    {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.element = element;
+    }
+}
 class SimpleGridLayoutManager implements GuiElement {
     
     elements:GuiElement[];
     x:number;
     y:number;
+    canvas:HTMLCanvasElement;
+    ctx:CanvasRenderingContext2D;
     matrixDim:number[];
     pixelDim:number[];
+    elementsPositions:RowRecord[];
     constructor(matrixDim:number[], pixelDim:number[], x:number = 0, y:number = 0)
     {
         this.matrixDim = matrixDim;
@@ -380,6 +398,41 @@ class SimpleGridLayoutManager implements GuiElement {
         this.x = x;
         this.y = y;
         this.elements = [];
+        this.elementsPositions = [];
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = pixelDim[0];
+        this.canvas.height = pixelDim[1];
+        this.ctx = this.canvas.getContext("2d");
+    }
+    refreshMetaData(xPos:number = this.x, yPos:number = this.y, offsetX:number = 0, offsetY:number = 0):void
+    {
+        this.elementsPositions.splice(0, this.elementsPositions.length);        
+        const width:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
+        const height:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
+        let counter:LexicoGraphicNumericPair = new LexicoGraphicNumericPair(this.matrixDim[0])
+        for(let i:number = 0; i < this.elements.length; i++)
+        {
+            const element:GuiElement = this.elements[i];
+            const columnsUsed:number = Math.ceil(element.width() / this.rowWidth());
+            const rowsUsed:number = Math.floor(element.height() / this.rowHeight());
+            let x:number = counter.second * width;
+            if(x + element.width() > this.pixelDim[0]){
+                 counter.incHigher();
+                 counter.second = 0;
+                 x = 0;
+            }
+            const y:number = counter.first * height;
+            //element.draw(this.ctx,  x + xPos + offsetX, y + yPos + offsetY, this.x, this.y);
+            this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, this.x, this.y, element));
+            counter.incHigher(rowsUsed);
+            if(rowsUsed)
+                counter.second = 0;
+            counter.incLower(columnsUsed);
+        }
+    }
+    refreshCanvas():void
+    {
+        this.elementsPositions.forEach(el => el.element.draw(this.ctx, el.x, el.y, 0, 0));
     }
     active():boolean
     {
@@ -614,21 +667,22 @@ class GuiTextBox implements GuiElement {
     height(): number {
         return this.dimensions[1];
     }
-    refreshMetaData(text:string = this.text, x:number = this.fontSize, y:number = this.fontSize):void
+    refreshMetaData(text:string = this.text, x:number = this.fontSize, y:number = this.fontSize, cursorOffset:number = 0):void
     {
         const textWidth:number = this.ctx.measureText(text).width;
         const canvasWidth:number = this.canvas.width;
         const rows:number = Math.ceil(textWidth / (canvasWidth - (20+x)));
         const charsPerRow:number = Math.floor(text.length / rows);
+        const cursor:number = this.cursor - cursorOffset;
         let charIndex:number = 0;
         let i = 0;
         for(; i < rows - 1; i++)
         {
             const yPos:number = i * this.fontSize + y;
-            if(this.cursor >= charIndex && this.cursor <= charIndex + charsPerRow)
+            if(cursor >= charIndex && cursor <= charIndex + charsPerRow)
             {
                 this.cursorPos[1] = yPos;
-                const substrWidth:number = this.ctx.measureText(text.substring(charIndex, this.cursor)).width
+                const substrWidth:number = this.ctx.measureText(text.substring(charIndex, cursor)).width;
                 this.cursorPos[0] = substrWidth + x;
             }
             const substr:string = text.substring(charIndex, charIndex + charsPerRow);
@@ -641,12 +695,12 @@ class GuiTextBox implements GuiElement {
         
 
         if(substrWidth > this.width() - x)
-            this.refreshMetaData(substring, x, i * this.fontSize + y);
+            this.refreshMetaData(substring, x, i * this.fontSize + y, cursorOffset + charIndex);
         else if(substring.length > 0){
-            if(this.cursor >= charIndex)
+            if(cursor >= charIndex)
             {
                 this.cursorPos[1] = yPos;
-                const substrWidth:number = this.ctx.measureText(text.substring(charIndex, this.cursor)).width
+                const substrWidth:number = this.ctx.measureText(text.substring(charIndex, cursor)).width
                 this.cursorPos[0] = substrWidth + x;
             }
             this.rows.push(new TextRow(substring, x, yPos, this.width() - x));
