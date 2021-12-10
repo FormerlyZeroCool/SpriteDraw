@@ -3,6 +3,7 @@ function sleep(ms):Promise<void> {
 }
 
 const dim = [528,528];
+
 function threeByThreeMat(a:number[], b:number[]):number[]
 {
     return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 
@@ -432,6 +433,8 @@ class SimpleGridLayoutManager implements GuiElement {
     }
     refreshCanvas():void
     {
+        this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.elementsPositions.forEach(el => el.element.draw(this.ctx, el.x, el.y, 0, 0));
     }
     active():boolean
@@ -536,6 +539,7 @@ class SimpleGridLayoutManager implements GuiElement {
         }
     }
 };
+
 class GuiButton implements GuiElement {
 
     text:string;
@@ -598,7 +602,10 @@ class GuiTextBox implements GuiElement {
     selected:boolean;
     dimensions:number[];//[width, height]
     fontSize:number;
-    constructor(keyListener:KeyboardHandler, width:number, height:number, fontSize:number = 16)
+    static textLookup = {};
+    static numbers = {};
+    static specialChars = {};
+    constructor(keyListener:KeyboardHandler, width:number, fontSize:number = 16, height:number = 2*fontSize)
     {
         this.cursor = 0;
         this.text = "";
@@ -614,6 +621,7 @@ class GuiTextBox implements GuiElement {
         if(keyListener)
             keyListener.registerCallBack("keydown", e => this.active(), 
             e => {
+                console.log(e.code)
                 switch(e.code)
                 {
                     case("Space"):
@@ -623,6 +631,9 @@ class GuiTextBox implements GuiElement {
                     case("Backspace"):
                         this.text = this.text.substring(0, this.cursor-1) + this.text.substring(this.cursor, this.text.length);
                         this.cursor--;
+                    break;
+                    case("Delete"):
+                        this.text = this.text.substring(0, this.cursor) + this.text.substring(this.cursor+1, this.text.length);
                     break;
                     case("ArrowLeft"):
                         this.cursor -= +(this.cursor > 0);
@@ -641,12 +652,36 @@ class GuiTextBox implements GuiElement {
                         let letter:string = e.code.substring(e.code.length - 1);
                         if(!keyListener.keysHeld["ShiftRight"] && !keyListener.keysHeld["ShiftLeft"])
                             letter = letter.toLowerCase();
-                        this.text = this.text.substring(0, this.cursor) + letter + this.text.substring(this.cursor, this.text.length);
-                        this.cursor++;
+                        //console.log(e.code);
+                        if(GuiTextBox.textLookup[e.code] || GuiTextBox.numbers[e.code])
+                        {
+                            this.text = this.text.substring(0, this.cursor) + letter + this.text.substring(this.cursor, this.text.length);
+                            this.cursor++;
+                        }
+                        else if(GuiTextBox.specialChars[e.code])
+                        {
+                            //todo
+                        }
+
                     }
                 }
                 this.drawInternalAndClear();
             });
+    }
+    static initGlobalText():void
+    {
+        for(let i = 65; i < 65+26; i++)
+            GuiTextBox.textLookup["Key" + String.fromCharCode(i)] = true;
+    };
+    static initGlobalNumbers():void
+    {
+        for(let i = 48; i < 48+10; i++){
+            GuiTextBox.numbers["Digit" + String.fromCharCode(i)] = true;
+        }
+    };
+    static initGlobalSpecialChars():void
+    {
+        //specialChars
     }
     active(): boolean {
         return this.selected || true;
@@ -712,7 +747,7 @@ class GuiTextBox implements GuiElement {
         let deltaY:number = 0;
         if(this.cursorPos[1] > this.height())
         {
-            deltaY += this.cursorPos[1] - this.height() + 10;
+            deltaY += this.cursorPos[1] - this.height() + this.height() / 2;
         }
         this.rows.forEach(row => row.y -= deltaY);
         this.cursorPos[1] -= deltaY;
@@ -720,6 +755,10 @@ class GuiTextBox implements GuiElement {
     drawRows():void
     {
         this.rows.forEach(row => this.ctx.fillText(row.text, row.x, row.y, row.width));
+    }
+    drawCursor():void{
+        this.ctx.fillStyle = "#000000";
+        this.ctx.fillRect(this.cursorPos[0], this.cursorPos[1] - this.fontSize+3, 2, this.fontSize-2);
     }
     drawInternalAndClear():void
     {
@@ -731,9 +770,7 @@ class GuiTextBox implements GuiElement {
         this.refreshMetaData();
         this.adjustScrollToCursor();
         this.drawRows();
-        this.ctx.fillStyle = "#000000";
-        this.ctx.fillRect(this.cursorPos[0], this.cursorPos[1] - this.fontSize+3, 2, this.fontSize-2);
-
+        this.drawCursor();
     }
     draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0)
     {
@@ -741,6 +778,9 @@ class GuiTextBox implements GuiElement {
     }
 };
 
+GuiTextBox.initGlobalText();
+GuiTextBox.initGlobalNumbers();
+GuiTextBox.initGlobalSpecialChars();
 class GenericTool extends Tool {
     constructor(name:string, imagePath:string)
     {
@@ -761,8 +801,8 @@ class PenTool extends Tool {
     {
         super(toolName, pathToImage);
         this.layoutManager = new SimpleGridLayoutManager([2,2],[200,200]);
-        this.tbSize = new GuiTextBox(keyListener, 200, 100);
-        this.btUpdate = new GuiButton("update", 200, 50, 12);
+        this.tbSize = new GuiTextBox(keyListener, 100);
+        this.btUpdate = new GuiButton("update", 50, 30, 12);
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
     }
