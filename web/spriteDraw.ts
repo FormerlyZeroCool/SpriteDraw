@@ -343,6 +343,8 @@ interface GuiElement {
     width():number;
     height():number;
     draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number, offsetY:number);
+    handleKeyBoardEvents(type:string, e:any):void;
+    handleTouchEvents(type:string, e:any):void;
 };
 class LexicoGraphicNumericPair extends Pair<number, number> {
     rollOver:number;
@@ -387,23 +389,51 @@ class SimpleGridLayoutManager implements GuiElement {
     elements:GuiElement[];
     x:number;
     y:number;
+    refreshRate:number;
+    frameCounter:number;
     canvas:HTMLCanvasElement;
     ctx:CanvasRenderingContext2D;
     matrixDim:number[];
     pixelDim:number[];
     elementsPositions:RowRecord[];
-    constructor(matrixDim:number[], pixelDim:number[], x:number = 0, y:number = 0)
+    constructor(keyboardHandler:KeyboardHandler, touchHandler:SingleTouchListener, matrixDim:number[], pixelDim:number[], x:number = 0, y:number = 0)
     {
         this.matrixDim = matrixDim;
         this.pixelDim = pixelDim;
         this.x = x;
         this.y = y;
+        this.refreshRate = 4;
+        this.frameCounter = 0;
         this.elements = [];
         this.elementsPositions = [];
         this.canvas = document.createElement("canvas");
         this.canvas.width = pixelDim[0];
         this.canvas.height = pixelDim[1];
         this.ctx = this.canvas.getContext("2d");
+        if(keyboardHandler)
+        {
+            keyboardHandler.registerCallBack("keydown", e => this.active(), 
+            e => {e.keyboardHandler = keyboardHandler; this.elements.forEach(el => el.handleKeyBoardEvents("keydown", e))});
+            keyboardHandler.registerCallBack("keyup", e => this.active(), 
+            e => {e.keyboardHandler = keyboardHandler; this.elements.forEach(el => el.handleKeyBoardEvents("keyup", e))});
+        }
+        if(touchHandler)
+        {
+            touchHandler.registerCallBack("touchstart", e => this.active(), 
+            e => this.elements.forEach(el => el.handleTouchEvents("touchstart", e)));
+            touchHandler.registerCallBack("touchmove", e => this.active(), 
+            e => this.elements.forEach(el => el.handleTouchEvents("touchmove", e)));
+            touchHandler.registerCallBack("touchend", e => this.active(), 
+            e => this.elements.forEach(el => el.handleTouchEvents("touchend", e)));
+        }
+    }    
+    handleKeyBoardEvents(type:string, e:any):void
+    {
+        this.elements.forEach(el => el.handleKeyBoardEvents(type, e));
+    }
+    handleTouchEvents(type:string, e:any):void
+    {
+        this.elements.forEach(el => el.handleTouchEvents(type, e));
     }
     refreshMetaData(xPos:number = this.x, yPos:number = this.y, offsetX:number = 0, offsetY:number = 0):void
     {
@@ -423,7 +453,6 @@ class SimpleGridLayoutManager implements GuiElement {
                  x = 0;
             }
             const y:number = counter.first * height;
-            //element.draw(this.ctx,  x + xPos + offsetX, y + yPos + offsetY, this.x, this.y);
             this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, this.x, this.y, element));
             counter.incHigher(rowsUsed);
             if(rowsUsed)
@@ -431,11 +460,12 @@ class SimpleGridLayoutManager implements GuiElement {
             counter.incLower(columnsUsed);
         }
     }
-    refreshCanvas():void
+    refreshCanvas(ctx:CanvasRenderingContext2D = this.ctx, x:number = 0, y:number = 0):void
     {
-        this.ctx.fillStyle = "#FFFFFF";
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        this.elementsPositions.forEach(el => el.element.draw(this.ctx, el.x, el.y, 0, 0));
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.elementsPositions.forEach(el => 
+            el.element.draw(ctx, el.x, el.y, this.x + x, this.y + y));
     }
     active():boolean
     {
@@ -468,8 +498,9 @@ class SimpleGridLayoutManager implements GuiElement {
         const elHeight:number = Math.floor((element.height() / this.rowHeight()) * this.matrixDim[1]);
         if(this.elements.length)
         {
-
+            //todo
         }
+        //todo
         return false;
     }
     addElement(element:GuiElement):boolean //error state
@@ -516,27 +547,9 @@ class SimpleGridLayoutManager implements GuiElement {
     }
     draw(ctx:CanvasRenderingContext2D, xPos:number = this.x, yPos:number = this.y, offsetX:number = 0, offsetY:number = 0)
     {
-        const width:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
-        const height:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
-        let counter:LexicoGraphicNumericPair = new LexicoGraphicNumericPair(this.matrixDim[0])
-        for(let i:number = 0; i < this.elements.length; i++)
-        {
-            const element:GuiElement = this.elements[i];
-            const columnsUsed:number = Math.ceil(element.width() / this.rowWidth());
-            const rowsUsed:number = Math.floor(element.height() / this.rowHeight());
-            let x:number = counter.second * width;
-            if(x + element.width() > this.pixelDim[0]){
-                 counter.incHigher();
-                 counter.second = 0;
-                 x = 0;
-            }
-            const y:number = counter.first * height;
-            element.draw(ctx,  x + xPos + offsetX, y + yPos + offsetY, this.x, this.y);
-            counter.incHigher(rowsUsed);
-            if(rowsUsed)
-                counter.second = 0;
-            counter.incLower(columnsUsed);
-        }
+        this.refreshMetaData();
+        this.refreshCanvas();
+        ctx.drawImage(this.canvas, xPos + offsetX, yPos + offsetY);
     }
 };
 
@@ -550,6 +563,22 @@ class GuiButton implements GuiElement {
         this.text = text;
         this.fontSize = fontSize;
         this.dimensions = [width, height];
+    }
+    handleKeyBoardEvents(type:string, e:any):void
+    {
+        if(this.active())
+            switch(type)
+            {
+
+            }
+    }
+    handleTouchEvents(type:string, e:any):void
+    {
+        if(this.active())
+            switch(type)
+            {
+            
+            }
     }
     active():boolean
     {
@@ -576,7 +605,7 @@ class GuiButton implements GuiElement {
         ctx.strokeRect(x + offsetX, y + offsetY, this.width(), this.height());
         ctx.fillText(this.text, x + offsetX + this.fontSize, y + offsetY + this.fontSize, this.width());
         ctx.fillStyle = fs;
-    }
+    } 
 };
 class TextRow { 
     text:string;
@@ -605,7 +634,7 @@ class GuiTextBox implements GuiElement {
     static textLookup = {};
     static numbers = {};
     static specialChars = {};
-    constructor(keyListener:KeyboardHandler, width:number, fontSize:number = 16, height:number = 2*fontSize)
+    constructor(keyListener:boolean, width:number, fontSize:number = 16, height:number = 2*fontSize)
     {
         this.cursor = 0;
         this.text = "";
@@ -618,10 +647,15 @@ class GuiTextBox implements GuiElement {
         this.ctx = this.canvas.getContext("2d");
         this.dimensions = [width, height];
         this.fontSize = fontSize;
-        if(keyListener)
-            keyListener.registerCallBack("keydown", e => this.active(), 
-            e => {
-                console.log(e.code)
+    }
+    handleKeyBoardEvents(type:string, e:any):void
+    {
+        if(this.active())
+            switch(type)
+            {
+                case("keydown"):
+                //console.log(e.code)
+                //console.log(this.text);
                 switch(e.code)
                 {
                     case("Space"):
@@ -630,7 +664,7 @@ class GuiTextBox implements GuiElement {
                     break;
                     case("Backspace"):
                         this.text = this.text.substring(0, this.cursor-1) + this.text.substring(this.cursor, this.text.length);
-                        this.cursor--;
+                        this.cursor -= +(this.cursor>0);
                     break;
                     case("Delete"):
                         this.text = this.text.substring(0, this.cursor) + this.text.substring(this.cursor+1, this.text.length);
@@ -650,7 +684,7 @@ class GuiTextBox implements GuiElement {
                     default:
                     {
                         let letter:string = e.code.substring(e.code.length - 1);
-                        if(!keyListener.keysHeld["ShiftRight"] && !keyListener.keysHeld["ShiftLeft"])
+                        if(!e.keyboardHandler.keysHeld["ShiftRight"] && !e.keyboardHandler.keysHeld["ShiftLeft"])
                             letter = letter.toLowerCase();
                         //console.log(e.code);
                         if(GuiTextBox.textLookup[e.code] || GuiTextBox.numbers[e.code])
@@ -666,7 +700,15 @@ class GuiTextBox implements GuiElement {
                     }
                 }
                 this.drawInternalAndClear();
-            });
+            }
+    }
+    handleTouchEvents(type:string, e:any):void
+    {
+        if(this.active())
+            switch(type)
+            {
+            
+            }
     }
     static initGlobalText():void
     {
@@ -797,11 +839,11 @@ class PenTool extends Tool {
     layoutManager:SimpleGridLayoutManager;
     tbSize:GuiTextBox;
     btUpdate:GuiButton;
-    constructor(keyListener:KeyboardHandler, toolName:string = "pen", pathToImage:string = "images/penSprite.png")
+    constructor(keyListener:KeyboardHandler, touchHandler:SingleTouchListener, toolName:string = "pen", pathToImage:string = "images/penSprite.png")
     {
         super(toolName, pathToImage);
-        this.layoutManager = new SimpleGridLayoutManager([2,2],[200,200]);
-        this.tbSize = new GuiTextBox(keyListener, 100);
+        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,2],[200,200]);
+        this.tbSize = new GuiTextBox(true, 100);
         this.btUpdate = new GuiButton("update", 50, 30, 12);
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
@@ -863,21 +905,7 @@ class ToolSelector {
                     }
                 }  
             });
-        this.toolArray = [];
-        this.toolArray.push(new PenTool(keyboardHandler, "pen","images/penSprite.png"));
-        this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
-        this.toolArray.push(new GenericTool("line", "images/LineDrawSprite.png"));
-        this.toolArray.push(new GenericTool("rect", "images/rectSprite.png"));
-        this.toolArray.push(new GenericTool("oval", "images/ovalSprite.png"));
-        this.toolArray.push(new GenericTool("copy", "images/copySprite.png"));
-        this.toolArray.push(new GenericTool("paste", "images/pasteSprite.png"));
-        this.toolArray.push(new GenericTool("drag", "images/dragSprite.png"));
-        this.toolArray.push(new GenericTool("redo", "images/redoSprite.png"));
-        this.toolArray.push(new GenericTool("undo", "images/undoSprite.png"));
-        this.toolArray.push(new GenericTool("colorPicker", "images/colorPickerSprite.png"));
-        this.toolArray.push(new GenericTool("eraser", "images/eraserSprite.png"));
-        this.toolArray.push(new GenericTool("rotate", "images/rotateSprite.png"));
-        this.touchListener = new SingleTouchListener(this.canvas, true, true);
+        this.touchListener = new SingleTouchListener(this.canvas, true, true);       
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             (<any>document.activeElement).blur();
             const imgPerColumn:number = (this.canvas.height / this.imgHeight);
@@ -897,6 +925,21 @@ class ToolSelector {
                 field.redoLast();
             }
         });
+        this.toolArray = [];
+        this.toolArray.push(new PenTool(keyboardHandler, this.touchListener, "pen","images/penSprite.png"));
+        this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
+        this.toolArray.push(new GenericTool("line", "images/LineDrawSprite.png"));
+        this.toolArray.push(new GenericTool("rect", "images/rectSprite.png"));
+        this.toolArray.push(new GenericTool("oval", "images/ovalSprite.png"));
+        this.toolArray.push(new GenericTool("copy", "images/copySprite.png"));
+        this.toolArray.push(new GenericTool("paste", "images/pasteSprite.png"));
+        this.toolArray.push(new GenericTool("drag", "images/dragSprite.png"));
+        this.toolArray.push(new GenericTool("redo", "images/redoSprite.png"));
+        this.toolArray.push(new GenericTool("undo", "images/undoSprite.png"));
+        this.toolArray.push(new GenericTool("colorPicker", "images/colorPickerSprite.png"));
+        this.toolArray.push(new GenericTool("eraser", "images/eraserSprite.png"));
+        this.toolArray.push(new GenericTool("rotate", "images/rotateSprite.png"));
+ 
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = "#000000";
