@@ -545,7 +545,7 @@ class GuiTextBox implements GuiElement {
     selected:boolean;
     dimensions:number[];//[width, height]
     fontSize:number;
-    constructor(keyListener:KeyboardHandler, width:number, height:number, fontSize:number = 26)
+    constructor(keyListener:KeyboardHandler, width:number, height:number, fontSize:number = 16)
     {
         this.cursor = 0;
         this.text = "";
@@ -624,34 +624,32 @@ class GuiTextBox implements GuiElement {
         let i = 0;
         for(; i < rows - 1; i++)
         {
-            const yPos:number = i * this.fontSize + y - this.scroll[1];
+            const yPos:number = i * this.fontSize + y;
             if(this.cursor >= charIndex && this.cursor <= charIndex + charsPerRow)
             {
                 this.cursorPos[1] = yPos;
-                const substrWidth:number = this.ctx.measureText(this.text.substring(charIndex, this.cursor)).width
-                this.cursorPos[0] = substrWidth + x - this.scroll[0];
+                const substrWidth:number = this.ctx.measureText(text.substring(charIndex, this.cursor)).width
+                this.cursorPos[0] = substrWidth + x;
             }
             const substr:string = text.substring(charIndex, charIndex + charsPerRow);
-            //this.ctx.fillText(substr, x - this.scroll[0], yPos, this.width() - x);
-            this.rows.push(new TextRow(substr, x - this.scroll[0], yPos, this.width() - x));
+            this.rows.push(new TextRow(substr, x, yPos, this.width() - x));
             charIndex += charsPerRow;
         }
-        const yPos = i * this.fontSize + y - this.scroll[1];
-        if(this.cursor >= charIndex && this.cursor <= charIndex + charsPerRow+1)
-        {
-            this.cursorPos[1] = yPos;
-            const substrWidth:number = this.ctx.measureText(this.text.substring(charIndex, this.cursor)).width
-            this.cursorPos[0] = substrWidth + x - this.scroll[0];
-        }
+        const yPos = i * this.fontSize + y;
         const substring:string = text.substring(charIndex, text.length);
         const substrWidth:number = this.ctx.measureText(substring).width;
         
 
         if(substrWidth > this.width() - x)
             this.refreshMetaData(substring, x, i * this.fontSize + y);
-        else if(substrWidth > 0){
-            //this.ctx.fillText(substring, x - this.scroll[0], yPos, this.width() - x);
-            this.rows.push(new TextRow(substring, x - this.scroll[0], yPos, this.width() - x));
+        else if(substring.length > 0){
+            if(this.cursor >= charIndex)
+            {
+                this.cursorPos[1] = yPos;
+                const substrWidth:number = this.ctx.measureText(substring).width
+                this.cursorPos[0] = substrWidth + x;
+            }
+            this.rows.push(new TextRow(substring, x, yPos, this.width() - x));
         }
         
     }
@@ -659,30 +657,18 @@ class GuiTextBox implements GuiElement {
     {
         let deltaY:number = 0;
         let deltaX:number = 0;
-        if(this.cursorPos[1] < 0)
+        console.log(this.cursor,this.cursorPos[1])
+       if(this.cursorPos[1] > this.height())
         {
-            deltaY -= -1*this.cursorPos[1] + this.height() / 2;
+            deltaY += this.cursorPos[1] - this.height() + 10;
         }
-        else if(this.cursorPos[1] > this.height())
-        {
-            deltaY += this.cursorPos[1] - this.height() + this.height() / 2;
-        }
-        if(this.cursorPos[0] < 0)
-        {
-            deltaX -= -1*this.cursorPos[0] + this.width() / 2;
-        }
-        else if(this.cursorPos[0] > this.width())
-        {
-            deltaX += this.cursorPos[0] - this.width() + this.width() / 2;
-        }
+        this.scroll[1] = deltaY;
+        console.log("delty:",deltaY);
         this.rows.forEach(row => {
-            row.y += deltaY;
-            row.x += deltaX;
+            row.y -= this.scroll[1];
         })
-        this.scroll[0] += deltaX;
-        this.scroll[1] += deltaY;
-        this.cursorPos[0] += deltaX;
-        this.cursorPos[1] += deltaY;
+        this.cursorPos[1] -= this.scroll[1];
+        console.log("rendered cursor pos: ",this.cursorPos[0],"\ny: ",this.cursorPos[1])
     }
     drawRows():void
     {
@@ -857,7 +843,8 @@ class ToolSelector {
                         this.imgWidth, this.imgHeight);
         }
         this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
-        this.tool().drawOptionPanel(this.ctx, this.imgWidth*imgPerRow, 0);
+        if(this.tool())
+            this.tool().drawOptionPanel(this.ctx, this.imgWidth*imgPerRow, 0);
     }
     selectedToolName():string
     {
@@ -3315,7 +3302,7 @@ async function main()
         const adjustment:number = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
         if(1000/(Date.now() - start) < fps - 2){
-            console.log("avgfps:",Math.floor(1000/(Date.now() - start)))
+            //console.log("avgfps:",Math.floor(1000/(Date.now() - start)))
             if(1000/(Date.now() - start) == 0)
                 console.log("frame time:",1000/(Date.now() - start));
         }
