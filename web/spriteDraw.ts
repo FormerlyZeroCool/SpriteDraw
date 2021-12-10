@@ -614,7 +614,7 @@ class GuiTextBox implements GuiElement {
     height(): number {
         return this.dimensions[1];
     }
-    refreshMetaData(text:string = this.text, x:number = this.fontSize, y:number = this.fontSize, cursorOffset:number = 0):void
+    refreshMetaData(text:string = this.text, x:number = this.fontSize, y:number = this.fontSize):void
     {
         const textWidth:number = this.ctx.measureText(text).width;
         const canvasWidth:number = this.canvas.width;
@@ -625,10 +625,10 @@ class GuiTextBox implements GuiElement {
         for(; i < rows - 1; i++)
         {
             const yPos:number = i * this.fontSize + y;
-            if(this.cursor >= charIndex + cursorOffset && this.cursor <= charIndex + charsPerRow + cursorOffset)
+            if(this.cursor >= charIndex && this.cursor <= charIndex + charsPerRow)
             {
                 this.cursorPos[1] = yPos;
-                const substrWidth:number = this.ctx.measureText(text.substring(charIndex, this.cursor - cursorOffset)).width
+                const substrWidth:number = this.ctx.measureText(text.substring(charIndex, this.cursor)).width
                 this.cursorPos[0] = substrWidth + x;
             }
             const substr:string = text.substring(charIndex, charIndex + charsPerRow);
@@ -641,12 +641,12 @@ class GuiTextBox implements GuiElement {
         
 
         if(substrWidth > this.width() - x)
-            this.refreshMetaData(substring, x, i * this.fontSize + y, this.text.length - substring.length);
+            this.refreshMetaData(substring, x, i * this.fontSize + y);
         else if(substring.length > 0){
             if(this.cursor >= charIndex)
             {
                 this.cursorPos[1] = yPos;
-                const substrWidth:number = this.ctx.measureText(text.substring(charIndex, this.cursor - cursorOffset)).width
+                const substrWidth:number = this.ctx.measureText(text.substring(charIndex, this.cursor)).width
                 this.cursorPos[0] = substrWidth + x;
             }
             this.rows.push(new TextRow(substring, x, yPos, this.width() - x));
