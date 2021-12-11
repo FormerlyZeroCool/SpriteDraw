@@ -566,6 +566,10 @@ class GuiTextBox {
                     this.drawInternalAndClear();
             }
     }
+    setText(text) {
+        this.text = text;
+        this.drawInternalAndClear();
+    }
     handleTouchEvents(type, e) {
         if (this.active())
             switch (type) {
@@ -681,6 +685,19 @@ class GenericTool extends Tool {
     }
     drawOptionPanel(ctx, x, y) { }
 }
+class ViewLayoutTool extends Tool {
+    constructor(layoutManager, name, path) {
+        super(name, path);
+        this.layoutManager = layoutManager;
+    }
+    optionPanelSize() {
+        return [this.layoutManager.canvas.width, this.layoutManager.canvas.height];
+    }
+    drawOptionPanel(ctx, x, y) {
+        this.layoutManager.draw(ctx, x, y);
+    }
+}
+;
 class PenTool extends Tool {
     constructor(keyListener, touchHandler, toolName = "pen", pathToImage = "images/penSprite.png") {
         super(toolName, pathToImage);
@@ -759,9 +776,9 @@ class ToolSelector {
         this.toolArray = [];
         this.toolArray.push(new PenTool(keyboardHandler, this.touchListener, "pen", "images/penSprite.png"));
         this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
-        this.toolArray.push(new GenericTool("line", "images/LineDrawSprite.png"));
-        this.toolArray.push(new GenericTool("rect", "images/rectSprite.png"));
-        this.toolArray.push(new GenericTool("oval", "images/ovalSprite.png"));
+        this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "line", "images/LineDrawSprite.png"));
+        this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "rect", "images/rectSprite.png"));
+        this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "oval", "images/ovalSprite.png"));
         this.toolArray.push(new GenericTool("copy", "images/copySprite.png"));
         this.toolArray.push(new GenericTool("paste", "images/pasteSprite.png"));
         this.toolArray.push(new GenericTool("drag", "images/dragSprite.png"));
@@ -971,10 +988,7 @@ class DrawingScreen {
             const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
             switch (this.toolSelector.selectedToolName()) {
                 case ("pen"):
-                    this.lineWidth = this.toolSelector.tool().penSize();
-                    if (!this.lineWidth || this.lineWidth > 80) {
-                        this.lineWidth = dimensions[0] / bounds[0] * 4;
-                    }
+                    this.setLineWidthPen();
                     break;
                 case ("eraser"):
                     colorBackup.copy(this.color);
@@ -983,7 +997,7 @@ class DrawingScreen {
                 case ("fill"):
                     break;
                 case ("line"):
-                    this.lineWidth = dimensions[0] / bounds[0] * 4;
+                    this.setLineWidthPen();
                     break;
                 case ("rotate"):
                     this.saveDragDataToScreenAntiAliased();
@@ -1000,9 +1014,9 @@ class DrawingScreen {
                         this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), false);
                     break;
                 case ("oval"):
-                    this.lineWidth = dimensions[0] / bounds[0] * 4;
+                    this.setLineWidthPen();
                 case ("rect"):
-                    this.lineWidth = dimensions[0] / bounds[0] * 4;
+                    this.setLineWidthPen();
                 case ("copy"):
                     this.selectionRect = [e.touchPos[0], e.touchPos[1], 0, 0];
                     break;
@@ -1115,6 +1129,14 @@ class DrawingScreen {
             }
         });
         this.color = new RGB(0, 0, 0, 255);
+    }
+    setLineWidthPen() {
+        const pen = this.toolSelector.toolArray[0];
+        this.lineWidth = pen.penSize();
+        if (!this.lineWidth || this.lineWidth > 128) {
+            pen.tbSize.setText(this.lineWidth + "");
+            this.lineWidth = this.dimensions.first / this.bounds.first * 4;
+        }
     }
     saveToBuffer(selectionRect, buffer) {
         if (selectionRect[2] < 0) {

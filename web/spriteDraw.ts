@@ -738,6 +738,11 @@ class GuiTextBox implements GuiElement {
                 this.drawInternalAndClear();
             }
     }
+    setText(text:string):void
+    {
+        this.text = text;
+        this.drawInternalAndClear();
+    }
     handleTouchEvents(type:string, e:any):void
     {
         if(this.active())
@@ -870,6 +875,23 @@ class GenericTool extends Tool {
     }
     drawOptionPanel(ctx, x:number, y:number):void {}
 }
+class ViewLayoutTool extends Tool {
+    layoutManager:SimpleGridLayoutManager;
+    constructor(layoutManager:SimpleGridLayoutManager, name:string, path:string)
+    {
+        super(name, path);
+        this.layoutManager = layoutManager;
+    }
+
+    optionPanelSize():number[]
+    {
+        return [this.layoutManager.canvas.width, this.layoutManager.canvas.height];
+    }
+    drawOptionPanel(ctx, x:number, y:number):void
+    {
+        this.layoutManager.draw(ctx, x, y);
+    }
+};
 class PenTool extends Tool {
     lineWidth:number;
     layoutManager:SimpleGridLayoutManager;
@@ -969,9 +991,9 @@ class ToolSelector {
         this.toolArray = [];
         this.toolArray.push(new PenTool(keyboardHandler, this.touchListener, "pen","images/penSprite.png"));
         this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
-        this.toolArray.push(new GenericTool("line", "images/LineDrawSprite.png"));
-        this.toolArray.push(new GenericTool("rect", "images/rectSprite.png"));
-        this.toolArray.push(new GenericTool("oval", "images/ovalSprite.png"));
+        this.toolArray.push(new ViewLayoutTool((<PenTool>this.toolArray[0]).layoutManager ,"line", "images/LineDrawSprite.png"));
+        this.toolArray.push(new ViewLayoutTool((<PenTool>this.toolArray[0]).layoutManager ,"rect", "images/rectSprite.png"));
+        this.toolArray.push(new ViewLayoutTool((<PenTool>this.toolArray[0]).layoutManager ,"oval", "images/ovalSprite.png"));
         this.toolArray.push(new GenericTool("copy", "images/copySprite.png"));
         this.toolArray.push(new GenericTool("paste", "images/pasteSprite.png"));
         this.toolArray.push(new GenericTool("drag", "images/dragSprite.png"));
@@ -1246,10 +1268,7 @@ class DrawingScreen {
             switch (this.toolSelector.selectedToolName())
             {
                 case("pen"):
-                this.lineWidth = (<PenTool> this.toolSelector.tool()).penSize();
-                if(!this.lineWidth || this.lineWidth > 80){
-                    this.lineWidth = dimensions[0] / bounds[0] * 4;
-                }
+                this.setLineWidthPen();
                 break;
                 case("eraser"):
                 colorBackup.copy(this.color);
@@ -1258,7 +1277,7 @@ class DrawingScreen {
                 case("fill"):
                 break;
                 case("line"):
-                this.lineWidth = dimensions[0] / bounds[0] * 4;
+                this.setLineWidthPen();
                 break;
                 case("rotate"):
                 this.saveDragDataToScreenAntiAliased();
@@ -1275,9 +1294,9 @@ class DrawingScreen {
                     this.dragData = this.getSelectedPixelGroup(new Pair<number>(gx,gy), false);
                 break;
                 case("oval"):
-                this.lineWidth = dimensions[0] / bounds[0] * 4;
+                    this.setLineWidthPen();
                 case("rect"):
-                this.lineWidth = dimensions[0] / bounds[0] * 4;
+                    this.setLineWidthPen();
                 case("copy"):
                 this.selectionRect = [e.touchPos[0], e.touchPos[1],0,0];
                 break;
@@ -1404,6 +1423,14 @@ class DrawingScreen {
         
         this.color = new RGB(0,0,0,255);
         
+    }
+    setLineWidthPen():void{
+        const pen:PenTool = (<PenTool> this.toolSelector.toolArray[0]);
+        this.lineWidth = pen.penSize();
+        if(!this.lineWidth || this.lineWidth > 128){
+            pen.tbSize.setText(this.lineWidth + "");
+            this.lineWidth = this.dimensions.first / this.bounds.first * 4;
+        }
     }
     saveToBuffer(selectionRect:Array<number>, buffer:Array<Pair<RGB, number>>):Pair<number>
     {
