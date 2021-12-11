@@ -620,27 +620,51 @@ class TextRow {
         this.width = width;
     }
 };
+class Optional<T> {
+    data:T;
+    null:boolean;
+    constructor(){
+        this.null = true;
+    }
+    get():T
+    {
+        if(!this.null)
+            return this.data;
+        return null;
+    } 
+    set(data:T):void
+    {
+        this.data = data;
+        this.null = false;
+    }
+    clear():void
+    {
+        this.null = true;
+    }
+}
 class GuiTextBox implements GuiElement {
     text:string;
+    asNumber:Optional<number>;
     rows:TextRow[];
     canvas:HTMLCanvasElement;
     ctx:CanvasRenderingContext2D;
     cursor:number;
     cursorPos:number[];
     scroll:number[];
-    shouldScroll:boolean;
     selected:boolean;
     dimensions:number[];//[width, height]
     fontSize:number;
     static textLookup = {};
     static numbers = {};
     static specialChars = {};
-    constructor(keyListener:boolean, width:number, fontSize:number = 16, height:number = 2*fontSize, scroll:boolean = true)
+    flags:number;
+    constructor(keyListener:boolean, width:number, fontSize:number = 16, height:number = 2*fontSize, flags:number = 1)
     {
         this.cursor = 0;
+        this.flags = flags;
+        this.asNumber = new Optional<number>();
         this.text = "";
         this.scroll = [0, 0];
-        this.shouldScroll = scroll;
         this.cursorPos = [0, 0];
         this.rows = [];
         this.canvas = document.createElement("canvas");
@@ -683,6 +707,10 @@ class GuiTextBox implements GuiElement {
                     case("ArrowDown"):
                         this.cursor = (this.text.length);
                     break;
+                    case("Period"):
+                    this.text = this.text.substring(0, this.cursor) + "." + this.text.substring(this.cursor, this.text.length);
+                    this.cursor++;
+                    break
                     default:
                     {
                         let letter:string = e.code.substring(e.code.length - 1);
@@ -701,6 +729,12 @@ class GuiTextBox implements GuiElement {
 
                     }
                 }
+                if(!isNaN(Number(this.text)))
+                {
+                    this.asNumber.set(Number(this.text))
+                }
+                else
+                    this.asNumber.clear();
                 this.drawInternalAndClear();
             }
     }
@@ -789,7 +823,7 @@ class GuiTextBox implements GuiElement {
     adjustScrollToCursor():void
     {
         let deltaY:number = 0;
-        if(this.shouldScroll && this.cursorPos[1] > this.height())
+        if(this.cursorPos[1] > this.height() - 2)
         {
             deltaY += this.cursorPos[1] - this.height() + this.height() / 2;
         }
@@ -844,6 +878,7 @@ class PenTool extends Tool {
     constructor(keyListener:KeyboardHandler, touchHandler:SingleTouchListener, toolName:string = "pen", pathToImage:string = "images/penSprite.png")
     {
         super(toolName, pathToImage);
+        this.lineWidth = 5;
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,2],[200,200]);
         this.tbSize = new GuiTextBox(true, 100);
         this.btUpdate = new GuiButton("update", 50, 30, 12);
@@ -857,6 +892,10 @@ class PenTool extends Tool {
     drawOptionPanel(ctx:CanvasRenderingContext2D, x:number, y:number):void 
     {
         this.layoutManager.draw(ctx, x, y);
+    }
+    penSize():number
+    {
+        return this.tbSize.asNumber.get()?this.tbSize.asNumber.get():this.lineWidth;
     }
 };
 // To do refactor tools to make sure they load in the same order every time
@@ -1207,7 +1246,10 @@ class DrawingScreen {
             switch (this.toolSelector.selectedToolName())
             {
                 case("pen"):
-                this.lineWidth = dimensions[0] / bounds[0] * 4;
+                this.lineWidth = (<PenTool> this.toolSelector.tool()).penSize();
+                if(!this.lineWidth || this.lineWidth > 80){
+                    this.lineWidth = dimensions[0] / bounds[0] * 4;
+                }
                 break;
                 case("eraser"):
                 colorBackup.copy(this.color);
