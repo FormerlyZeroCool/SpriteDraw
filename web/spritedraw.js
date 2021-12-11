@@ -315,18 +315,23 @@ class SimpleGridLayoutManager {
             keyboardHandler.registerCallBack("keyup", e => this.active(), e => { e.keyboardHandler = keyboardHandler; this.elements.forEach(el => el.handleKeyBoardEvents("keyup", e)); });
         }
         if (touchHandler) {
-            touchHandler.registerCallBack("touchstart", e => this.active(), e => this.elements.forEach(el => el.handleTouchEvents("touchstart", e)));
-            touchHandler.registerCallBack("touchmove", e => this.active(), e => this.elements.forEach(el => el.handleTouchEvents("touchmove", e)));
-            touchHandler.registerCallBack("touchend", e => this.active(), e => this.elements.forEach(el => el.handleTouchEvents("touchend", e)));
+            touchHandler.registerCallBack("touchstart", e => this.active(), e => this.handleTouchEvents("touchstart", e));
+            touchHandler.registerCallBack("touchmove", e => this.active(), e => this.handleTouchEvents("touchmove", e));
+            touchHandler.registerCallBack("touchend", e => this.active(), e => this.handleTouchEvents("touchend", e));
         }
     }
     handleKeyBoardEvents(type, e) {
         this.elements.forEach(el => el.handleKeyBoardEvents(type, e));
     }
     handleTouchEvents(type, e) {
-        this.elements.forEach(el => el.handleTouchEvents(type, e));
+        this.elementsPositions.forEach(el => {
+            if (e.touchPos[0] >= el.x + this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
+                e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height()) {
+                el.element.handleTouchEvents(type, e);
+            }
+        });
     }
-    refreshMetaData(xPos = this.x, yPos = this.y, offsetX = 0, offsetY = 0) {
+    refreshMetaData(xPos = 0, yPos = 0, offsetX = 0, offsetY = 0) {
         this.elementsPositions.splice(0, this.elementsPositions.length);
         const width = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
         const height = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
@@ -342,7 +347,7 @@ class SimpleGridLayoutManager {
                 x = 0;
             }
             const y = counter.first * height;
-            this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, this.x, this.y, element));
+            this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
             counter.incHigher(rowsUsed);
             if (rowsUsed)
                 counter.second = 0;
@@ -352,7 +357,7 @@ class SimpleGridLayoutManager {
     refreshCanvas(ctx = this.ctx, x = 0, y = 0) {
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        this.elementsPositions.forEach(el => el.element.draw(ctx, el.x, el.y, this.x + x, this.y + y));
+        this.elementsPositions.forEach(el => el.element.draw(ctx, el.x, el.y, x, y));
     }
     active() {
         return true;
@@ -392,45 +397,27 @@ class SimpleGridLayoutManager {
         return inserted;
     }
     elementPosition(element) {
-        let result = [-1, -1];
-        let running = true;
-        const width = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
-        const height = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
-        let counter = new LexicoGraphicNumericPair(this.matrixDim[0]);
-        for (let i = 0; i < this.elements.length && running; i++) {
-            const element = this.elements[i];
-            const columnsUsed = Math.ceil(element.width() / this.rowWidth());
-            const rowsUsed = Math.floor(element.height() / this.rowHeight());
-            let x = counter.second * width;
-            if (x + element.width() > this.pixelDim[0]) {
-                counter.incHigher();
-                counter.second = 0;
-                x = 0;
-            }
-            const y = counter.first * height;
-            counter.incHigher(rowsUsed);
-            if (rowsUsed)
-                counter.second = 0;
-            counter.incLower(columnsUsed);
-            if (this.elements[i] === element) {
-                result = [x, y];
-                running = false;
-            }
-        }
-        return result;
+        const elPos = this.elementsPositions.find(el => el.element === element);
+        return [elPos.x, elPos.y];
     }
     draw(ctx, xPos = this.x, yPos = this.y, offsetX = 0, offsetY = 0) {
         this.refreshMetaData();
         this.refreshCanvas();
+        this.x = xPos + offsetX;
+        this.y = yPos + offsetY;
         ctx.drawImage(this.canvas, xPos + offsetX, yPos + offsetY);
     }
 }
 ;
 class GuiButton {
-    constructor(text, width = 200, height = 50, fontSize = 12) {
+    constructor(callBack, text, width = 200, height = 50, fontSize = 12, pressedColor = new RGB(150, 150, 200, 1), unPressedColor = new RGB(150, 150, 150)) {
         this.text = text;
         this.fontSize = fontSize;
         this.dimensions = [width, height];
+        this.pressedColor = pressedColor;
+        this.unPressedColor = unPressedColor;
+        this.pressed = false;
+        this.callback = callBack;
     }
     handleKeyBoardEvents(type, e) {
         if (this.active())
@@ -440,6 +427,13 @@ class GuiButton {
     handleTouchEvents(type, e) {
         if (this.active())
             switch (type) {
+                case ("touchstart"):
+                    this.pressed = true;
+                    break;
+                case ("touchend"):
+                    this.callback(e);
+                    this.pressed = false;
+                    break;
             }
     }
     active() {
@@ -453,15 +447,18 @@ class GuiButton {
     }
     setCtxState(ctx) {
         ctx.strokeStyle = "#000000";
-        ctx.fillStyle = "#FFFFFF";
+        if (this.pressed)
+            ctx.fillStyle = this.pressedColor.htmlRBG();
+        else
+            ctx.fillStyle = this.unPressedColor.htmlRBG();
         ctx.font = this.fontSize + 'px Calibri';
     }
     draw(ctx, x, y, offsetX = 0, offsetY = 0) {
         const fs = ctx.fillStyle;
         this.setCtxState(ctx);
         ctx.fillRect(x + offsetX, y + offsetY, this.width(), this.height());
-        ctx.fillStyle = "#000000";
         ctx.strokeRect(x + offsetX, y + offsetY, this.width(), this.height());
+        ctx.fillStyle = "#000000";
         ctx.fillText(this.text, x + offsetX + this.fontSize, y + offsetY + this.fontSize, this.width());
         ctx.fillStyle = fs;
     }
@@ -508,6 +505,7 @@ class GuiTextBox {
         this.ctx = this.canvas.getContext("2d");
         this.dimensions = [width, height];
         this.fontSize = fontSize;
+        this.drawInternalAndClear();
     }
     handleKeyBoardEvents(type, e) {
         if (this.active())
@@ -568,6 +566,7 @@ class GuiTextBox {
     }
     setText(text) {
         this.text = text;
+        this.cursor = text.length;
         this.drawInternalAndClear();
     }
     handleTouchEvents(type, e) {
@@ -699,12 +698,15 @@ class ViewLayoutTool extends Tool {
 }
 ;
 class PenTool extends Tool {
-    constructor(keyListener, touchHandler, toolName = "pen", pathToImage = "images/penSprite.png") {
+    constructor(keyListener, touchHandler, strokeWith, toolName = "pen", pathToImage = "images/penSprite.png") {
         super(toolName, pathToImage);
-        this.lineWidth = 5;
+        this.lineWidth = strokeWith;
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 2], [200, 200]);
         this.tbSize = new GuiTextBox(true, 100);
-        this.btUpdate = new GuiButton("update", 50, 30, 12);
+        this.btUpdate = new GuiButton(e => {
+            this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128 ? this.tbSize.asNumber.get() : this.lineWidth;
+            this.tbSize.setText(this.lineWidth + "");
+        }, "update", 50, 30, 12);
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
     }
@@ -715,7 +717,7 @@ class PenTool extends Tool {
         this.layoutManager.draw(ctx, x, y);
     }
     penSize() {
-        return this.tbSize.asNumber.get() ? this.tbSize.asNumber.get() : this.lineWidth;
+        return this.lineWidth;
     }
 }
 ;
@@ -774,7 +776,7 @@ class ToolSelector {
             }
         });
         this.toolArray = [];
-        this.toolArray.push(new PenTool(keyboardHandler, this.touchListener, "pen", "images/penSprite.png"));
+        this.toolArray.push(new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth(), "pen", "images/penSprite.png"));
         this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
         this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "line", "images/LineDrawSprite.png"));
         this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "rect", "images/rectSprite.png"));
@@ -924,6 +926,9 @@ class ClipBoard {
 class DrawingScreen {
     constructor(canvas, keyboardHandler, offset, dimensions, newColorTextBox) {
         const bounds = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
+        this.dimensions = new Pair(dimensions[0], dimensions[1]);
+        this.offset = new Pair(offset[0], offset[1]);
+        this.bounds = new Pair(bounds[0], bounds[1]);
         this.ctx = canvas.getContext("2d");
         canvas.width = bounds[0];
         canvas.height = bounds[1];
@@ -937,9 +942,6 @@ class DrawingScreen {
         this.updatesStack = new RollingStack();
         this.undoneUpdatesStack = new RollingStack();
         this.selectionRect = new Array();
-        this.offset = new Pair(offset[0], offset[1]);
-        this.bounds = new Pair(bounds[0], bounds[1]);
-        this.dimensions = new Pair(dimensions[0], dimensions[1]);
         this.screenBuffer = new Array();
         this.selectionRect = [0, 0, 0, 0];
         this.pasteRect = [0, 0, 0, 0];
@@ -1130,13 +1132,13 @@ class DrawingScreen {
         });
         this.color = new RGB(0, 0, 0, 255);
     }
+    suggestedLineWidth() {
+        return this.dimensions.first / this.bounds.first * 4;
+    }
     setLineWidthPen() {
         const pen = this.toolSelector.toolArray[0];
         this.lineWidth = pen.penSize();
-        if (!this.lineWidth || this.lineWidth > 128) {
-            pen.tbSize.setText(this.lineWidth + "");
-            this.lineWidth = this.dimensions.first / this.bounds.first * 4;
-        }
+        pen.tbSize.setText(this.lineWidth + "");
     }
     saveToBuffer(selectionRect, buffer) {
         if (selectionRect[2] < 0) {
@@ -1798,10 +1800,8 @@ class SingleTouchListener {
     }
     callHandler(type, event) {
         const handlers = this.listenerTypeMap[type];
-        let found = false;
         handlers.forEach(handler => {
-            if (!found && handler.pred(event)) {
-                found = true;
+            if (!event.defaultPrevented && handler.pred(event)) {
                 handler.callBack(event);
             }
         });

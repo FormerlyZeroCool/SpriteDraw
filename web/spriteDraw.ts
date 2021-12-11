@@ -420,11 +420,11 @@ class SimpleGridLayoutManager implements GuiElement {
         if(touchHandler)
         {
             touchHandler.registerCallBack("touchstart", e => this.active(), 
-            e => this.elements.forEach(el => el.handleTouchEvents("touchstart", e)));
+            e => this.handleTouchEvents("touchstart", e));
             touchHandler.registerCallBack("touchmove", e => this.active(), 
-            e => this.elements.forEach(el => el.handleTouchEvents("touchmove", e)));
+            e => this.handleTouchEvents("touchmove", e));
             touchHandler.registerCallBack("touchend", e => this.active(), 
-            e => this.elements.forEach(el => el.handleTouchEvents("touchend", e)));
+            e => this.handleTouchEvents("touchend", e));
         }
     }    
     handleKeyBoardEvents(type:string, e:any):void
@@ -433,9 +433,15 @@ class SimpleGridLayoutManager implements GuiElement {
     }
     handleTouchEvents(type:string, e:any):void
     {
-        this.elements.forEach(el => el.handleTouchEvents(type, e));
+        this.elementsPositions.forEach(el => {
+            if(e.touchPos[0] >= el.x+this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
+                e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height())
+            {
+                el.element.handleTouchEvents(type, e);
+            }
+        });
     }
-    refreshMetaData(xPos:number = this.x, yPos:number = this.y, offsetX:number = 0, offsetY:number = 0):void
+    refreshMetaData(xPos:number = 0, yPos:number = 0, offsetX:number = 0, offsetY:number = 0):void
     {
         this.elementsPositions.splice(0, this.elementsPositions.length);        
         const width:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
@@ -453,7 +459,7 @@ class SimpleGridLayoutManager implements GuiElement {
                  x = 0;
             }
             const y:number = counter.first * height;
-            this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, this.x, this.y, element));
+            this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
             counter.incHigher(rowsUsed);
             if(rowsUsed)
                 counter.second = 0;
@@ -465,7 +471,7 @@ class SimpleGridLayoutManager implements GuiElement {
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.elementsPositions.forEach(el => 
-            el.element.draw(ctx, el.x, el.y, this.x + x, this.y + y));
+            el.element.draw(ctx, el.x, el.y, x, y));
     }
     active():boolean
     {
@@ -515,40 +521,15 @@ class SimpleGridLayoutManager implements GuiElement {
     }
     elementPosition(element:GuiElement):number[]
     {
-        let result:number[] = [-1, -1];
-        let running:boolean = true;
-        const width:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
-        const height:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
-        let counter:LexicoGraphicNumericPair = new LexicoGraphicNumericPair(this.matrixDim[0])
-        for(let i:number = 0; i < this.elements.length && running; i++)
-        {
-            const element:GuiElement = this.elements[i];
-            const columnsUsed:number = Math.ceil(element.width() / this.rowWidth());
-            const rowsUsed:number = Math.floor(element.height() / this.rowHeight());
-            let x:number = counter.second * width;
-            if(x + element.width() > this.pixelDim[0]){
-                 counter.incHigher();
-                 counter.second = 0;
-                 x = 0;
-            }
-            const y:number = counter.first * height;
-
-            counter.incHigher(rowsUsed);
-            if(rowsUsed)
-                counter.second = 0;
-            counter.incLower(columnsUsed);
-            if(this.elements[i] === element)
-            {
-                result = [x, y];
-                running = false;
-            }
-        }
-        return result;
+        const elPos:RowRecord = this.elementsPositions.find(el => el.element === element);
+        return [elPos.x, elPos.y];
     }
     draw(ctx:CanvasRenderingContext2D, xPos:number = this.x, yPos:number = this.y, offsetX:number = 0, offsetY:number = 0)
     {
         this.refreshMetaData();
         this.refreshCanvas();
+        this.x = xPos + offsetX;
+        this.y = yPos + offsetY;
         ctx.drawImage(this.canvas, xPos + offsetX, yPos + offsetY);
     }
 };
@@ -558,11 +539,19 @@ class GuiButton implements GuiElement {
     text:string;
     dimensions:number[];//[width, height]
     fontSize:number;
-    constructor(text:string, width:number = 200, height:number = 50, fontSize:number = 12)
+    pressedColor:RGB;
+    unPressedColor:RGB;
+    pressed:boolean;
+    callback:(event) => void;
+    constructor(callBack:(event) => void, text:string, width:number = 200, height:number = 50, fontSize:number = 12, pressedColor:RGB = new RGB(150, 150, 200, 1), unPressedColor:RGB = new RGB(150, 150, 150))
     {
         this.text = text;
         this.fontSize = fontSize;
         this.dimensions = [width, height];
+        this.pressedColor = pressedColor;
+        this.unPressedColor = unPressedColor;
+        this.pressed = false;
+        this.callback = callBack;
     }
     handleKeyBoardEvents(type:string, e:any):void
     {
@@ -577,7 +566,13 @@ class GuiButton implements GuiElement {
         if(this.active())
             switch(type)
             {
-            
+                case("touchstart"):
+                    this.pressed = true;
+                break;
+                case("touchend"):
+                    this.callback(e);
+                    this.pressed = false;
+                break;
             }
     }
     active():boolean
@@ -593,7 +588,10 @@ class GuiButton implements GuiElement {
     setCtxState(ctx:CanvasRenderingContext2D):void
     {
         ctx.strokeStyle = "#000000";
-        ctx.fillStyle = "#FFFFFF";
+        if(this.pressed)
+            ctx.fillStyle = this.pressedColor.htmlRBG();
+        else
+            ctx.fillStyle = this.unPressedColor.htmlRBG();
         ctx.font = this.fontSize + 'px Calibri';
     }
     draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0)
@@ -601,8 +599,8 @@ class GuiButton implements GuiElement {
         const fs = ctx.fillStyle;
         this.setCtxState(ctx);
         ctx.fillRect(x + offsetX, y + offsetY, this.width(), this.height());
-        ctx.fillStyle = "#000000";
         ctx.strokeRect(x + offsetX, y + offsetY, this.width(), this.height());
+        ctx.fillStyle = "#000000";
         ctx.fillText(this.text, x + offsetX + this.fontSize, y + offsetY + this.fontSize, this.width());
         ctx.fillStyle = fs;
     } 
@@ -673,6 +671,7 @@ class GuiTextBox implements GuiElement {
         this.ctx = this.canvas.getContext("2d");
         this.dimensions = [width, height];
         this.fontSize = fontSize;
+        this.drawInternalAndClear();
     }
     handleKeyBoardEvents(type:string, e:any):void
     {
@@ -741,6 +740,7 @@ class GuiTextBox implements GuiElement {
     setText(text:string):void
     {
         this.text = text;
+        this.cursor = text.length;
         this.drawInternalAndClear();
     }
     handleTouchEvents(type:string, e:any):void
@@ -897,13 +897,16 @@ class PenTool extends Tool {
     layoutManager:SimpleGridLayoutManager;
     tbSize:GuiTextBox;
     btUpdate:GuiButton;
-    constructor(keyListener:KeyboardHandler, touchHandler:SingleTouchListener, toolName:string = "pen", pathToImage:string = "images/penSprite.png")
+    constructor(keyListener:KeyboardHandler, touchHandler:SingleTouchListener, strokeWith:number, toolName:string = "pen", pathToImage:string = "images/penSprite.png")
     {
         super(toolName, pathToImage);
-        this.lineWidth = 5;
+        this.lineWidth = strokeWith;
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,2],[200,200]);
         this.tbSize = new GuiTextBox(true, 100);
-        this.btUpdate = new GuiButton("update", 50, 30, 12);
+        this.btUpdate = new GuiButton(e => { 
+            this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128?this.tbSize.asNumber.get():this.lineWidth; 
+            this.tbSize.setText(this.lineWidth+"")},
+            "update", 50, 30, 12);
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
     }
@@ -917,7 +920,7 @@ class PenTool extends Tool {
     }
     penSize():number
     {
-        return this.tbSize.asNumber.get()?this.tbSize.asNumber.get():this.lineWidth;
+        return this.lineWidth;
     }
 };
 // To do refactor tools to make sure they load in the same order every time
@@ -989,7 +992,7 @@ class ToolSelector {
             }
         });
         this.toolArray = [];
-        this.toolArray.push(new PenTool(keyboardHandler, this.touchListener, "pen","images/penSprite.png"));
+        this.toolArray.push(new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth(), "pen","images/penSprite.png"));
         this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
         this.toolArray.push(new ViewLayoutTool((<PenTool>this.toolArray[0]).layoutManager ,"line", "images/LineDrawSprite.png"));
         this.toolArray.push(new ViewLayoutTool((<PenTool>this.toolArray[0]).layoutManager ,"rect", "images/rectSprite.png"));
@@ -1196,6 +1199,9 @@ class DrawingScreen {
     constructor(canvas:any, keyboardHandler:KeyboardHandler, offset:Array<number>, dimensions:Array<number>, newColorTextBox:HTMLInputElement)
     {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
+        this.dimensions = new Pair<number>(dimensions[0], dimensions[1]);
+        this.offset = new Pair<number>(offset[0], offset[1]);
+        this.bounds = new Pair<number>(bounds[0], bounds[1]);
         this.ctx = canvas.getContext("2d");
         canvas.width = bounds[0];
         canvas.height = bounds[1];
@@ -1209,9 +1215,6 @@ class DrawingScreen {
         this.updatesStack = new RollingStack<Array<Pair<number,RGB>>>();
         this.undoneUpdatesStack = new RollingStack<Array<Pair<number,RGB>>>();
         this.selectionRect = new Array<number>();
-        this.offset = new Pair<number>(offset[0], offset[1]);
-        this.bounds = new Pair<number>(bounds[0], bounds[1]);
-        this.dimensions = new Pair<number>(dimensions[0], dimensions[1]);
         this.screenBuffer = new Array<RGB>();
         this.selectionRect = [0,0,0,0];
         this.pasteRect = [0,0,0,0];
@@ -1424,13 +1427,14 @@ class DrawingScreen {
         this.color = new RGB(0,0,0,255);
         
     }
+    suggestedLineWidth():number
+    {
+        return this.dimensions.first / this.bounds.first * 4;
+    }
     setLineWidthPen():void{
         const pen:PenTool = (<PenTool> this.toolSelector.toolArray[0]);
         this.lineWidth = pen.penSize();
-        if(!this.lineWidth || this.lineWidth > 128){
-            pen.tbSize.setText(this.lineWidth + "");
-            this.lineWidth = this.dimensions.first / this.bounds.first * 4;
-        }
+        pen.tbSize.setText(this.lineWidth + "");
     }
     saveToBuffer(selectionRect:Array<number>, buffer:Array<Pair<RGB, number>>):Pair<number>
     {
@@ -2241,11 +2245,9 @@ class SingleTouchListener
     callHandler(type:string, event):void
     {
         const handlers = this.listenerTypeMap[type];
-        let found = false;
         handlers.forEach(handler => {
-            if(!found && handler.pred(event))
+            if(!event.defaultPrevented && handler.pred(event))
             {
-                found = true;
                 handler.callBack(event);
             }
         });
