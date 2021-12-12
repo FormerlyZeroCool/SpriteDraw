@@ -235,7 +235,7 @@ class Pair {
     }
 }
 ;
-class ImageConatiner {
+class ImageContainer {
     constructor(imageName, imagePath) {
         this.image = null;
         fetchImage(imagePath).then(img => {
@@ -245,12 +245,527 @@ class ImageConatiner {
     }
 }
 ;
+class Tool {
+    constructor(toolName, toolImagePath) {
+        this.toolImage = new ImageContainer(toolName, toolImagePath);
+    }
+    width() {
+        return this.toolImage.image.width;
+    }
+    height() {
+        return this.toolImage.image.height;
+    }
+    image() {
+        return this.toolImage.image;
+    }
+    name() {
+        return this.toolImage.name;
+    }
+    drawImage(ctx, x, y, width, height) {
+        if (this.toolImage.image) {
+            ctx.drawImage(this.toolImage.image, x, y, width, height);
+        }
+    }
+}
+;
+;
+class LexicoGraphicNumericPair extends Pair {
+    constructor(rollOver) {
+        super(0, 0);
+        this.rollOver = rollOver;
+    }
+    incHigher(val = 1) {
+        this.first += val;
+        return this.first;
+    }
+    incLower(val = 1) {
+        this.first += Math.floor((this.second + val) / this.rollOver);
+        this.second = (this.second + val) % this.rollOver;
+        return this.second;
+    }
+    hash() {
+        return this.first * this.rollOver + this.second;
+    }
+}
+class RowRecord {
+    constructor(x, y, width, height, element) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.element = element;
+    }
+}
+class SimpleGridLayoutManager {
+    constructor(keyboardHandler, touchHandler, matrixDim, pixelDim, x = 0, y = 0) {
+        this.matrixDim = matrixDim;
+        this.pixelDim = pixelDim;
+        this.x = x;
+        this.y = y;
+        this.refreshRate = 4;
+        this.frameCounter = 0;
+        this.elements = [];
+        this.elementsPositions = [];
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = pixelDim[0];
+        this.canvas.height = pixelDim[1];
+        this.ctx = this.canvas.getContext("2d");
+        if (keyboardHandler) {
+            keyboardHandler.registerCallBack("keydown", e => this.active(), e => { e.keyboardHandler = keyboardHandler; this.elements.forEach(el => el.handleKeyBoardEvents("keydown", e)); });
+            keyboardHandler.registerCallBack("keyup", e => this.active(), e => { e.keyboardHandler = keyboardHandler; this.elements.forEach(el => el.handleKeyBoardEvents("keyup", e)); });
+        }
+        if (touchHandler) {
+            touchHandler.registerCallBack("touchstart", e => this.active(), e => this.handleTouchEvents("touchstart", e));
+            touchHandler.registerCallBack("touchmove", e => this.active(), e => this.handleTouchEvents("touchmove", e));
+            touchHandler.registerCallBack("touchend", e => this.active(), e => this.handleTouchEvents("touchend", e));
+        }
+    }
+    handleKeyBoardEvents(type, e) {
+        this.elements.forEach(el => el.handleKeyBoardEvents(type, e));
+    }
+    handleTouchEvents(type, e) {
+        this.elementsPositions.forEach(el => {
+            if (e.touchPos[0] >= el.x + this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
+                e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height()) {
+                el.element.handleTouchEvents(type, e);
+            }
+        });
+    }
+    isCellFree(x, y) {
+        const pixelX = x * this.pixelDim[0] / this.matrixDim[0];
+        const pixelY = y * this.pixelDim[1] / this.matrixDim[1];
+        let free = true;
+        for (let i = 0; free && i < this.elementsPositions.length; i++) {
+            const elPos = this.elementsPositions[i];
+            if (elPos.x >= pixelX && elPos.x + elPos.width < pixelX &&
+                elPos.y >= pixelY && elPos.y + elPos.height < pixelY)
+                free = false;
+        }
+        return free;
+    }
+    refreshMetaData(xPos = 0, yPos = 0, offsetX = 0, offsetY = 0) {
+        this.elementsPositions.splice(0, this.elementsPositions.length);
+        const width = this.columnWidth();
+        const height = this.rowHeight();
+        let counter = new LexicoGraphicNumericPair(this.matrixDim[0]);
+        let matX = 0;
+        let matY = 0;
+        for (let i = 0; i < this.elements.length; i++) {
+            const element = this.elements[i];
+            const elementWidth = Math.ceil(element.width() / this.columnWidth());
+            let clearSpace = true;
+            do {
+                let j = matX;
+                for (; clearSpace && j < matX + elementWidth; j++) {
+                    if (!this.isCellFree(matX + j, matY)) {
+                        clearSpace = false;
+                    }
+                }
+                if (!clearSpace && j + matX < elementWidth)
+                    matX++;
+                else if (!clearSpace && j + matX >= elementWidth) {
+                    matX = 0;
+                    matY++;
+                }
+            } while (!clearSpace);
+            const x = matX * this.columnWidth();
+            const y = matY * this.rowHeight();
+            matX += elementWidth;
+            this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
+        }
+        /*for(let i:number = 0; i < this.elements.length; i++)
+        {
+            const element:GuiElement = this.elements[i];
+            const columnsUsed:number = Math.ceil(element.width() / width);
+            const rowsUsed:number = Math.floor(element.height() / height);
+            let x:number = counter.second * width;
+            if(x + element.width() > this.pixelDim[0]){
+                 counter.incHigher();
+                 counter.second = 0;
+                 x = 0;
+            }
+            const y:number = counter.first * height;
+            this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
+            counter.incHigher(rowsUsed);
+            if(rowsUsed)
+                counter.second = 0;
+            counter.incLower(columnsUsed);
+        }*/
+    }
+    refreshCanvas(ctx = this.ctx, x = 0, y = 0) {
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.elementsPositions.forEach(el => el.element.draw(ctx, el.x, el.y, x, y));
+    }
+    active() {
+        return true;
+    }
+    width() {
+        return this.pixelDim[0];
+    }
+    height() {
+        return this.pixelDim[1];
+    }
+    rowHeight() {
+        return this.pixelDim[1] / this.matrixDim[1];
+    }
+    columnWidth() {
+        return this.pixelDim[0] / this.matrixDim[0];
+    }
+    usedRows() {
+        for (let i = 0; i < this.elements.length; i++) {
+        }
+        return this.elements.length - 1;
+    }
+    hasSpace(element) {
+        const elWidth = Math.floor((element.width() / this.columnWidth()) * this.matrixDim[0]);
+        const elHeight = Math.floor((element.height() / this.rowHeight()) * this.matrixDim[1]);
+        if (this.elements.length) {
+            //todo
+        }
+        //todo
+        return false;
+    }
+    addElement(element) {
+        let inserted = false;
+        if (element.width() <= this.pixelDim[0] && this.hasSpace(element)) {
+            inserted = true;
+            this.elements.push(element);
+        }
+        return inserted;
+    }
+    elementPosition(element) {
+        const elPos = this.elementsPositions.find(el => el.element === element);
+        return [elPos.x, elPos.y];
+    }
+    draw(ctx, xPos = this.x, yPos = this.y, offsetX = 0, offsetY = 0) {
+        this.refreshMetaData();
+        this.refreshCanvas();
+        this.x = xPos + offsetX;
+        this.y = yPos + offsetY;
+        ctx.drawImage(this.canvas, xPos + offsetX, yPos + offsetY);
+    }
+}
+;
+class GuiButton {
+    constructor(callBack, text, width = 200, height = 50, fontSize = 12, pressedColor = new RGB(150, 150, 200, 1), unPressedColor = new RGB(150, 150, 150)) {
+        this.text = text;
+        this.fontSize = fontSize;
+        this.dimensions = [width, height];
+        this.pressedColor = pressedColor;
+        this.unPressedColor = unPressedColor;
+        this.pressed = false;
+        this.callback = callBack;
+    }
+    handleKeyBoardEvents(type, e) {
+        if (this.active())
+            switch (type) {
+            }
+    }
+    handleTouchEvents(type, e) {
+        if (this.active())
+            switch (type) {
+                case ("touchstart"):
+                    this.pressed = true;
+                    break;
+                case ("touchend"):
+                    this.callback(e);
+                    this.pressed = false;
+                    break;
+            }
+    }
+    active() {
+        return true;
+    }
+    width() {
+        return this.dimensions[0];
+    }
+    height() {
+        return this.dimensions[1];
+    }
+    setCtxState(ctx) {
+        ctx.strokeStyle = "#000000";
+        if (this.pressed)
+            ctx.fillStyle = this.pressedColor.htmlRBG();
+        else
+            ctx.fillStyle = this.unPressedColor.htmlRBG();
+        ctx.font = this.fontSize + 'px Calibri';
+    }
+    draw(ctx, x, y, offsetX = 0, offsetY = 0) {
+        const fs = ctx.fillStyle;
+        this.setCtxState(ctx);
+        ctx.fillRect(x + offsetX, y + offsetY, this.width(), this.height());
+        ctx.strokeRect(x + offsetX, y + offsetY, this.width(), this.height());
+        ctx.fillStyle = "#000000";
+        ctx.fillText(this.text, x + offsetX + this.fontSize, y + offsetY + this.fontSize, this.width());
+        ctx.fillStyle = fs;
+    }
+}
+;
+class TextRow {
+    constructor(text, x, y, width) {
+        this.text = text;
+        this.x = x;
+        this.y = y;
+        this.width = width;
+    }
+}
+;
+class Optional {
+    constructor() {
+        this.null = true;
+    }
+    get() {
+        if (!this.null)
+            return this.data;
+        return null;
+    }
+    set(data) {
+        this.data = data;
+        this.null = false;
+    }
+    clear() {
+        this.null = true;
+    }
+}
+class GuiTextBox {
+    constructor(keyListener, width, fontSize = 16, height = 2 * fontSize, flags = 1) {
+        this.cursor = 0;
+        this.flags = flags;
+        this.asNumber = new Optional();
+        this.text = "";
+        this.scroll = [0, 0];
+        this.cursorPos = [0, 0];
+        this.rows = [];
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this.ctx = this.canvas.getContext("2d");
+        this.dimensions = [width, height];
+        this.fontSize = fontSize;
+        this.drawInternalAndClear();
+    }
+    handleKeyBoardEvents(type, e) {
+        if (this.active())
+            switch (type) {
+                case ("keydown"):
+                    //console.log(e.code)
+                    //console.log(this.text);
+                    switch (e.code) {
+                        case ("Space"):
+                            this.text = this.text.substring(0, this.cursor) + ' ' + this.text.substring(this.cursor, this.text.length);
+                            this.cursor++;
+                            break;
+                        case ("Backspace"):
+                            this.text = this.text.substring(0, this.cursor - 1) + this.text.substring(this.cursor, this.text.length);
+                            this.cursor -= +(this.cursor > 0);
+                            break;
+                        case ("Delete"):
+                            this.text = this.text.substring(0, this.cursor) + this.text.substring(this.cursor + 1, this.text.length);
+                            break;
+                        case ("ArrowLeft"):
+                            this.cursor -= +(this.cursor > 0);
+                            break;
+                        case ("ArrowRight"):
+                            this.cursor += +(this.cursor < this.text.length);
+                            break;
+                        case ("ArrowUp"):
+                            this.cursor = 0;
+                            break;
+                        case ("ArrowDown"):
+                            this.cursor = (this.text.length);
+                            break;
+                        case ("Period"):
+                            this.text = this.text.substring(0, this.cursor) + "." + this.text.substring(this.cursor, this.text.length);
+                            this.cursor++;
+                            break;
+                        default:
+                            {
+                                let letter = e.code.substring(e.code.length - 1);
+                                if (!e.keyboardHandler.keysHeld["ShiftRight"] && !e.keyboardHandler.keysHeld["ShiftLeft"])
+                                    letter = letter.toLowerCase();
+                                //console.log(e.code);
+                                if (GuiTextBox.textLookup[e.code] || GuiTextBox.numbers[e.code]) {
+                                    this.text = this.text.substring(0, this.cursor) + letter + this.text.substring(this.cursor, this.text.length);
+                                    this.cursor++;
+                                }
+                                else if (GuiTextBox.specialChars[e.code]) {
+                                    //todo
+                                }
+                            }
+                    }
+                    if (!isNaN(Number(this.text))) {
+                        this.asNumber.set(Number(this.text));
+                    }
+                    else
+                        this.asNumber.clear();
+                    this.drawInternalAndClear();
+            }
+    }
+    setText(text) {
+        this.text = text;
+        this.cursor = text.length;
+        this.drawInternalAndClear();
+    }
+    handleTouchEvents(type, e) {
+        if (this.active())
+            switch (type) {
+            }
+    }
+    static initGlobalText() {
+        for (let i = 65; i < 65 + 26; i++)
+            GuiTextBox.textLookup["Key" + String.fromCharCode(i)] = true;
+    }
+    ;
+    static initGlobalNumbers() {
+        for (let i = 48; i < 48 + 10; i++) {
+            GuiTextBox.numbers["Digit" + String.fromCharCode(i)] = true;
+        }
+    }
+    ;
+    static initGlobalSpecialChars() {
+        //specialChars
+    }
+    active() {
+        return this.selected || true;
+    }
+    textWidth() {
+        return this.ctx.measureText(this.text).width;
+    }
+    setCtxState() {
+        this.ctx.strokeStyle = "#000000";
+        this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.font = this.fontSize + 'px Calibri';
+    }
+    width() {
+        return this.dimensions[0];
+    }
+    height() {
+        return this.dimensions[1];
+    }
+    refreshMetaData(text = this.text, x = this.fontSize, y = this.fontSize, cursorOffset = 0) {
+        const textWidth = this.ctx.measureText(text).width;
+        const canvasWidth = this.canvas.width;
+        const rows = Math.ceil(textWidth / (canvasWidth - (20 + x)));
+        const charsPerRow = Math.floor(text.length / rows);
+        const cursor = this.cursor - cursorOffset;
+        let charIndex = 0;
+        let i = 0;
+        for (; i < rows - 1; i++) {
+            const yPos = i * this.fontSize + y;
+            if (cursor >= charIndex && cursor <= charIndex + charsPerRow) {
+                this.cursorPos[1] = yPos;
+                const substrWidth = this.ctx.measureText(text.substring(charIndex, cursor)).width;
+                this.cursorPos[0] = substrWidth + x;
+            }
+            const substr = text.substring(charIndex, charIndex + charsPerRow);
+            this.rows.push(new TextRow(substr, x, yPos, this.width() - x));
+            charIndex += charsPerRow;
+        }
+        const yPos = i * this.fontSize + y;
+        const substring = text.substring(charIndex, text.length);
+        const substrWidth = this.ctx.measureText(substring).width;
+        if (substrWidth > this.width() - x)
+            this.refreshMetaData(substring, x, i * this.fontSize + y, cursorOffset + charIndex);
+        else if (substring.length > 0) {
+            if (cursor >= charIndex) {
+                this.cursorPos[1] = yPos;
+                const substrWidth = this.ctx.measureText(text.substring(charIndex, cursor)).width;
+                this.cursorPos[0] = substrWidth + x;
+            }
+            this.rows.push(new TextRow(substring, x, yPos, this.width() - x));
+        }
+    }
+    adjustScrollToCursor() {
+        let deltaY = 0;
+        if (this.cursorPos[1] > this.height() - 2) {
+            deltaY += this.cursorPos[1] - this.height() + this.height() / 2;
+        }
+        this.rows.forEach(row => row.y -= deltaY);
+        this.cursorPos[1] -= deltaY;
+    }
+    drawRows() {
+        this.rows.forEach(row => this.ctx.fillText(row.text, row.x, row.y, row.width));
+    }
+    drawCursor() {
+        this.ctx.fillStyle = "#000000";
+        this.ctx.fillRect(this.cursorPos[0], this.cursorPos[1] - this.fontSize + 3, 2, this.fontSize - 2);
+    }
+    drawInternalAndClear() {
+        this.setCtxState();
+        this.ctx.fillRect(0, 0, this.width(), this.height());
+        this.ctx.strokeRect(0, 0, this.width(), this.height());
+        this.ctx.fillStyle = "#000000";
+        this.rows.splice(0, this.rows.length);
+        this.refreshMetaData();
+        this.adjustScrollToCursor();
+        this.drawRows();
+        this.drawCursor();
+    }
+    draw(ctx, x, y, offsetX = 0, offsetY = 0) {
+        ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
+    }
+}
+GuiTextBox.textLookup = {};
+GuiTextBox.numbers = {};
+GuiTextBox.specialChars = {};
+;
+GuiTextBox.initGlobalText();
+GuiTextBox.initGlobalNumbers();
+GuiTextBox.initGlobalSpecialChars();
+class GenericTool extends Tool {
+    constructor(name, imagePath) {
+        super(name, imagePath);
+    }
+    optionPanelSize() {
+        return [0, 0];
+    }
+    drawOptionPanel(ctx, x, y) { }
+}
+class ViewLayoutTool extends Tool {
+    constructor(layoutManager, name, path) {
+        super(name, path);
+        this.layoutManager = layoutManager;
+    }
+    optionPanelSize() {
+        return [this.layoutManager.canvas.width, this.layoutManager.canvas.height];
+    }
+    drawOptionPanel(ctx, x, y) {
+        this.layoutManager.draw(ctx, x, y);
+    }
+}
+;
+class PenTool extends Tool {
+    constructor(keyListener, touchHandler, strokeWith, toolName = "pen", pathToImage = "images/penSprite.png") {
+        super(toolName, pathToImage);
+        this.lineWidth = strokeWith;
+        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 2], [200, 200]);
+        this.tbSize = new GuiTextBox(true, 100);
+        this.btUpdate = new GuiButton(e => {
+            this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128 ? this.tbSize.asNumber.get() : this.lineWidth;
+            this.tbSize.setText(this.lineWidth + "");
+        }, "update", 50, 30, 12);
+        this.layoutManager.elements.push(this.tbSize);
+        this.layoutManager.elements.push(this.btUpdate);
+    }
+    optionPanelSize() {
+        return [200, 200];
+    }
+    drawOptionPanel(ctx, x, y) {
+        this.layoutManager.draw(ctx, x, y);
+    }
+    penSize() {
+        return this.lineWidth;
+    }
+}
+;
 // To do refactor tools to make sure they load in the same order every time
 class ToolSelector {
     constructor(field, keyboardHandler, imgWidth = 50, imgHeight = 50) {
         this.imgWidth = imgWidth;
         this.imgHeight = imgHeight;
         this.selectedTool = 0;
+        this.toolPixelDim = [imgWidth, imgHeight * 10];
         this.canvas = document.getElementById("tool_selector_screen");
         this.keyboardHandler = keyboardHandler;
         this.keyboardHandler.registerCallBack("keydown", e => { if (e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "ArrowLeft" || e.code === "ArrowRight")
@@ -281,20 +796,6 @@ class ToolSelector {
                 }
             }
         });
-        this.toolArray = [];
-        this.toolArray.push(new ImageConatiner("pen", "images/penSprite.png"));
-        this.toolArray.push(new ImageConatiner("fill", "images/fillSprite.png"));
-        this.toolArray.push(new ImageConatiner("line", "images/LineDrawSprite.png"));
-        this.toolArray.push(new ImageConatiner("rect", "images/rectSprite.png"));
-        this.toolArray.push(new ImageConatiner("oval", "images/ovalSprite.png"));
-        this.toolArray.push(new ImageConatiner("copy", "images/copySprite.png"));
-        this.toolArray.push(new ImageConatiner("paste", "images/pasteSprite.png"));
-        this.toolArray.push(new ImageConatiner("drag", "images/dragSprite.png"));
-        this.toolArray.push(new ImageConatiner("redo", "images/redoSprite.png"));
-        this.toolArray.push(new ImageConatiner("undo", "images/undoSprite.png"));
-        this.toolArray.push(new ImageConatiner("colorPicker", "images/colorPickerSprite.png"));
-        this.toolArray.push(new ImageConatiner("eraser", "images/eraserSprite.png"));
-        this.toolArray.push(new ImageConatiner("rotate", "images/rotateSprite.png"));
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             document.activeElement.blur();
@@ -312,31 +813,58 @@ class ToolSelector {
                 field.redoLast();
             }
         });
+        this.toolArray = [];
+        this.toolArray.push(new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth(), "pen", "images/penSprite.png"));
+        this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
+        this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "line", "images/LineDrawSprite.png"));
+        this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "rect", "images/rectSprite.png"));
+        this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "oval", "images/ovalSprite.png"));
+        this.toolArray.push(new GenericTool("copy", "images/copySprite.png"));
+        this.toolArray.push(new GenericTool("paste", "images/pasteSprite.png"));
+        this.toolArray.push(new GenericTool("drag", "images/dragSprite.png"));
+        this.toolArray.push(new GenericTool("redo", "images/redoSprite.png"));
+        this.toolArray.push(new GenericTool("undo", "images/undoSprite.png"));
+        this.toolArray.push(new GenericTool("colorPicker", "images/colorPickerSprite.png"));
+        this.toolArray.push(new GenericTool("eraser", "images/eraserSprite.png"));
+        this.toolArray.push(new GenericTool("rotate", "images/rotateSprite.png"));
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = "#000000";
         this.ctx.fillStyle = "#FFFFFF";
     }
-    draw() {
-        const imgPerColumn = (this.canvas.height / this.imgHeight);
-        const imgPerRow = (this.canvas.width / this.imgWidth);
-        if (this.toolArray.length > imgPerColumn * imgPerRow) {
-            this.canvas.width += this.imgWidth;
+    resizeCanvas() {
+        const imgPerColumn = (this.toolPixelDim[1] / this.imgHeight);
+        const imgPerRow = (this.toolPixelDim[0] / this.imgWidth);
+        if (this.tool() && this.tool().image() && this.toolArray.length > imgPerColumn * imgPerRow) {
+            this.toolPixelDim[0] = this.imgWidth * Math.ceil(this.toolArray.length / imgPerColumn);
+            this.canvas.width = this.toolPixelDim[0] + this.tool().optionPanelSize()[0];
+            this.toolPixelDim[1] = this.imgHeight * 10;
+            this.canvas.height = this.toolPixelDim[1] > this.tool().height() ? this.toolPixelDim[1] : this.tool().height();
             this.ctx = this.canvas.getContext("2d");
             this.ctx.fillStyle = "#FFFFFF";
         }
+    }
+    draw() {
+        this.resizeCanvas();
+        const imgPerColumn = (this.toolPixelDim[1] / this.imgHeight);
+        const imgPerRow = (this.toolPixelDim[0] / this.imgWidth);
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         for (let i = 0; i < this.toolArray.length; i++) {
-            const toolImage = this.toolArray[i].image;
-            if (toolImage)
-                this.ctx.drawImage(toolImage, Math.floor(i / imgPerColumn) * this.imgWidth, i * this.toolArray[i].image.height % (imgPerColumn * this.imgHeight));
+            if (this.toolArray[i].image())
+                this.toolArray[i].drawImage(this.ctx, Math.floor(i / imgPerColumn) * this.imgWidth, i * this.toolArray[i].image().height % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
         }
-        if (this.toolArray[0].image)
-            this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
+        this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
+        if (this.tool())
+            this.tool().drawOptionPanel(this.ctx, this.imgWidth * imgPerRow, 0);
     }
     selectedToolName() {
+        if (this.tool())
+            return this.tool().name();
+        return null;
+    }
+    tool() {
         if (this.toolArray[this.selectedTool])
-            return this.toolArray[this.selectedTool].name;
+            return this.toolArray[this.selectedTool];
         return null;
     }
 }
@@ -436,6 +964,9 @@ class ClipBoard {
 class DrawingScreen {
     constructor(canvas, keyboardHandler, offset, dimensions, newColorTextBox) {
         const bounds = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
+        this.dimensions = new Pair(dimensions[0], dimensions[1]);
+        this.offset = new Pair(offset[0], offset[1]);
+        this.bounds = new Pair(bounds[0], bounds[1]);
         this.ctx = canvas.getContext("2d");
         canvas.width = bounds[0];
         canvas.height = bounds[1];
@@ -449,9 +980,6 @@ class DrawingScreen {
         this.updatesStack = new RollingStack();
         this.undoneUpdatesStack = new RollingStack();
         this.selectionRect = new Array();
-        this.offset = new Pair(offset[0], offset[1]);
-        this.bounds = new Pair(bounds[0], bounds[1]);
-        this.dimensions = new Pair(dimensions[0], dimensions[1]);
         this.screenBuffer = new Array();
         this.selectionRect = [0, 0, 0, 0];
         this.pasteRect = [0, 0, 0, 0];
@@ -461,6 +989,25 @@ class DrawingScreen {
         }
         const noColor = new RGB(0, 0, 0, 0);
         const colorBackup = new RGB(0, 0, 0, 0);
+        this.keyboardHandler.registerCallBack("keydown", e => true, event => {
+            switch (event.code) {
+                case ('KeyC'):
+                    if (this.keyboardHandler.keysHeld["KeyC"] === 1) {
+                        this.selectionRect = [0, 0, 0, 0];
+                        this.pasteRect = [0, 0, 0, 0];
+                    }
+                    break;
+                case ('KeyV'):
+                    this.paste();
+                    break;
+                case ('KeyU'):
+                    this.undoLast();
+                    break;
+                case ('KeyR'):
+                    this.redoLast();
+                    break;
+            }
+        });
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
@@ -481,7 +1028,7 @@ class DrawingScreen {
             const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
             switch (this.toolSelector.selectedToolName()) {
                 case ("pen"):
-                    this.lineWidth = dimensions[0] / bounds[0] * 4;
+                    this.setLineWidthPen();
                     break;
                 case ("eraser"):
                     colorBackup.copy(this.color);
@@ -490,7 +1037,7 @@ class DrawingScreen {
                 case ("fill"):
                     break;
                 case ("line"):
-                    this.lineWidth = dimensions[0] / bounds[0] * 4;
+                    this.setLineWidthPen();
                     break;
                 case ("rotate"):
                     this.saveDragDataToScreenAntiAliased();
@@ -507,9 +1054,9 @@ class DrawingScreen {
                         this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), false);
                     break;
                 case ("oval"):
-                    this.lineWidth = dimensions[0] / bounds[0] * 4;
+                    this.setLineWidthPen();
                 case ("rect"):
-                    this.lineWidth = dimensions[0] / bounds[0] * 4;
+                    this.setLineWidthPen();
                 case ("copy"):
                     this.selectionRect = [e.touchPos[0], e.touchPos[1], 0, 0];
                     break;
@@ -525,25 +1072,6 @@ class DrawingScreen {
                 case ("colorPicker"):
                     this.color.copy(this.screenBuffer[gx + gy * this.dimensions.first]);
                     newColorTextBox.value = this.color.htmlRBGA();
-                    break;
-            }
-        });
-        this.keyboardHandler.registerCallBack("keydown", e => true, event => {
-            switch (event.code) {
-                case ('KeyC'):
-                    if (this.keyboardHandler.keysHeld["KeyC"] === 1) {
-                        this.selectionRect = [0, 0, 0, 0];
-                        this.pasteRect = [0, 0, 0, 0];
-                    }
-                    break;
-                case ('KeyV'):
-                    this.paste();
-                    break;
-                case ('KeyU'):
-                    this.undoLast();
-                    break;
-                case ('KeyR'):
-                    this.redoLast();
                     break;
             }
         });
@@ -572,6 +1100,9 @@ class DrawingScreen {
                                 (this.listeners.startTouchPos[1] / this.bounds.second) * this.dimensions.second]);
                     break;
                 case ("fill"):
+                    const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
+                    const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
+                    this.fillArea(new Pair(gx, gy));
                     break;
                 case ("oval"):
                 case ("rect"):
@@ -638,6 +1169,14 @@ class DrawingScreen {
             }
         });
         this.color = new RGB(0, 0, 0, 255);
+    }
+    suggestedLineWidth() {
+        return this.dimensions.first / this.bounds.first * 4;
+    }
+    setLineWidthPen() {
+        const pen = this.toolSelector.toolArray[0];
+        this.lineWidth = pen.penSize();
+        pen.tbSize.setText(String(this.lineWidth));
     }
     saveToBuffer(selectionRect, buffer) {
         if (selectionRect[2] < 0) {
@@ -804,7 +1343,7 @@ class DrawingScreen {
                     stack.push(cur - this.dimensions.first + 1);
             }
         }
-        this.updatesStack.get(this.updatesStack.length() - 1).sort((a, b) => a.first - b.first);
+        //this.updatesStack.get(this.updatesStack.length()-1).sort((a, b) => a.first - b.first);
         this.updatesStack.push([]);
         return new Pair(new Pair(0, 0), data);
     }
@@ -1085,7 +1624,7 @@ class DrawingScreen {
         const source = new RGB(0, 0, 0, 0);
         const toCopy = new RGB(0, 0, 0, 0);
         spriteScreenBuf.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
-        if (this.dimensions.first == this.canvas.width && this.dimensions.second == this.canvas.height) {
+        if (this.dimensions.first == this.canvas.width && this.dimensions.second == this.canvas.height) { //if drawing screen dimensions, and canvas dimensions are the same just update per pixel
             for (let y = 0; y < this.dimensions.second; y++) {
                 for (let x = 0; x < this.dimensions.first; x++) {
                     const index = (x + y * this.dimensions.first);
@@ -1096,7 +1635,7 @@ class DrawingScreen {
                 }
             }
         }
-        else
+        else //use fill rect method to fill rectangle the size of pixels(more branch mispredicts, but more general)
             for (let y = 0; y < this.dimensions.second; y++) {
                 for (let x = 0; x < this.dimensions.first; x++) {
                     spriteScreenBuf.fillRect(this.screenBuffer[x + y * this.dimensions.first], x * cellWidth, y * cellHeight, cellWidth, cellHeight);
@@ -1299,10 +1838,8 @@ class SingleTouchListener {
     }
     callHandler(type, event) {
         const handlers = this.listenerTypeMap[type];
-        let found = false;
         handlers.forEach(handler => {
-            if (!found && handler.pred(event)) {
-                found = true;
+            if (!event.defaultPrevented && handler.pred(event)) {
                 handler.callBack(event);
             }
         });
@@ -2302,16 +2839,15 @@ async function main() {
     while (true) {
         const start = Date.now();
         field.draw();
-        //if(counter++ % 1 == 0)
-        {
-            if (animationGroupSelector.animationGroup())
-                animationGroupSelector.draw();
+        if (animationGroupSelector.animationGroup())
+            animationGroupSelector.draw();
+        if (counter++ % 2 == 0) {
             pallette.draw();
         }
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
-        if (1000 / (Date.now() - start) < fps - 5) {
-            console.log("avgfps:", Math.floor(1000 / (Date.now() - start)));
+        if (1000 / (Date.now() - start) < fps - 2) {
+            //console.log("avgfps:",Math.floor(1000/(Date.now() - start)))
             if (1000 / (Date.now() - start) == 0)
                 console.log("frame time:", 1000 / (Date.now() - start));
         }
