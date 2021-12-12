@@ -331,28 +331,66 @@ class SimpleGridLayoutManager {
             }
         });
     }
+    isCellFree(x, y) {
+        const pixelX = x * this.pixelDim[0] / this.matrixDim[0];
+        const pixelY = y * this.pixelDim[1] / this.matrixDim[1];
+        let free = true;
+        for (let i = 0; free && i < this.elementsPositions.length; i++) {
+            const elPos = this.elementsPositions[i];
+            if (elPos.x >= pixelX && elPos.x + elPos.width < pixelX &&
+                elPos.y >= pixelY && elPos.y + elPos.height < pixelY)
+                free = false;
+        }
+        return free;
+    }
     refreshMetaData(xPos = 0, yPos = 0, offsetX = 0, offsetY = 0) {
         this.elementsPositions.splice(0, this.elementsPositions.length);
-        const width = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
-        const height = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
+        const width = this.columnWidth();
+        const height = this.rowHeight();
         let counter = new LexicoGraphicNumericPair(this.matrixDim[0]);
+        let matX = 0;
+        let matY = 0;
         for (let i = 0; i < this.elements.length; i++) {
             const element = this.elements[i];
-            const columnsUsed = Math.ceil(element.width() / this.rowWidth());
-            const rowsUsed = Math.floor(element.height() / this.rowHeight());
-            let x = counter.second * width;
-            if (x + element.width() > this.pixelDim[0]) {
-                counter.incHigher();
-                counter.second = 0;
-                x = 0;
+            const elementWidth = Math.ceil(element.width() / this.columnWidth());
+            let clearSpace = true;
+            do {
+                let j = matX;
+                for (; clearSpace && j < matX + elementWidth; j++) {
+                    if (!this.isCellFree(matX + j, matY)) {
+                        clearSpace = false;
+                    }
+                }
+                if (!clearSpace && j + matX < elementWidth)
+                    matX++;
+                else if (!clearSpace && j + matX >= elementWidth) {
+                    matX = 0;
+                    matY++;
+                }
+            } while (!clearSpace);
+            const x = matX * this.columnWidth();
+            const y = matY * this.rowHeight();
+            matX += elementWidth;
+            this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
+        }
+        /*for(let i:number = 0; i < this.elements.length; i++)
+        {
+            const element:GuiElement = this.elements[i];
+            const columnsUsed:number = Math.ceil(element.width() / width);
+            const rowsUsed:number = Math.floor(element.height() / height);
+            let x:number = counter.second * width;
+            if(x + element.width() > this.pixelDim[0]){
+                 counter.incHigher();
+                 counter.second = 0;
+                 x = 0;
             }
-            const y = counter.first * height;
+            const y:number = counter.first * height;
             this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
             counter.incHigher(rowsUsed);
-            if (rowsUsed)
+            if(rowsUsed)
                 counter.second = 0;
             counter.incLower(columnsUsed);
-        }
+        }*/
     }
     refreshCanvas(ctx = this.ctx, x = 0, y = 0) {
         ctx.fillStyle = "#FFFFFF";
@@ -371,7 +409,7 @@ class SimpleGridLayoutManager {
     rowHeight() {
         return this.pixelDim[1] / this.matrixDim[1];
     }
-    rowWidth() {
+    columnWidth() {
         return this.pixelDim[0] / this.matrixDim[0];
     }
     usedRows() {
@@ -380,7 +418,7 @@ class SimpleGridLayoutManager {
         return this.elements.length - 1;
     }
     hasSpace(element) {
-        const elWidth = Math.floor((element.width() / this.rowWidth()) * this.matrixDim[0]);
+        const elWidth = Math.floor((element.width() / this.columnWidth()) * this.matrixDim[0]);
         const elHeight = Math.floor((element.height() / this.rowHeight()) * this.matrixDim[1]);
         if (this.elements.length) {
             //todo
@@ -1138,7 +1176,7 @@ class DrawingScreen {
     setLineWidthPen() {
         const pen = this.toolSelector.toolArray[0];
         this.lineWidth = pen.penSize();
-        pen.tbSize.setText(this.lineWidth + "");
+        pen.tbSize.setText(String(this.lineWidth));
     }
     saveToBuffer(selectionRect, buffer) {
         if (selectionRect[2] < 0) {

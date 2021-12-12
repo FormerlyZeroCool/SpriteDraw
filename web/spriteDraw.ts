@@ -441,17 +441,61 @@ class SimpleGridLayoutManager implements GuiElement {
             }
         });
     }
+    isCellFree(x:number, y:number):boolean
+    {
+        const pixelX:number = x * this.pixelDim[0] / this.matrixDim[0];
+        const pixelY:number = y * this.pixelDim[1] / this.matrixDim[1];
+        let free:boolean = true;
+        for(let i = 0; free && i < this.elementsPositions.length; i++)
+        {
+            const elPos:RowRecord = this.elementsPositions[i];
+            if(elPos.x >= pixelX && elPos.x + elPos.width < pixelX &&
+                elPos.y >= pixelY && elPos.y + elPos.height < pixelY)
+                free = false;
+        }
+        return free;
+    }
     refreshMetaData(xPos:number = 0, yPos:number = 0, offsetX:number = 0, offsetY:number = 0):void
     {
         this.elementsPositions.splice(0, this.elementsPositions.length);        
-        const width:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
-        const height:number = Math.floor(this.pixelDim[0] / this.matrixDim[0]);
-        let counter:LexicoGraphicNumericPair = new LexicoGraphicNumericPair(this.matrixDim[0])
-        for(let i:number = 0; i < this.elements.length; i++)
+        const width:number = this.columnWidth();
+        const height:number = this.rowHeight();
+        let counter:LexicoGraphicNumericPair = new LexicoGraphicNumericPair(this.matrixDim[0]);
+        let matX:number = 0;
+        let matY:number = 0;
+        for(let i = 0; i < this.elements.length; i++)
         {
             const element:GuiElement = this.elements[i];
-            const columnsUsed:number = Math.ceil(element.width() / this.rowWidth());
-            const rowsUsed:number = Math.floor(element.height() / this.rowHeight());
+            const elementWidth:number = Math.ceil(element.width() / this.columnWidth());
+            let clearSpace:boolean = true;
+            do {
+                let j = matX;
+                for(;clearSpace && j < matX + elementWidth; j++)
+                {
+                    if(!this.isCellFree(matX + j, matY))
+                    {
+                        clearSpace = false;
+                    }
+                }
+                if(!clearSpace && j + matX < elementWidth)
+                    matX++;
+                else if(!clearSpace && j + matX >= elementWidth)
+                {
+                    matX = 0;
+                    matY++;
+                }
+            } while(!clearSpace);
+            const x:number = matX * this.columnWidth();
+            const y:number = matY * this.rowHeight();
+            matX += elementWidth;
+            this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
+            
+        }
+        /*for(let i:number = 0; i < this.elements.length; i++)
+        {
+            const element:GuiElement = this.elements[i];
+            const columnsUsed:number = Math.ceil(element.width() / width);
+            const rowsUsed:number = Math.floor(element.height() / height);
             let x:number = counter.second * width;
             if(x + element.width() > this.pixelDim[0]){
                  counter.incHigher();
@@ -464,7 +508,7 @@ class SimpleGridLayoutManager implements GuiElement {
             if(rowsUsed)
                 counter.second = 0;
             counter.incLower(columnsUsed);
-        }
+        }*/
     }
     refreshCanvas(ctx:CanvasRenderingContext2D = this.ctx, x:number = 0, y:number = 0):void
     {
@@ -487,7 +531,7 @@ class SimpleGridLayoutManager implements GuiElement {
     {
         return this.pixelDim[1] / this.matrixDim[1];
     }
-    rowWidth():number
+    columnWidth():number
     {
         return this.pixelDim[0] / this.matrixDim[0];
     }
@@ -500,7 +544,7 @@ class SimpleGridLayoutManager implements GuiElement {
     }
     hasSpace(element:GuiElement):boolean
     {
-        const elWidth:number = Math.floor((element.width() / this.rowWidth()) * this.matrixDim[0]);
+        const elWidth:number = Math.floor((element.width() / this.columnWidth()) * this.matrixDim[0]);
         const elHeight:number = Math.floor((element.height() / this.rowHeight()) * this.matrixDim[1]);
         if(this.elements.length)
         {
@@ -928,7 +972,7 @@ class ToolSelector {
     toolArray:Tool[];
     canvas:HTMLCanvasElement;
     toolPixelDim:number[];
-    ctx:any;
+    ctx:CanvasRenderingContext2D;
     touchListener:SingleTouchListener;
     selectedTool:number;
     imgWidth:number;
@@ -1434,7 +1478,7 @@ class DrawingScreen {
     setLineWidthPen():void{
         const pen:PenTool = (<PenTool> this.toolSelector.toolArray[0]);
         this.lineWidth = pen.penSize();
-        pen.tbSize.setText(this.lineWidth + "");
+        pen.tbSize.setText(String(this.lineWidth));
     }
     saveToBuffer(selectionRect:Array<number>, buffer:Array<Pair<RGB, number>>):Pair<number>
     {
