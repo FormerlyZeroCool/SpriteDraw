@@ -373,24 +373,6 @@ class SimpleGridLayoutManager {
             matX += elementWidth;
             this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
         }
-        /*for(let i:number = 0; i < this.elements.length; i++)
-        {
-            const element:GuiElement = this.elements[i];
-            const columnsUsed:number = Math.ceil(element.width() / width);
-            const rowsUsed:number = Math.floor(element.height() / height);
-            let x:number = counter.second * width;
-            if(x + element.width() > this.pixelDim[0]){
-                 counter.incHigher();
-                 counter.second = 0;
-                 x = 0;
-            }
-            const y:number = counter.first * height;
-            this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
-            counter.incHigher(rowsUsed);
-            if(rowsUsed)
-                counter.second = 0;
-            counter.incLower(columnsUsed);
-        }*/
     }
     refreshCanvas(ctx = this.ctx, x = 0, y = 0) {
         ctx.fillStyle = "#FFFFFF";
