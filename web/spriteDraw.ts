@@ -340,6 +340,8 @@ abstract class Tool {
 };
 interface GuiElement {
     active():boolean;
+    deactivate():void;
+    activate():void;
     width():number;
     height():number;
     draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number, offsetY:number);
@@ -396,10 +398,12 @@ class SimpleGridLayoutManager implements GuiElement {
     matrixDim:number[];
     pixelDim:number[];
     elementsPositions:RowRecord[];
+    focused:boolean;
     constructor(keyboardHandler:KeyboardHandler, touchHandler:SingleTouchListener, matrixDim:number[], pixelDim:number[], x:number = 0, y:number = 0)
     {
         this.matrixDim = matrixDim;
         this.pixelDim = pixelDim;
+        this.focused = true;
         this.x = x;
         this.y = y;
         this.refreshRate = 4;
@@ -433,13 +437,24 @@ class SimpleGridLayoutManager implements GuiElement {
     }
     handleTouchEvents(type:string, e:any):void
     {
+        console.log("hello")
         this.elementsPositions.forEach(el => {
+            el.element.deactivate();
             if(e.touchPos[0] >= el.x+this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
                 e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height())
             {
+                el.element.activate();
                 el.element.handleTouchEvents(type, e);
             }
         });
+    }
+    deactivate():void
+    {
+        this.focused = false;
+    }
+    activate():void
+    {
+        this.focused = true;
     }
     isCellFree(x:number, y:number):boolean
     {
@@ -501,7 +516,7 @@ class SimpleGridLayoutManager implements GuiElement {
     }
     active():boolean
     {
-        return true;
+        return this.focused;
     }
     width(): number {
         return this.pixelDim[0];
@@ -568,6 +583,7 @@ class GuiButton implements GuiElement {
     pressedColor:RGB;
     unPressedColor:RGB;
     pressed:boolean;
+    focused:boolean;
     callback:(event) => void;
     constructor(callBack:(event) => void, text:string, width:number = 200, height:number = 50, fontSize:number = 12, pressedColor:RGB = new RGB(150, 150, 200, 1), unPressedColor:RGB = new RGB(150, 150, 150))
     {
@@ -577,6 +593,7 @@ class GuiButton implements GuiElement {
         this.pressedColor = pressedColor;
         this.unPressedColor = unPressedColor;
         this.pressed = false;
+        this.focused = true;
         this.callback = callBack;
     }
     handleKeyBoardEvents(type:string, e:any):void
@@ -603,7 +620,15 @@ class GuiButton implements GuiElement {
     }
     active():boolean
     {
-        return true;
+        return this.focused;
+    }
+    deactivate():void
+    {
+        this.focused = false;
+    }
+    activate():void
+    {
+        this.focused = true;
     }
     width(): number {
         return this.dimensions[0];
@@ -675,17 +700,23 @@ class GuiTextBox implements GuiElement {
     cursor:number;
     cursorPos:number[];
     scroll:number[];
-    selected:boolean;
+    focused:boolean;
+    selectedColor:RGB;
+    unSelectedColor:RGB;
     dimensions:number[];//[width, height]
     fontSize:number;
     static textLookup = {};
     static numbers = {};
     static specialChars = {};
     flags:number;
-    constructor(keyListener:boolean, width:number, fontSize:number = 16, height:number = 2*fontSize, flags:number = 1)
+    constructor(keyListener:boolean, width:number, fontSize:number = 16, height:number = 2*fontSize, flags:number = 1,
+        selectedColor:RGB = new RGB(80, 80, 220), unSelectedColor:RGB = new RGB(100, 100, 100))
     {
         this.cursor = 0;
         this.flags = flags;
+        this.focused = false;
+        this.selectedColor = selectedColor;
+        this.unSelectedColor = unSelectedColor;
         this.asNumber = new Optional<number>();
         this.text = "";
         this.scroll = [0, 0];
@@ -705,8 +736,6 @@ class GuiTextBox implements GuiElement {
             switch(type)
             {
                 case("keydown"):
-                //console.log(e.code)
-                //console.log(this.text);
                 switch(e.code)
                 {
                     case("Space"):
@@ -735,7 +764,7 @@ class GuiTextBox implements GuiElement {
                     case("Period"):
                     this.text = this.text.substring(0, this.cursor) + "." + this.text.substring(this.cursor, this.text.length);
                     this.cursor++;
-                    break
+                    break;
                     default:
                     {
                         let letter:string = e.code.substring(e.code.length - 1);
@@ -774,7 +803,8 @@ class GuiTextBox implements GuiElement {
         if(this.active())
             switch(type)
             {
-            
+                case("touchend"):
+                this.drawInternalAndClear();
             }
     }
     static initGlobalText():void
@@ -792,8 +822,17 @@ class GuiTextBox implements GuiElement {
     {
         //specialChars
     }
-    active(): boolean {
-        return this.selected || true;
+    active():boolean
+    {
+        return this.focused;
+    }
+    deactivate():void
+    {
+        this.focused = false;
+    }
+    activate():void
+    {
+        this.focused = true;
     }
     textWidth():number
     {
@@ -866,20 +905,33 @@ class GuiTextBox implements GuiElement {
         this.rows.forEach(row => this.ctx.fillText(row.text, row.x, row.y, row.width));
     }
     drawCursor():void{
-        this.ctx.fillStyle = "#000000";
-        this.ctx.fillRect(this.cursorPos[0], this.cursorPos[1] - this.fontSize+3, 2, this.fontSize-2);
+        if(this.active())
+        {
+            this.ctx.fillStyle = "#000000";
+            this.ctx.fillRect(this.cursorPos[0], this.cursorPos[1] - this.fontSize+3, 2, this.fontSize-2);
+        }
+    }
+    color():RGB
+    {
+        if(this.active())
+            return this.selectedColor;
+        else
+            return this.unSelectedColor;
     }
     drawInternalAndClear():void
     {
         this.setCtxState();
         this.ctx.fillRect(0, 0, this.width(), this.height());
-        this.ctx.strokeRect(0, 0, this.width(), this.height());
         this.ctx.fillStyle = "#000000";
         this.rows.splice(0,this.rows.length);
         this.refreshMetaData();
         this.adjustScrollToCursor();
         this.drawRows();
         this.drawCursor();
+        this.ctx.strokeStyle = this.color().htmlRBG();
+        console.log(this.active());
+        this.ctx.lineWidth = 4;
+        this.ctx.strokeRect(0, 0, this.width(), this.height());
     }
     draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0)
     {
@@ -932,7 +984,7 @@ class PenTool extends Tool {
         this.btUpdate = new GuiButton(e => { 
             this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128?this.tbSize.asNumber.get():this.lineWidth; 
             this.tbSize.setText(this.lineWidth+"")},
-            "update", 50, 30, 12);
+            "update", 50, this.tbSize.height(), 12);
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
     }

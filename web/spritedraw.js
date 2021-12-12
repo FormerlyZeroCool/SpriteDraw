@@ -300,6 +300,7 @@ class SimpleGridLayoutManager {
     constructor(keyboardHandler, touchHandler, matrixDim, pixelDim, x = 0, y = 0) {
         this.matrixDim = matrixDim;
         this.pixelDim = pixelDim;
+        this.focused = true;
         this.x = x;
         this.y = y;
         this.refreshRate = 4;
@@ -324,12 +325,21 @@ class SimpleGridLayoutManager {
         this.elements.forEach(el => el.handleKeyBoardEvents(type, e));
     }
     handleTouchEvents(type, e) {
+        console.log("hello");
         this.elementsPositions.forEach(el => {
+            el.element.deactivate();
             if (e.touchPos[0] >= el.x + this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
                 e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height()) {
+                el.element.activate();
                 el.element.handleTouchEvents(type, e);
             }
         });
+    }
+    deactivate() {
+        this.focused = false;
+    }
+    activate() {
+        this.focused = true;
     }
     isCellFree(x, y) {
         const pixelX = x * this.pixelDim[0] / this.matrixDim[0];
@@ -380,7 +390,7 @@ class SimpleGridLayoutManager {
         this.elementsPositions.forEach(el => el.element.draw(ctx, el.x, el.y, x, y));
     }
     active() {
-        return true;
+        return this.focused;
     }
     width() {
         return this.pixelDim[0];
@@ -437,6 +447,7 @@ class GuiButton {
         this.pressedColor = pressedColor;
         this.unPressedColor = unPressedColor;
         this.pressed = false;
+        this.focused = true;
         this.callback = callBack;
     }
     handleKeyBoardEvents(type, e) {
@@ -457,7 +468,13 @@ class GuiButton {
             }
     }
     active() {
-        return true;
+        return this.focused;
+    }
+    deactivate() {
+        this.focused = false;
+    }
+    activate() {
+        this.focused = true;
     }
     width() {
         return this.dimensions[0];
@@ -511,9 +528,12 @@ class Optional {
     }
 }
 class GuiTextBox {
-    constructor(keyListener, width, fontSize = 16, height = 2 * fontSize, flags = 1) {
+    constructor(keyListener, width, fontSize = 16, height = 2 * fontSize, flags = 1, selectedColor = new RGB(80, 80, 220), unSelectedColor = new RGB(100, 100, 100)) {
         this.cursor = 0;
         this.flags = flags;
+        this.focused = false;
+        this.selectedColor = selectedColor;
+        this.unSelectedColor = unSelectedColor;
         this.asNumber = new Optional();
         this.text = "";
         this.scroll = [0, 0];
@@ -531,8 +551,6 @@ class GuiTextBox {
         if (this.active())
             switch (type) {
                 case ("keydown"):
-                    //console.log(e.code)
-                    //console.log(this.text);
                     switch (e.code) {
                         case ("Space"):
                             this.text = this.text.substring(0, this.cursor) + ' ' + this.text.substring(this.cursor, this.text.length);
@@ -592,6 +610,8 @@ class GuiTextBox {
     handleTouchEvents(type, e) {
         if (this.active())
             switch (type) {
+                case ("touchend"):
+                    this.drawInternalAndClear();
             }
     }
     static initGlobalText() {
@@ -609,7 +629,13 @@ class GuiTextBox {
         //specialChars
     }
     active() {
-        return this.selected || true;
+        return this.focused;
+    }
+    deactivate() {
+        this.focused = false;
+    }
+    activate() {
+        this.focused = true;
     }
     textWidth() {
         return this.ctx.measureText(this.text).width;
@@ -670,19 +696,30 @@ class GuiTextBox {
         this.rows.forEach(row => this.ctx.fillText(row.text, row.x, row.y, row.width));
     }
     drawCursor() {
-        this.ctx.fillStyle = "#000000";
-        this.ctx.fillRect(this.cursorPos[0], this.cursorPos[1] - this.fontSize + 3, 2, this.fontSize - 2);
+        if (this.active()) {
+            this.ctx.fillStyle = "#000000";
+            this.ctx.fillRect(this.cursorPos[0], this.cursorPos[1] - this.fontSize + 3, 2, this.fontSize - 2);
+        }
+    }
+    color() {
+        if (this.active())
+            return this.selectedColor;
+        else
+            return this.unSelectedColor;
     }
     drawInternalAndClear() {
         this.setCtxState();
         this.ctx.fillRect(0, 0, this.width(), this.height());
-        this.ctx.strokeRect(0, 0, this.width(), this.height());
         this.ctx.fillStyle = "#000000";
         this.rows.splice(0, this.rows.length);
         this.refreshMetaData();
         this.adjustScrollToCursor();
         this.drawRows();
         this.drawCursor();
+        this.ctx.strokeStyle = this.color().htmlRBG();
+        console.log(this.active());
+        this.ctx.lineWidth = 4;
+        this.ctx.strokeRect(0, 0, this.width(), this.height());
     }
     draw(ctx, x, y, offsetX = 0, offsetY = 0) {
         ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
@@ -726,7 +763,7 @@ class PenTool extends Tool {
         this.btUpdate = new GuiButton(e => {
             this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128 ? this.tbSize.asNumber.get() : this.lineWidth;
             this.tbSize.setText(this.lineWidth + "");
-        }, "update", 50, 30, 12);
+        }, "update", 50, this.tbSize.height(), 12);
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
     }
