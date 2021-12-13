@@ -1091,7 +1091,7 @@ class ToolSelector {
         this.toolArray.push(new GenericTool("redo", "images/redoSprite.png"));
         this.toolArray.push(new GenericTool("undo", "images/undoSprite.png"));
         this.toolArray.push(new GenericTool("colorPicker", "images/colorPickerSprite.png"));
-        this.toolArray.push(new GenericTool("eraser", "images/eraserSprite.png"));
+        this.toolArray.push(new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth() * 3, "eraser","images/eraserSprite.png"));
         this.toolArray.push(new GenericTool("rotate", "images/rotateSprite.png"));
  
         this.ctx = this.canvas.getContext("2d");
@@ -1363,7 +1363,8 @@ class DrawingScreen {
                 break;
                 case("eraser"):
                 colorBackup.copy(this.color);
-                this.lineWidth = dimensions[0] / bounds[0] * 4 * 3;
+                //this.lineWidth = dimensions[0] / bounds[0] * 4 * 3;
+                this.lineWidth = (<PenTool> this.toolSelector.tool()).lineWidth;
                 break;
                 case("fill"):
                 break;
@@ -1595,12 +1596,12 @@ class DrawingScreen {
         const gy:number = Math.floor((event.touchPos[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
         if(gx < this.dimensions.first && gy < this.dimensions.second){
             
-            for(let i = -0.5*this.lineWidth; i < this.lineWidth*0.5; i+=0.5)
+            for(let i = -0.5*this.lineWidth; i < this.lineWidth*0.5; i++)
             {
-                for(let j = -0.5*this.lineWidth;  j < this.lineWidth*0.5; j+=0.5)
+                for(let j = -0.5*this.lineWidth;  j < this.lineWidth*0.5; j++)
                 {
-                    const ngx:number = gx+Math.floor(j+0.5);
-                    const ngy:number = (gy+Math.floor(i+0.5));
+                    const ngx:number = gx+Math.round(j);
+                    const ngy:number = (gy+Math.round(i));
                     const pixel:RGB = this.screenBuffer[ngx + ngy*this.dimensions.first];
                     if(pixel && !pixel.compare(this.color)){
                         this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
@@ -1784,19 +1785,19 @@ class DrawingScreen {
         {
             const min:number = Math.min(x1, x2);
             const max:number = Math.max(x1, x2);
-            for(let x = min; x < max; x+=0.2)
+            for(let x = min; x < max; x+=0.5)
             {
                 const y:number = m*x + b;
                 
                 const gx:number = Math.floor((x-this.offset.first)/this.bounds.first*this.dimensions.first);
                 const gy:number = Math.floor((y-this.offset.second)/this.bounds.second*this.dimensions.second);
                 if(gx < this.dimensions.first && gy < this.dimensions.second){
-                    for(let i = -0.5*this.lineWidth; i < this.lineWidth*0.5; i+=0.5)
+                    for(let i = -0.5*this.lineWidth; i < this.lineWidth*0.5; i++)
                     {
-                        for(let j = -0.5*this.lineWidth;  j < this.lineWidth*0.5; j+=0.5)
+                        for(let j = -0.5*this.lineWidth;  j < this.lineWidth*0.5; j++)
                         {
-                            const ngx:number = gx+Math.floor(j+0.5);
-                            const ngy:number = (gy+Math.floor(i+0.5));
+                            const ngx:number = gx+Math.round(j);
+                            const ngy:number = (gy+Math.round(i));
                             const pixel:RGB = this.screenBuffer[ngx + ngy*this.dimensions.first];
                             if(pixel && !pixel.compare(this.color)){
                                 this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
@@ -1811,18 +1812,18 @@ class DrawingScreen {
         {
             const min:number = Math.min(y1, y2);
             const max:number = Math.max(y1, y2);
-            for(let y = min; y < max; y+=0.2)
+            for(let y = min; y < max; y+=0.5)
             {
                 const x:number = Math.abs(deltaX)>0?(y - b)/m:x2;
                 const gx:number = Math.floor((x-this.offset.first)/this.bounds.first*this.dimensions.first);
                 const gy:number = Math.floor((y-this.offset.second)/this.bounds.second*this.dimensions.second);
                 if(gx < this.dimensions.first && gy < this.dimensions.second){
-                    for(let i = -0.5*this.lineWidth; i < this.lineWidth*0.5; i+=0.5)
+                    for(let i = -0.5*this.lineWidth; i < this.lineWidth*0.5; i++)
                     {
-                        for(let j = -0.5*this.lineWidth;  j < this.lineWidth*0.5; j+=0.5)
+                        for(let j = -0.5*this.lineWidth;  j < this.lineWidth*0.5; j++)
                         {
-                            const ngx:number = gx+Math.floor(j+0.5);
-                            const ngy:number = (gy+Math.floor(i+0.5));
+                            const ngx:number = gx+Math.round(j);
+                            const ngy:number = (gy+Math.round(i));
                             const pixel:RGB = this.screenBuffer[ngx + ngy*this.dimensions.first];
                             if(pixel && !pixel.compare(this.color)){
                                 this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
