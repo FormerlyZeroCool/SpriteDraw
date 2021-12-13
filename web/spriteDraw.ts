@@ -1785,19 +1785,20 @@ class DrawingScreen {
         {
             const min:number = Math.min(x1, x2);
             const max:number = Math.max(x1, x2);
-            for(let x = min; x < max; x+=0.5)
+            for(let x = min; x < max; x++)
             {
                 const y:number = m*x + b;
                 
                 const gx:number = Math.floor((x-this.offset.first)/this.bounds.first*this.dimensions.first);
                 const gy:number = Math.floor((y-this.offset.second)/this.bounds.second*this.dimensions.second);
                 if(gx < this.dimensions.first && gy < this.dimensions.second){
-                    for(let i = -0.5*this.lineWidth; i < this.lineWidth*0.5; i++)
+                    const limit:number = this.lineWidth*0.5;
+                    for(let i = -0.5*this.lineWidth; i < limit; i++)
                     {
-                        for(let j = -0.5*this.lineWidth;  j < this.lineWidth*0.5; j++)
+                        for(let j = -0.5*this.lineWidth;  j < limit; j++)
                         {
                             const ngx:number = gx+Math.round(j);
-                            const ngy:number = (gy+Math.round(i));
+                            const ngy:number = gy+Math.round(i);
                             const pixel:RGB = this.screenBuffer[ngx + ngy*this.dimensions.first];
                             if(pixel && !pixel.compare(this.color)){
                                 this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
@@ -1812,18 +1813,19 @@ class DrawingScreen {
         {
             const min:number = Math.min(y1, y2);
             const max:number = Math.max(y1, y2);
-            for(let y = min; y < max; y+=0.5)
+            for(let y = min; y < max; y++)
             {
                 const x:number = Math.abs(deltaX)>0?(y - b)/m:x2;
                 const gx:number = Math.floor((x-this.offset.first)/this.bounds.first*this.dimensions.first);
                 const gy:number = Math.floor((y-this.offset.second)/this.bounds.second*this.dimensions.second);
                 if(gx < this.dimensions.first && gy < this.dimensions.second){
-                    for(let i = -0.5*this.lineWidth; i < this.lineWidth*0.5; i++)
+                    const limit:number = this.lineWidth*0.5;
+                    for(let i = -0.5*this.lineWidth; i < limit; i++)
                     {
-                        for(let j = -0.5*this.lineWidth;  j < this.lineWidth*0.5; j++)
+                        for(let j = -0.5*this.lineWidth;  j < limit; j++)
                         {
                             const ngx:number = gx+Math.round(j);
-                            const ngy:number = (gy+Math.round(i));
+                            const ngy:number = gy+Math.round(i);
                             const pixel:RGB = this.screenBuffer[ngx + ngy*this.dimensions.first];
                             if(pixel && !pixel.compare(this.color)){
                                 this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
