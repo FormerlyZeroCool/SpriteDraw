@@ -437,7 +437,6 @@ class SimpleGridLayoutManager implements GuiElement {
     }
     handleTouchEvents(type:string, e:any):void
     {
-        console.log("hello")
         this.elementsPositions.forEach(el => {
             el.element.deactivate();
             if(e.touchPos[0] >= el.x+this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
@@ -578,6 +577,8 @@ class SimpleGridLayoutManager implements GuiElement {
 class GuiButton implements GuiElement {
 
     text:string;
+    canvas:HTMLCanvasElement;
+    ctx:CanvasRenderingContext2D;
     dimensions:number[];//[width, height]
     fontSize:number;
     pressedColor:RGB;
@@ -590,11 +591,16 @@ class GuiButton implements GuiElement {
         this.text = text;
         this.fontSize = fontSize;
         this.dimensions = [width, height];
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this.ctx = this.canvas.getContext("2d");
         this.pressedColor = pressedColor;
         this.unPressedColor = unPressedColor;
         this.pressed = false;
         this.focused = true;
         this.callback = callBack;
+        this.drawInternal();
     }
     handleKeyBoardEvents(type:string, e:any):void
     {
@@ -611,10 +617,12 @@ class GuiButton implements GuiElement {
             {
                 case("touchstart"):
                     this.pressed = true;
+                    this.drawInternal();
                 break;
                 case("touchend"):
                     this.callback(e);
                     this.pressed = false;
+                    this.drawInternal();
                 break;
             }
     }
@@ -645,16 +653,20 @@ class GuiButton implements GuiElement {
             ctx.fillStyle = this.unPressedColor.htmlRBG();
         ctx.font = this.fontSize + 'px Calibri';
     }
-    draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0)
+    drawInternal(ctx:CanvasRenderingContext2D = this.ctx):void
     {
         const fs = ctx.fillStyle;
         this.setCtxState(ctx);
-        ctx.fillRect(x + offsetX, y + offsetY, this.width(), this.height());
-        ctx.strokeRect(x + offsetX, y + offsetY, this.width(), this.height());
+        ctx.fillRect(0, 0, this.width(), this.height());
+        ctx.strokeRect(0, 0, this.width(), this.height());
         ctx.fillStyle = "#000000";
-        ctx.fillText(this.text, x + offsetX + this.fontSize, y + offsetY + this.fontSize, this.width());
+        ctx.fillText(this.text, 0 + this.fontSize, 0 + this.fontSize, this.width());
         ctx.fillStyle = fs;
     } 
+    draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0):void
+    {
+        ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
+    }
 };
 class TextRow { 
     text:string;
@@ -770,7 +782,6 @@ class GuiTextBox implements GuiElement {
                         let letter:string = e.code.substring(e.code.length - 1);
                         if(!e.keyboardHandler.keysHeld["ShiftRight"] && !e.keyboardHandler.keysHeld["ShiftLeft"])
                             letter = letter.toLowerCase();
-                        //console.log(e.code);
                         if(GuiTextBox.textLookup[e.code] || GuiTextBox.numbers[e.code])
                         {
                             this.text = this.text.substring(0, this.cursor) + letter + this.text.substring(this.cursor, this.text.length);
@@ -929,7 +940,6 @@ class GuiTextBox implements GuiElement {
         this.drawRows();
         this.drawCursor();
         this.ctx.strokeStyle = this.color().htmlRBG();
-        console.log(this.active());
         this.ctx.lineWidth = 4;
         this.ctx.strokeRect(0, 0, this.width(), this.height());
     }
