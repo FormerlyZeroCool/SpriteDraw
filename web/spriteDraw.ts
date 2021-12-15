@@ -1374,7 +1374,7 @@ class DrawingScreen {
             }
             else
             {
-                this.pasteRect = [e.touchPos[0] , e.touchPos[1], this.clipBoard.currentDim[0] * (bounds[0] / dimensions[0]),this.clipBoard.currentDim[1] * (bounds[1] / dimensions[1])];
+                this.pasteRect = [e.touchPos[0] , e.touchPos[1], this.clipBoard.currentDim[0] * (this.bounds.first / this.dimensions.first),this.clipBoard.currentDim[1] * (this.bounds.second / this.dimensions.second)];
             }
 
             const gx:number = Math.floor((e.touchPos[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
@@ -1943,18 +1943,26 @@ class DrawingScreen {
     {
         if(newDim.length === 2)
         {
-         
-            this.bounds.first = Math.ceil(this.canvas.width / dim[0]) * dim[0];
-            this.bounds.second = Math.ceil(this.canvas.height / dim[1]) * dim[1];   
-            const bounds:Array<number> = [Math.ceil(this.canvas.width / dim[0]), Math.ceil(this.canvas.height / dim[1])];
+            this.bounds.first = Math.floor(this.canvas.width / newDim[0]) * newDim[0];
+            this.bounds.second = Math.floor(this.canvas.height / newDim[1]) * newDim[1];   
+            const bounds:Array<number> = [this.bounds.first, this.bounds.second];
+            this.dimensions = new Pair(newDim[0], newDim[1]);
+            const dimensions:Array<number> = [this.dimensions.first, this.dimensions.second];
             this.canvas.width = bounds[0];
             this.canvas.height = bounds[1];
-            this.dimensions = new Pair(newDim[0], newDim[1]);
-            if(this.screenBuffer.length < newDim[0]*newDim[1])
+            this.undoneUpdatesStack.empty();
+            this.updatesStack.empty();
+
+        this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), this.keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
+            if(this.screenBuffer.length != newDim[0]*newDim[1])
             {
+                this.screenBuffer = [];
                 for(let i = this.screenBuffer.length; i < newDim[0]*newDim[1]; i++)
                     this.screenBuffer.push(new RGB(255,255,255,0));
+                this.spriteScreenBuf = new Sprite([], this.bounds.first, this.bounds.second);
+                
             }
+
         }
     }
     lowerPixelPercentage(a:number):number
@@ -3598,7 +3606,6 @@ async function main()
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    
     const fps = 30;
     const goalSleep = 1000/fps;
     let counter = 0;

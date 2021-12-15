@@ -1070,7 +1070,7 @@ class DrawingScreen {
                 this.pasteRect = [0, 0, 0, 0];
             }
             else {
-                this.pasteRect = [e.touchPos[0], e.touchPos[1], this.clipBoard.currentDim[0] * (bounds[0] / dimensions[0]), this.clipBoard.currentDim[1] * (bounds[1] / dimensions[1])];
+                this.pasteRect = [e.touchPos[0], e.touchPos[1], this.clipBoard.currentDim[0] * (this.bounds.first / this.dimensions.first), this.clipBoard.currentDim[1] * (this.bounds.second / this.dimensions.second)];
             }
             const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
             const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
@@ -1564,15 +1564,21 @@ class DrawingScreen {
     }
     setDim(newDim) {
         if (newDim.length === 2) {
-            this.bounds.first = Math.ceil(this.canvas.width / dim[0]) * dim[0];
-            this.bounds.second = Math.ceil(this.canvas.height / dim[1]) * dim[1];
-            const bounds = [Math.ceil(this.canvas.width / dim[0]), Math.ceil(this.canvas.height / dim[1])];
+            this.bounds.first = Math.floor(this.canvas.width / newDim[0]) * newDim[0];
+            this.bounds.second = Math.floor(this.canvas.height / newDim[1]) * newDim[1];
+            const bounds = [this.bounds.first, this.bounds.second];
+            this.dimensions = new Pair(newDim[0], newDim[1]);
+            const dimensions = [this.dimensions.first, this.dimensions.second];
             this.canvas.width = bounds[0];
             this.canvas.height = bounds[1];
-            this.dimensions = new Pair(newDim[0], newDim[1]);
-            if (this.screenBuffer.length < newDim[0] * newDim[1]) {
+            this.undoneUpdatesStack.empty();
+            this.updatesStack.empty();
+            this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), this.keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
+            if (this.screenBuffer.length != newDim[0] * newDim[1]) {
+                this.screenBuffer = [];
                 for (let i = this.screenBuffer.length; i < newDim[0] * newDim[1]; i++)
                     this.screenBuffer.push(new RGB(255, 255, 255, 0));
+                this.spriteScreenBuf = new Sprite([], this.bounds.first, this.bounds.second);
             }
         }
     }
