@@ -332,7 +332,12 @@ class SimpleGridLayoutManager {
                 el.element.activate();
                 el.element.handleTouchEvents(type, e);
             }
+            el.element.refresh();
         });
+    }
+    refresh() {
+        this.refreshMetaData();
+        this.refreshCanvas();
     }
     deactivate() {
         this.focused = false;
@@ -508,6 +513,9 @@ class GuiButton {
         else
             ctx.fillStyle = this.unPressedColor.htmlRBG();
         ctx.font = this.fontSize + 'px Calibri';
+    }
+    refresh() {
+        this.drawInternal();
     }
     drawInternal(ctx = this.ctx) {
         const fs = ctx.fillStyle;
@@ -736,6 +744,9 @@ class GuiTextBox {
         else
             return this.unSelectedColor;
     }
+    refresh() {
+        this.drawInternalAndClear();
+    }
     drawInternalAndClear() {
         this.setCtxState();
         this.ctx.fillRect(0, 0, this.width(), this.height());
@@ -797,13 +808,46 @@ class PenTool extends Tool {
         this.layoutManager.elements.push(this.btUpdate);
     }
     optionPanelSize() {
-        return [200, 200];
+        return [this.layoutManager.width(), this.layoutManager.height()];
     }
     drawOptionPanel(ctx, x, y) {
         this.layoutManager.draw(ctx, x, y);
     }
     penSize() {
         return this.lineWidth;
+    }
+}
+;
+class DrawingScreenSettingsTool extends Tool {
+    constructor(keyListener, touchHandler, dim = [524, 524], field, toolName = "pen", pathToImage = "images/penSprite.png") {
+        super(toolName, pathToImage);
+        this.dim = dim;
+        this.field = field;
+        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 2], [200, 200]);
+        this.tbX = new GuiTextBox(true, 70);
+        this.tbY = new GuiTextBox(true, 70);
+        this.btUpdate = new GuiButton(e => this.recalcDim(), "update", 50, this.tbX.height(), 12);
+        this.tbX.submissionButton = this.btUpdate;
+        this.tbY.submissionButton = this.btUpdate;
+        this.layoutManager.elements.push(this.tbX);
+        this.layoutManager.elements.push(this.tbY);
+        this.layoutManager.elements.push(this.btUpdate);
+    }
+    recalcDim() {
+        let x = this.dim[0];
+        let y = this.dim[1];
+        if (this.tbX.asNumber.get())
+            x = this.tbX.asNumber.get();
+        if (this.tbY.asNumber.get())
+            y = this.tbY.asNumber.get();
+        this.dim = [x, y];
+        this.field.setDim(this.dim);
+    }
+    optionPanelSize() {
+        return [this.layoutManager.width(), this.layoutManager.height()];
+    }
+    drawOptionPanel(ctx, x, y) {
+        this.layoutManager.draw(ctx, x, y);
     }
 }
 ;
@@ -875,6 +919,7 @@ class ToolSelector {
         this.toolArray.push(new GenericTool("colorPicker", "images/colorPickerSprite.png"));
         this.toolArray.push(new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png"));
         this.toolArray.push(new GenericTool("rotate", "images/rotateSprite.png"));
+        this.toolArray.push(new DrawingScreenSettingsTool(keyboardHandler, this.touchListener, [524, 524], field, "ScreenSettings", "images/settingsSprite.png"));
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = "#000000";
@@ -1564,8 +1609,8 @@ class DrawingScreen {
     }
     setDim(newDim) {
         if (newDim.length === 2) {
-            this.bounds.first = Math.floor(this.canvas.width / newDim[0]) * newDim[0];
-            this.bounds.second = Math.floor(this.canvas.height / newDim[1]) * newDim[1];
+            this.bounds.first = Math.ceil(528 / newDim[0]) * newDim[0];
+            this.bounds.second = Math.ceil(528 / newDim[1]) * newDim[1];
             const bounds = [this.bounds.first, this.bounds.second];
             this.dimensions = new Pair(newDim[0], newDim[1]);
             const dimensions = [this.dimensions.first, this.dimensions.second];
