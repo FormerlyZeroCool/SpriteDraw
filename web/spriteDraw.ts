@@ -604,11 +604,23 @@ class GuiButton implements GuiElement {
     }
     handleKeyBoardEvents(type:string, e:any):void
     {
-        if(this.active())
-            switch(type)
-            {
-
+        if(this.active()){
+            if(e.code === "Enter"){
+                switch(type)
+                {
+                    case("keydown"):
+                        this.pressed = true;
+                        this.drawInternal();
+                    break;
+                    case("keyup"):
+                        this.callback(e);
+                        this.pressed = false;
+                        this.drawInternal();
+                        this.deactivate();
+                    break;
+                }
             }
+        }
     }
     handleTouchEvents(type:string, e:any):void
     {
@@ -625,6 +637,7 @@ class GuiButton implements GuiElement {
                     this.drawInternal();
                 break;
             }
+            
     }
     active():boolean
     {
@@ -721,12 +734,14 @@ class GuiTextBox implements GuiElement {
     static numbers = {};
     static specialChars = {};
     flags:number;
-    constructor(keyListener:boolean, width:number, fontSize:number = 16, height:number = 2*fontSize, flags:number = 1,
+    submissionButton:GuiButton;
+    constructor(keyListener:boolean, width:number, submit:GuiButton = null, fontSize:number = 16, height:number = 2*fontSize, flags:number = 1,
         selectedColor:RGB = new RGB(80, 80, 220), unSelectedColor:RGB = new RGB(100, 100, 100))
     {
         this.cursor = 0;
         this.flags = flags;
         this.focused = false;
+        this.submissionButton = submit;
         this.selectedColor = selectedColor;
         this.unSelectedColor = unSelectedColor;
         this.asNumber = new Optional<number>();
@@ -750,6 +765,14 @@ class GuiTextBox implements GuiElement {
                 case("keydown"):
                 switch(e.code)
                 {
+                    case("Enter"):
+                    this.deactivate();
+                    if(this.submissionButton)
+                    {
+                        this.submissionButton.activate();
+                        this.submissionButton.handleKeyBoardEvents(type, e);
+                    }
+                    break;
                     case("Space"):
                         this.text = this.text.substring(0, this.cursor) + ' ' + this.text.substring(this.cursor, this.text.length);
                         this.cursor++;
@@ -995,6 +1018,7 @@ class PenTool extends Tool {
             this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128?this.tbSize.asNumber.get():this.lineWidth; 
             this.tbSize.setText(this.lineWidth+"")},
             "update", 50, this.tbSize.height(), 12);
+        this.tbSize.submissionButton = this.btUpdate;
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
     }
@@ -1284,7 +1308,7 @@ class DrawingScreen {
     dragDataMinPoint:number;
     lineWidth:number;
 
-    constructor(canvas:any, keyboardHandler:KeyboardHandler, offset:Array<number>, dimensions:Array<number>, newColorTextBox:HTMLInputElement)
+    constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, offset:Array<number>, dimensions:Array<number>, newColorTextBox:HTMLInputElement)
     {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.dimensions = new Pair<number>(dimensions[0], dimensions[1]);
@@ -1615,10 +1639,10 @@ class DrawingScreen {
     {
         const altHeld:boolean = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
         let stack:any;
-        /*if(this.keyboardHandler.keysHeld["KeyS"])//possibly more visiually appealling algo (bfs), 
+        if(this.keyboardHandler.keysHeld["KeyS"])//possibly more visiually appealling algo (bfs), 
         //but slower because it makes much worse use of the cache with very high random access
             stack = new Queue<number>(this.screenBuffer.length >> 4);
-        else*/
+        else
             stack = new Array<number>(this.screenBuffer.length >> 4);
         const checkedMap:Array<boolean> = new Array<boolean>(this.dimensions.first * this.dimensions.second).fill(false);
         const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
@@ -1626,11 +1650,8 @@ class DrawingScreen {
         const spc:RGB = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
 
         stack.push(startIndex);
-        const drawInterval:number = Math.floor(this.screenBuffer.length / 200);
-        let intervalCounter = 0;
         while(stack.length > 0)
         {
-            intervalCounter++;
             const cur:number = stack.pop();
             const pixelColor:RGB = this.screenBuffer[cur];
             if(cur >= 0 && cur < this.dimensions.first * this.dimensions.second && 
@@ -1640,9 +1661,6 @@ class DrawingScreen {
                 if(!pixelColor.compare(this.color)){
                     this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                     pixelColor.copy(this.color);
-                }
-                if(intervalCounter % drawInterval == 0 && this.keyboardHandler.keysHeld["KeyS"]){
-                    await sleep(1);
                 }
                 if(!checkedMap[cur + this.dimensions.first])
                     stack.push(cur + this.dimensions.first);
@@ -2246,9 +2264,9 @@ class KeyboardHandler {
     
 };
 class TouchHandler {
-    pred:any; 
-    callBack:any;
-    constructor(pred:any, callBack:any)
+    pred:(event) => void; 
+    callBack:(event) => void;
+    constructor(pred:(event) => void, callBack:(event) => void)
     {
         this.pred = pred;
         this.callBack = callBack;
@@ -2296,9 +2314,9 @@ class SingleTouchListener
     touchMoveCount:number;
     deltaTouchPos:number;
     listenerTypeMap:ListenerTypes;
-    component:any;
+    component:HTMLElement;
     touchMoveEvents:TouchMoveEvent[];
-    constructor(component:any, preventDefault:boolean, mouseEmulation:boolean)
+    constructor(component:HTMLElement, preventDefault:boolean, mouseEmulation:boolean)
     {
         this.lastTouchTime = Date.now();
         this.offset = [];
@@ -2323,9 +2341,9 @@ class SingleTouchListener
             component.addEventListener('touchend', event => this.touchEndHandler(event), false);
         }
         if(mouseEmulation && !isTouchSupported()){
-            component.addEventListener('mousedown', event => {event.changedTouches = {};event.changedTouches.item = x => event; this.touchStartHandler(event)});
-            component.addEventListener('mousemove', event => {event.changedTouches = {};event.changedTouches.item = x => event; this.touchMoveHandler(event)});
-            component.addEventListener('mouseup', event => {event.changedTouches = {};event.changedTouches.item = x => event; this.touchEndHandler(event)});
+            component.addEventListener('mousedown', event => {(<any>event).changedTouches = {};(<any>event).changedTouches.item = x => event; this.touchStartHandler(event)});
+            component.addEventListener('mousemove', event => {(<any>event).changedTouches = {};(<any>event).changedTouches.item = x => event; this.touchMoveHandler(event)});
+            component.addEventListener('mouseup', event => {(<any>event).changedTouches = {};(<any>event).changedTouches.item = x => event; this.touchEndHandler(event)});
     
         }
     }
@@ -2625,7 +2643,8 @@ class Sprite {
             this.pixels[(i<<2)+2] = pixels[i].blue();
             this.pixels[(i<<2)+3] = pixels[i].alpha();
         }
-        this.refreshImage();
+        if(pixels.length)
+            this.refreshImage();
     }
     putPixels(ctx:CanvasRenderingContext2D):void
     {
@@ -3501,7 +3520,7 @@ async function main()
 {
     const newColor:HTMLInputElement = <HTMLInputElement> document.getElementById("newColor");
     const keyboardHandler:KeyboardHandler = new KeyboardHandler();
-    const field:DrawingScreen = new DrawingScreen(document.getElementById("screen"), keyboardHandler,[0,0], dim, newColor);
+    const field:DrawingScreen = new DrawingScreen(<HTMLCanvasElement> document.getElementById("screen"), keyboardHandler,[0,0], dim, newColor);
     
     const animationGroupSelector:AnimationGroupsSelector = new AnimationGroupsSelector(field, keyboardHandler, "animation_group_selector", "animations", "sprites_canvas", dim[0], dim[1], 128, 128);
     animationGroupSelector.createAnimationGroup();

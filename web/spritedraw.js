@@ -455,9 +455,22 @@ class GuiButton {
         this.drawInternal();
     }
     handleKeyBoardEvents(type, e) {
-        if (this.active())
-            switch (type) {
+        if (this.active()) {
+            if (e.code === "Enter") {
+                switch (type) {
+                    case ("keydown"):
+                        this.pressed = true;
+                        this.drawInternal();
+                        break;
+                    case ("keyup"):
+                        this.callback(e);
+                        this.pressed = false;
+                        this.drawInternal();
+                        this.deactivate();
+                        break;
+                }
             }
+        }
     }
     handleTouchEvents(type, e) {
         if (this.active())
@@ -537,10 +550,11 @@ class Optional {
     }
 }
 class GuiTextBox {
-    constructor(keyListener, width, fontSize = 16, height = 2 * fontSize, flags = 1, selectedColor = new RGB(80, 80, 220), unSelectedColor = new RGB(100, 100, 100)) {
+    constructor(keyListener, width, submit = null, fontSize = 16, height = 2 * fontSize, flags = 1, selectedColor = new RGB(80, 80, 220), unSelectedColor = new RGB(100, 100, 100)) {
         this.cursor = 0;
         this.flags = flags;
         this.focused = false;
+        this.submissionButton = submit;
         this.selectedColor = selectedColor;
         this.unSelectedColor = unSelectedColor;
         this.asNumber = new Optional();
@@ -561,6 +575,13 @@ class GuiTextBox {
             switch (type) {
                 case ("keydown"):
                     switch (e.code) {
+                        case ("Enter"):
+                            this.deactivate();
+                            if (this.submissionButton) {
+                                this.submissionButton.activate();
+                                this.submissionButton.handleKeyBoardEvents(type, e);
+                            }
+                            break;
                         case ("Space"):
                             this.text = this.text.substring(0, this.cursor) + ' ' + this.text.substring(this.cursor, this.text.length);
                             this.cursor++;
@@ -771,6 +792,7 @@ class PenTool extends Tool {
             this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128 ? this.tbSize.asNumber.get() : this.lineWidth;
             this.tbSize.setText(this.lineWidth + "");
         }, "update", 50, this.tbSize.height(), 12);
+        this.tbSize.submissionButton = this.btUpdate;
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
     }
@@ -1278,20 +1300,17 @@ class DrawingScreen {
     async fillArea(startCoordinate) {
         const altHeld = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
         let stack;
-        /*if(this.keyboardHandler.keysHeld["KeyS"])//possibly more visiually appealling algo (bfs),
-        //but slower because it makes much worse use of the cache with very high random access
-            stack = new Queue<number>(this.screenBuffer.length >> 4);
-        else*/
-        stack = new Array(this.screenBuffer.length >> 4);
+        if (this.keyboardHandler.keysHeld["KeyS"]) //possibly more visiually appealling algo (bfs), 
+            //but slower because it makes much worse use of the cache with very high random access
+            stack = new Queue(this.screenBuffer.length >> 4);
+        else
+            stack = new Array(this.screenBuffer.length >> 4);
         const checkedMap = new Array(this.dimensions.first * this.dimensions.second).fill(false);
         const startIndex = startCoordinate.first + startCoordinate.second * this.dimensions.first;
         const startPixel = this.screenBuffer[startIndex];
         const spc = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
         stack.push(startIndex);
-        const drawInterval = Math.floor(this.screenBuffer.length / 200);
-        let intervalCounter = 0;
         while (stack.length > 0) {
-            intervalCounter++;
             const cur = stack.pop();
             const pixelColor = this.screenBuffer[cur];
             if (cur >= 0 && cur < this.dimensions.first * this.dimensions.second &&
@@ -1300,9 +1319,6 @@ class DrawingScreen {
                 if (!pixelColor.compare(this.color)) {
                     this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                     pixelColor.copy(this.color);
-                }
-                if (intervalCounter % drawInterval == 0 && this.keyboardHandler.keysHeld["KeyS"]) {
-                    await sleep(1);
                 }
                 if (!checkedMap[cur + this.dimensions.first])
                     stack.push(cur + this.dimensions.first);
@@ -2101,7 +2117,8 @@ class Sprite {
             this.pixels[(i << 2) + 2] = pixels[i].blue();
             this.pixels[(i << 2) + 3] = pixels[i].alpha();
         }
-        this.refreshImage();
+        if (pixels.length)
+            this.refreshImage();
     }
     putPixels(ctx) {
         const idata = ctx.createImageData(this.width, this.height);
