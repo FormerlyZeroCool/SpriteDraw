@@ -351,8 +351,8 @@ class SimpleGridLayoutManager {
         let free = true;
         for (let i = 0; free && i < this.elementsPositions.length; i++) {
             const elPos = this.elementsPositions[i];
-            if (elPos.x >= pixelX && elPos.x + elPos.width < pixelX &&
-                elPos.y >= pixelY && elPos.y + elPos.height < pixelY)
+            if (elPos.x >= pixelX && elPos.x + elPos.width <= pixelX &&
+                elPos.y >= pixelY && elPos.y + elPos.height <= pixelY)
                 free = false;
         }
         return free;
@@ -838,9 +838,9 @@ class DrawingScreenSettingsTool extends Tool {
         super(toolName, pathToImage);
         this.dim = dim;
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 2], [200, 200]);
-        this.tbX = new GuiTextBox(true, 70);
-        this.tbY = new GuiTextBox(true, 70);
+        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [3, 2], [200, 200]);
+        this.tbX = new GuiTextBox(true, 50);
+        this.tbY = new GuiTextBox(true, 50); //, null, 16, 100);
         this.btUpdate = new GuiButton(e => this.recalcDim(), "update", 50, this.tbX.height(), 12);
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
