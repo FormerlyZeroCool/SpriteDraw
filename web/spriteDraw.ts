@@ -335,6 +335,9 @@ abstract class Tool {
         }
     }
     abstract optionPanelSize():number[];
+    abstract activateOptionPanel():void;
+    abstract deactivateOptionPanel():void;
+    abstract getOptionPanel():SimpleGridLayoutManager;
     abstract drawOptionPanel(ctx, x:number, y:number):void;
 
 };
@@ -992,6 +995,11 @@ class GenericTool extends Tool {
     {
         super(name, imagePath);
     }
+    activateOptionPanel():void {}
+    deactivateOptionPanel():void {}
+    getOptionPanel():SimpleGridLayoutManager {
+        return null;
+    }
     optionPanelSize():number[]
     {
         return [0, 0];
@@ -1006,6 +1014,11 @@ class ViewLayoutTool extends Tool {
         this.layoutManager = layoutManager;
     }
 
+    activateOptionPanel():void { this.layoutManager.activate(); }
+    deactivateOptionPanel():void { this.layoutManager.deactivate(); }
+    getOptionPanel():SimpleGridLayoutManager {
+        return this.layoutManager;
+    }
     optionPanelSize():number[]
     {
         return [this.layoutManager.canvas.width, this.layoutManager.canvas.height];
@@ -1033,6 +1046,11 @@ class PenTool extends Tool {
         this.tbSize.submissionButton = this.btUpdate;
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
+    }
+    activateOptionPanel():void { this.layoutManager.activate(); }
+    deactivateOptionPanel():void { this.layoutManager.deactivate(); }
+    getOptionPanel():SimpleGridLayoutManager {
+        return this.layoutManager;
     }
     optionPanelSize():number[]
     {
@@ -1070,6 +1088,11 @@ class DrawingScreenSettingsTool extends Tool {
         this.layoutManager.elements.push(this.tbX);
         this.layoutManager.elements.push(this.tbY);
         this.layoutManager.elements.push(this.btUpdate);
+    }
+    activateOptionPanel():void { this.layoutManager.activate(); }
+    deactivateOptionPanel():void { this.layoutManager.deactivate(); }
+    getOptionPanel():SimpleGridLayoutManager {
+        return this.layoutManager;
     }
     recalcDim():void
     {
@@ -1203,14 +1226,17 @@ class ToolSelector {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         for(let i = 0; i < this.toolArray.length; i++)
         {
+            this.toolArray[i].deactivateOptionPanel();
             if(this.toolArray[i].image())
                 this.toolArray[i].drawImage(this.ctx, 
                     Math.floor(i / imgPerColumn) * this.imgWidth, i * this.toolArray[i].image().height % (imgPerColumn * this.imgHeight), 
                         this.imgWidth, this.imgHeight);
         }
         this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
-        if(this.tool())
+        if(this.tool()){
+            this.tool().activateOptionPanel();
             this.tool().drawOptionPanel(this.ctx, this.imgWidth*imgPerRow, 0);
+        }
     }
     selectedToolName():string
     {
@@ -1220,8 +1246,9 @@ class ToolSelector {
     }
     tool():GenericTool
     {
-        if(this.toolArray[this.selectedTool])
+        if(this.toolArray[this.selectedTool]){
             return this.toolArray[this.selectedTool];
+        }
         return null;
     }
 

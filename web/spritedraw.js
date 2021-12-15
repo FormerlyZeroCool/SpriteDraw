@@ -775,6 +775,11 @@ class GenericTool extends Tool {
     constructor(name, imagePath) {
         super(name, imagePath);
     }
+    activateOptionPanel() { }
+    deactivateOptionPanel() { }
+    getOptionPanel() {
+        return null;
+    }
     optionPanelSize() {
         return [0, 0];
     }
@@ -784,6 +789,11 @@ class ViewLayoutTool extends Tool {
     constructor(layoutManager, name, path) {
         super(name, path);
         this.layoutManager = layoutManager;
+    }
+    activateOptionPanel() { this.layoutManager.activate(); }
+    deactivateOptionPanel() { this.layoutManager.deactivate(); }
+    getOptionPanel() {
+        return this.layoutManager;
     }
     optionPanelSize() {
         return [this.layoutManager.canvas.width, this.layoutManager.canvas.height];
@@ -806,6 +816,11 @@ class PenTool extends Tool {
         this.tbSize.submissionButton = this.btUpdate;
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
+    }
+    activateOptionPanel() { this.layoutManager.activate(); }
+    deactivateOptionPanel() { this.layoutManager.deactivate(); }
+    getOptionPanel() {
+        return this.layoutManager;
     }
     optionPanelSize() {
         return [this.layoutManager.width(), this.layoutManager.height()];
@@ -832,6 +847,11 @@ class DrawingScreenSettingsTool extends Tool {
         this.layoutManager.elements.push(this.tbX);
         this.layoutManager.elements.push(this.tbY);
         this.layoutManager.elements.push(this.btUpdate);
+    }
+    activateOptionPanel() { this.layoutManager.activate(); }
+    deactivateOptionPanel() { this.layoutManager.deactivate(); }
+    getOptionPanel() {
+        return this.layoutManager;
     }
     recalcDim() {
         let x = this.dim[0];
@@ -943,12 +963,15 @@ class ToolSelector {
         const imgPerRow = (this.toolPixelDim[0] / this.imgWidth);
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         for (let i = 0; i < this.toolArray.length; i++) {
+            this.toolArray[i].deactivateOptionPanel();
             if (this.toolArray[i].image())
                 this.toolArray[i].drawImage(this.ctx, Math.floor(i / imgPerColumn) * this.imgWidth, i * this.toolArray[i].image().height % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
         }
         this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
-        if (this.tool())
+        if (this.tool()) {
+            this.tool().activateOptionPanel();
             this.tool().drawOptionPanel(this.ctx, this.imgWidth * imgPerRow, 0);
+        }
     }
     selectedToolName() {
         if (this.tool())
@@ -956,8 +979,9 @@ class ToolSelector {
         return null;
     }
     tool() {
-        if (this.toolArray[this.selectedTool])
+        if (this.toolArray[this.selectedTool]) {
             return this.toolArray[this.selectedTool];
+        }
         return null;
     }
 }
