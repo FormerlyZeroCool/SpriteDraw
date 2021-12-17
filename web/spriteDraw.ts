@@ -493,16 +493,15 @@ class SimpleGridLayoutManager implements GuiElement {
             let clearSpace:boolean = true;
             do {
                 let j = matX;
+                clearSpace = true;
                 for(;clearSpace && j < matX + elementWidth; j++)
                 {
-                    if(!this.isCellFree(matX + j, matY))
-                    {
-                        clearSpace = false;
-                    }
+                    console.log("j: ",j," matY:",matY);
+                    clearSpace = this.isCellFree(j, matY);
                 }
-                if(!clearSpace && j + matX < elementWidth)
+                if(!clearSpace && j < elementWidth)
                     matX++;
-                else if(!clearSpace && j + matX >= elementWidth)
+                else if(!clearSpace && j >= elementWidth)
                 {
                     matX = 0;
                     matY++;
@@ -846,12 +845,13 @@ class GuiTextBox implements GuiElement {
     }
     handleTouchEvents(type:string, e:any):void
     {
-        if(this.active())
+        if(this.active()){
             switch(type)
             {
                 case("touchend"):
                 this.drawInternalAndClear();
             }
+        }
     }
     static initGlobalText():void
     {
@@ -936,19 +936,21 @@ class GuiTextBox implements GuiElement {
         }
         
     }
-    adjustScrollToCursor():void
+    adjustScrollToCursor():TextRow[]
     {
         let deltaY:number = 0;
         if(this.cursorPos[1] > this.height() - 2)
         {
             deltaY += this.cursorPos[1] - this.height() + this.height() / 2;
         }
-        this.rows.forEach(row => row.y -= deltaY);
+        const newRows:TextRow[] = [];
+        this.rows.forEach(row => newRows.push(new TextRow(row.text, row.x, row.y - deltaY, row.width)));
         this.cursorPos[1] -= deltaY;
+        return newRows;
     }
-    drawRows():void
+    drawRows(rows:TextRow[]):void
     {
-        this.rows.forEach(row => this.ctx.fillText(row.text, row.x, row.y, row.width));
+        rows.forEach(row => this.ctx.fillText(row.text, row.x, row.y, row.width));
     }
     drawCursor():void{
         if(this.active())
@@ -974,8 +976,7 @@ class GuiTextBox implements GuiElement {
         this.ctx.fillStyle = "#000000";
         this.rows.splice(0,this.rows.length);
         this.refreshMetaData();
-        this.adjustScrollToCursor();
-        this.drawRows();
+        this.drawRows(this.adjustScrollToCursor());
         this.drawCursor();
         this.ctx.strokeStyle = this.color().htmlRBG();
         this.ctx.lineWidth = 4;
@@ -1078,9 +1079,9 @@ class DrawingScreenSettingsTool extends Tool {
         super(toolName, pathToImage);
         this.dim = dim;
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [3,2],[200,200]);
-        this.tbX = new GuiTextBox(true, 50);
-        this.tbY = new GuiTextBox(true, 50);//, null, 16, 100);
+        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,2],[200,200]);
+        this.tbX = new GuiTextBox(true, 70);
+        this.tbY = new GuiTextBox(true, 70);//, null, 16, 100);
         this.btUpdate = new GuiButton(e => this.recalcDim(),
             "update", 50, this.tbX.height(), 12);
         this.tbX.submissionButton = this.btUpdate;
@@ -2024,12 +2025,23 @@ class DrawingScreen {
     {
         return x >= 0 && x < this.dimensions.first && y >= 0 && y < this.dimensions.second;
     }
-    setDim(newDim:Array<number>)
+    setDim(newDim:number[])
     {
         if(newDim.length === 2)
         {
-            this.bounds.first = Math.ceil(528 / newDim[0]) * newDim[0];
-            this.bounds.second = Math.ceil(528 / newDim[1]) * newDim[1];   
+            let maxX:number = 1000;
+            let maxY:number = 1000;
+            for(let i = 500; i < 1000; i++)
+            {
+                if(maxX > i && i % newDim[0] == 0){
+                    this.bounds.first = Math.floor(i / newDim[0]) * newDim[0];
+                    maxX = this.bounds.first;
+                }
+                if(maxY > i && i % newDim[1] == 0){
+                    maxY = i;
+                    this.bounds.second = Math.floor(i / newDim[1]) * newDim[1]; 
+                }
+            }  
             const bounds:Array<number> = [this.bounds.first, this.bounds.second];
             this.dimensions = new Pair(newDim[0], newDim[1]);
             const dimensions:Array<number> = [this.dimensions.first, this.dimensions.second];
