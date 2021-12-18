@@ -499,7 +499,6 @@ class SimpleGridLayoutManager implements GuiElement {
                 clearSpace = true;
                 for(;clearSpace && j < counter.second + elementWidth; j++)
                 {
-                    console.log("j: ",j," matY:",counter.first);
                     clearSpace = this.isCellFree(j, counter.first);
                 }
                 if(!clearSpace && j < elementWidth)
@@ -1082,11 +1081,12 @@ class DrawingScreenSettingsTool extends Tool {
         super(toolName, pathToImage);
         this.dim = dim;
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,2],[200,200]);
+        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,6],[200,200]);
         this.tbX = new GuiTextBox(true, 70);
         this.tbY = new GuiTextBox(true, 70);//, null, 16, 100);
         this.btUpdate = new GuiButton(e => this.recalcDim(),
-            "update", 50, this.tbX.height(), 12);
+            "update", 50, 22, 12);
+        //this.layoutManager.pixelDim[1] = this.tbX.height() * 2;
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
         this.layoutManager.elements.push(this.tbX);
