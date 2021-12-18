@@ -989,7 +989,9 @@ class GuiTextBox implements GuiElement {
         ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
     }
 };
-
+class GuiLabel extends GuiTextBox {
+    constructor()
+};
 GuiTextBox.initGlobalText();
 GuiTextBox.initGlobalNumbers();
 GuiTextBox.initGlobalSpecialChars();
@@ -1642,7 +1644,7 @@ class DrawingScreen {
         return this.dimensions.first / this.bounds.first * 4;
     }
     setLineWidthPen():void{
-        const pen:PenTool = (<PenTool> this.toolSelector.penTool);
+        const pen:PenTool = (<PenTool> this.toolSelector.toolArray[0]);
         this.lineWidth = pen.penSize();
         pen.tbSize.setText(String(this.lineWidth));
     }

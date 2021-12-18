@@ -772,6 +772,9 @@ GuiTextBox.textLookup = {};
 GuiTextBox.numbers = {};
 GuiTextBox.specialChars = {};
 ;
+class GuiLabel extends GuiTextBox {
+}
+;
 GuiTextBox.initGlobalText();
 GuiTextBox.initGlobalNumbers();
 GuiTextBox.initGlobalSpecialChars();
@@ -1305,7 +1308,7 @@ class DrawingScreen {
         return this.dimensions.first / this.bounds.first * 4;
     }
     setLineWidthPen() {
-        const pen = this.toolSelector.penTool;
+        const pen = this.toolSelector.toolArray[0];
         this.lineWidth = pen.penSize();
         pen.tbSize.setText(String(this.lineWidth));
     }
