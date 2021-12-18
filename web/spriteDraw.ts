@@ -990,7 +990,15 @@ class GuiTextBox implements GuiElement {
     }
 };
 class GuiLabel extends GuiTextBox {
-    constructor()
+    constructor(text:string, width:number, fontSize:number = 16, height:number = 2*fontSize, flags:number = 1,
+        backgroundColor:RGB = new RGB(255, 255, 255, 0))
+    {
+        super(false, width, null, fontSize, height, flags, backgroundColor, backgroundColor);
+        this.setText(text);
+    }
+    //override the textbox's handlers
+    handleKeyBoardEvents(type:string, e:any):void {}
+    handleTouchEvents(type:string, e:any):void {}
 };
 GuiTextBox.initGlobalText();
 GuiTextBox.initGlobalNumbers();
@@ -1083,7 +1091,7 @@ class DrawingScreenSettingsTool extends Tool {
         super(toolName, pathToImage);
         this.dim = dim;
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,6],[200,200]);
+        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [60,6],[200,200]);
         this.tbX = new GuiTextBox(true, 70);
         this.tbY = new GuiTextBox(true, 70);//, null, 16, 100);
         this.btUpdate = new GuiButton(e => this.recalcDim(),
@@ -1091,7 +1099,9 @@ class DrawingScreenSettingsTool extends Tool {
         //this.layoutManager.pixelDim[1] = this.tbX.height() * 2;
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
+        this.layoutManager.elements.push(new GuiLabel("width:", 85));
         this.layoutManager.elements.push(this.tbX);
+        this.layoutManager.elements.push(new GuiLabel("height:", 85));
         this.layoutManager.elements.push(this.tbY);
         this.layoutManager.elements.push(this.btUpdate);
     }
