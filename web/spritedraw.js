@@ -349,12 +349,15 @@ class SimpleGridLayoutManager {
         const pixelX = x * this.pixelDim[0] / this.matrixDim[0];
         const pixelY = y * this.pixelDim[1] / this.matrixDim[1];
         let free = true;
-        for (let i = 0; free && i < this.elementsPositions.length; i++) {
-            const elPos = this.elementsPositions[i];
-            if (elPos.x >= pixelX && elPos.x + elPos.width <= pixelX &&
-                elPos.y >= pixelY && elPos.y + elPos.height <= pixelY)
-                free = false;
-        }
+        if (pixelX < this.pixelDim[0] && pixelY < this.pixelDim[1])
+            for (let i = 0; free && i < this.elementsPositions.length; i++) {
+                const elPos = this.elementsPositions[i];
+                if (elPos.x >= pixelX && elPos.x + elPos.width <= pixelX &&
+                    elPos.y >= pixelY && elPos.y + elPos.height <= pixelY)
+                    free = false;
+            }
+        else
+            free = false;
         return free;
     }
     refreshMetaData(xPos = 0, yPos = 0, offsetX = 0, offsetY = 0) {
@@ -369,22 +372,22 @@ class SimpleGridLayoutManager {
             const elementWidth = Math.ceil(element.width() / this.columnWidth());
             let clearSpace = true;
             do {
-                let j = matX;
-                for (; clearSpace && j < matX + elementWidth; j++) {
-                    if (!this.isCellFree(matX + j, matY)) {
-                        clearSpace = false;
-                    }
+                let j = counter.second;
+                clearSpace = true;
+                for (; clearSpace && j < counter.second + elementWidth; j++) {
+                    console.log("j: ", j, " matY:", counter.first);
+                    clearSpace = this.isCellFree(j, counter.first);
                 }
-                if (!clearSpace && j + matX < elementWidth)
-                    matX++;
-                else if (!clearSpace && j + matX >= elementWidth) {
-                    matX = 0;
-                    matY++;
+                if (!clearSpace && j < elementWidth)
+                    counter.incLower();
+                else if (!clearSpace && j >= elementWidth) {
+                    counter.incHigher();
+                    counter.second = 0;
                 }
             } while (!clearSpace);
-            const x = matX * this.columnWidth();
-            const y = matY * this.rowHeight();
-            matX += elementWidth;
+            const x = counter.second * this.columnWidth();
+            const y = counter.first * this.rowHeight();
+            counter.second += elementWidth;
             this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
         }
     }
@@ -645,11 +648,12 @@ class GuiTextBox {
         this.drawInternalAndClear();
     }
     handleTouchEvents(type, e) {
-        if (this.active())
+        if (this.active()) {
             switch (type) {
                 case ("touchend"):
                     this.drawInternalAndClear();
             }
+        }
     }
     static initGlobalText() {
         for (let i = 65; i < 65 + 26; i++)
@@ -726,11 +730,13 @@ class GuiTextBox {
         if (this.cursorPos[1] > this.height() - 2) {
             deltaY += this.cursorPos[1] - this.height() + this.height() / 2;
         }
-        this.rows.forEach(row => row.y -= deltaY);
+        const newRows = [];
+        this.rows.forEach(row => newRows.push(new TextRow(row.text, row.x, row.y - deltaY, row.width)));
         this.cursorPos[1] -= deltaY;
+        return newRows;
     }
-    drawRows() {
-        this.rows.forEach(row => this.ctx.fillText(row.text, row.x, row.y, row.width));
+    drawRows(rows) {
+        rows.forEach(row => this.ctx.fillText(row.text, row.x, row.y, row.width));
     }
     drawCursor() {
         if (this.active()) {
@@ -753,8 +759,7 @@ class GuiTextBox {
         this.ctx.fillStyle = "#000000";
         this.rows.splice(0, this.rows.length);
         this.refreshMetaData();
-        this.adjustScrollToCursor();
-        this.drawRows();
+        this.drawRows(this.adjustScrollToCursor());
         this.drawCursor();
         this.ctx.strokeStyle = this.color().htmlRBG();
         this.ctx.lineWidth = 4;
@@ -811,7 +816,7 @@ class PenTool extends Tool {
         this.tbSize = new GuiTextBox(true, 100);
         this.btUpdate = new GuiButton(e => {
             this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128 ? this.tbSize.asNumber.get() : this.lineWidth;
-            this.tbSize.setText(this.lineWidth + "");
+            this.tbSize.setText(String(this.lineWidth));
         }, "update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
         this.layoutManager.elements.push(this.tbSize);
@@ -838,9 +843,9 @@ class DrawingScreenSettingsTool extends Tool {
         super(toolName, pathToImage);
         this.dim = dim;
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [3, 2], [200, 200]);
-        this.tbX = new GuiTextBox(true, 50);
-        this.tbY = new GuiTextBox(true, 50); //, null, 16, 100);
+        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 2], [200, 200]);
+        this.tbX = new GuiTextBox(true, 70);
+        this.tbY = new GuiTextBox(true, 70); //, null, 16, 100);
         this.btUpdate = new GuiButton(e => this.recalcDim(), "update", 50, this.tbX.height(), 12);
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
@@ -1145,12 +1150,20 @@ class DrawingScreen {
             const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
             switch (this.toolSelector.selectedToolName()) {
                 case ("pen"):
-                    this.setLineWidthPen();
+                    {
+                        const pen = this.toolSelector.tool();
+                        this.lineWidth = pen.lineWidth;
+                        pen.tbSize.setText(String(this.lineWidth));
+                    }
                     break;
                 case ("eraser"):
                     colorBackup.copy(this.color);
                     //this.lineWidth = dimensions[0] / bounds[0] * 4 * 3;
-                    this.lineWidth = this.toolSelector.tool().lineWidth;
+                    {
+                        const pen = this.toolSelector.tool();
+                        this.lineWidth = pen.lineWidth;
+                        pen.tbSize.setText(String(this.lineWidth));
+                    }
                     break;
                 case ("fill"):
                     break;
@@ -1172,7 +1185,6 @@ class DrawingScreen {
                         this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), false);
                     break;
                 case ("oval"):
-                    this.setLineWidthPen();
                 case ("rect"):
                     this.setLineWidthPen();
                 case ("copy"):
@@ -1252,6 +1264,7 @@ class DrawingScreen {
                     this.color.copy(noColor);
                     this.handleTap(e);
                     this.color.copy(colorBackup);
+                    this.setLineWidthPen();
                     break;
                 case ("rotate"):
                     this.saveDragDataToScreenAntiAliased();
@@ -1292,7 +1305,7 @@ class DrawingScreen {
         return this.dimensions.first / this.bounds.first * 4;
     }
     setLineWidthPen() {
-        const pen = this.toolSelector.toolArray[0];
+        const pen = this.toolSelector.penTool;
         this.lineWidth = pen.penSize();
         pen.tbSize.setText(String(this.lineWidth));
     }
@@ -1633,8 +1646,18 @@ class DrawingScreen {
     }
     setDim(newDim) {
         if (newDim.length === 2) {
-            this.bounds.first = Math.ceil(528 / newDim[0]) * newDim[0];
-            this.bounds.second = Math.ceil(528 / newDim[1]) * newDim[1];
+            let maxX = 1000;
+            let maxY = 1000;
+            for (let i = 500; i < 1000; i++) {
+                if (maxX > i && i % newDim[0] == 0) {
+                    this.bounds.first = Math.floor(i / newDim[0]) * newDim[0];
+                    maxX = this.bounds.first;
+                }
+                if (maxY > i && i % newDim[1] == 0) {
+                    maxY = i;
+                    this.bounds.second = Math.floor(i / newDim[1]) * newDim[1];
+                }
+            }
             const bounds = [this.bounds.first, this.bounds.second];
             this.dimensions = new Pair(newDim[0], newDim[1]);
             const dimensions = [this.dimensions.first, this.dimensions.second];

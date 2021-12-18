@@ -469,6 +469,7 @@ class SimpleGridLayoutManager implements GuiElement {
         const pixelX:number = x * this.pixelDim[0] / this.matrixDim[0];
         const pixelY:number = y * this.pixelDim[1] / this.matrixDim[1];
         let free:boolean = true;
+        if(pixelX < this.pixelDim[0] && pixelY < this.pixelDim[1])
         for(let i = 0; free && i < this.elementsPositions.length; i++)
         {
             const elPos:RowRecord = this.elementsPositions[i];
@@ -476,6 +477,8 @@ class SimpleGridLayoutManager implements GuiElement {
                 elPos.y >= pixelY && elPos.y + elPos.height <= pixelY)
                 free = false;
         }
+        else 
+            free = false;
         return free;
     }
     refreshMetaData(xPos:number = 0, yPos:number = 0, offsetX:number = 0, offsetY:number = 0):void
@@ -492,24 +495,24 @@ class SimpleGridLayoutManager implements GuiElement {
             const elementWidth:number = Math.ceil(element.width() / this.columnWidth());
             let clearSpace:boolean = true;
             do {
-                let j = matX;
+                let j = counter.second;
                 clearSpace = true;
-                for(;clearSpace && j < matX + elementWidth; j++)
+                for(;clearSpace && j < counter.second + elementWidth; j++)
                 {
-                    console.log("j: ",j," matY:",matY);
-                    clearSpace = this.isCellFree(j, matY);
+                    console.log("j: ",j," matY:",counter.first);
+                    clearSpace = this.isCellFree(j, counter.first);
                 }
                 if(!clearSpace && j < elementWidth)
-                    matX++;
+                    counter.incLower();
                 else if(!clearSpace && j >= elementWidth)
                 {
-                    matX = 0;
-                    matY++;
+                    counter.incHigher();
+                    counter.second = 0;
                 }
             } while(!clearSpace);
-            const x:number = matX * this.columnWidth();
-            const y:number = matY * this.rowHeight();
-            matX += elementWidth;
+            const x:number = counter.second * this.columnWidth();
+            const y:number = counter.first * this.rowHeight();
+            counter.second += elementWidth;
             this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
             
         }
@@ -1042,7 +1045,7 @@ class PenTool extends Tool {
         this.tbSize = new GuiTextBox(true, 100);
         this.btUpdate = new GuiButton(e => { 
             this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128?this.tbSize.asNumber.get():this.lineWidth; 
-            this.tbSize.setText(this.lineWidth+"")},
+            this.tbSize.setText(String(this.lineWidth))},
             "update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
         this.layoutManager.elements.push(this.tbSize);
@@ -1469,12 +1472,20 @@ class DrawingScreen {
             switch (this.toolSelector.selectedToolName())
             {
                 case("pen"):
-                this.setLineWidthPen();
+                {
+                    const pen:PenTool = (<PenTool> this.toolSelector.tool());
+                    this.lineWidth = pen.lineWidth;
+                    pen.tbSize.setText(String(this.lineWidth));
+                }
                 break;
                 case("eraser"):
                 colorBackup.copy(this.color);
                 //this.lineWidth = dimensions[0] / bounds[0] * 4 * 3;
-                this.lineWidth = (<PenTool> this.toolSelector.tool()).lineWidth;
+                {
+                    const pen:PenTool = (<PenTool> this.toolSelector.tool());
+                    this.lineWidth = pen.lineWidth;
+                    pen.tbSize.setText(String(this.lineWidth));
+                }
                 break;
                 case("fill"):
                 break;
@@ -1496,9 +1507,8 @@ class DrawingScreen {
                     this.dragData = this.getSelectedPixelGroup(new Pair<number>(gx,gy), false);
                 break;
                 case("oval"):
-                    this.setLineWidthPen();
                 case("rect"):
-                    this.setLineWidthPen();
+                this.setLineWidthPen();
                 case("copy"):
                 this.selectionRect = [e.touchPos[0], e.touchPos[1],0,0];
                 break;
@@ -1583,6 +1593,7 @@ class DrawingScreen {
                 this.color.copy(noColor);
                 this.handleTap(e);
                 this.color.copy(colorBackup);
+                this.setLineWidthPen();
                 break;
                 case("rotate"):
                 this.saveDragDataToScreenAntiAliased();
@@ -1631,7 +1642,7 @@ class DrawingScreen {
         return this.dimensions.first / this.bounds.first * 4;
     }
     setLineWidthPen():void{
-        const pen:PenTool = (<PenTool> this.toolSelector.toolArray[0]);
+        const pen:PenTool = (<PenTool> this.toolSelector.penTool);
         this.lineWidth = pen.penSize();
         pen.tbSize.setText(String(this.lineWidth));
     }
