@@ -736,6 +736,7 @@ class GuiTextBox implements GuiElement {
     canvas:HTMLCanvasElement;
     ctx:CanvasRenderingContext2D;
     cursor:number;
+    scaledCursorPos:number[];
     cursorPos:number[];
     scroll:number[];
     focused:boolean;
@@ -743,12 +744,16 @@ class GuiTextBox implements GuiElement {
     unSelectedColor:RGB;
     dimensions:number[];//[width, height]
     fontSize:number;
+    static center:number = 0;
+    static bottom:number = 1;
+    static top:number = 2;
+    static verticalAlignmentFlagsMask:number = 0x0011;
     static textLookup = {};
     static numbers = {};
     static specialChars = {};
     flags:number;
     submissionButton:GuiButton;
-    constructor(keyListener:boolean, width:number, submit:GuiButton = null, fontSize:number = 16, height:number = 2*fontSize, flags:number = 1,
+    constructor(keyListener:boolean, width:number, submit:GuiButton = null, fontSize:number = 16, height:number = 2*fontSize, flags:number = GuiTextBox.center,
         selectedColor:RGB = new RGB(80, 80, 220), unSelectedColor:RGB = new RGB(100, 100, 100))
     {
         this.cursor = 0;
@@ -760,6 +765,7 @@ class GuiTextBox implements GuiElement {
         this.asNumber = new Optional<number>();
         this.text = "";
         this.scroll = [0, 0];
+        this.scaledCursorPos = [0, 0];
         this.cursorPos = [0, 0];
         this.rows = [];
         this.canvas = document.createElement("canvas");
@@ -769,6 +775,19 @@ class GuiTextBox implements GuiElement {
         this.dimensions = [width, height];
         this.fontSize = fontSize;
         this.drawInternalAndClear();
+    }
+    
+    center():boolean
+    {
+        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) == GuiTextBox.center;
+    }
+    top():boolean
+    {
+        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) == GuiTextBox.top;
+    }
+    bottom():boolean
+    {
+        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) == GuiTextBox.bottom;
     }
     handleKeyBoardEvents(type:string, e:any):void
     {
@@ -938,16 +957,58 @@ class GuiTextBox implements GuiElement {
         }
         
     }
+    cursorRowIndex():number
+    {
+        let index:number = 0;
+        for(let i = 0; i < this.rows.length; i++)
+        {
+            const row:TextRow = this.rows[i];
+            if(row.y == this.cursor[1])
+                index = i;
+        }
+        return index;
+    }
     adjustScrollToCursor():TextRow[]
     {
         let deltaY:number = 0;
-        if(this.cursorPos[1] > this.height() - 2)
+        if(this.top())
+        {   
+            if(this.cursorPos[1] > this.height() - this.fontSize)
+            {
+                deltaY += this.cursorPos[1] - this.fontSize;
+            }
+            else if(this.cursorPos[1] < this.fontSize)
+            {
+                deltaY -= this.cursorPos[1] + this.fontSize;
+            }
+        } 
+        else if(this.center())
         {
-            deltaY += this.cursorPos[1] - this.height() + this.height() / 2;
+            if(this.cursorPos[1] > this.height()/2 + this.fontSize/2)
+            {
+                deltaY += this.cursorPos[1] - this.height() + this.height()/2;
+            }
+            else if(this.cursorPos[1] < this.height()/2 + this.fontSize/2)
+            {
+                deltaY += this.cursorPos[1] - (this.height()/2);
+            }
+        }
+        else
+        {
+            if(this.cursorPos[1] > this.height() - 3)
+            {
+                deltaY += this.cursorPos[1] - this.height() + 3;
+            }
+            else if(this.cursorPos[1] < this.height() - 3)
+            {
+
+                deltaY += this.cursorPos[1] - this.height() + 10;
+            }
         }
         const newRows:TextRow[] = [];
         this.rows.forEach(row => newRows.push(new TextRow(row.text, row.x, row.y - deltaY, row.width)));
-        this.cursorPos[1] -= deltaY;
+        this.scaledCursorPos[1] = this.cursorPos[1] - deltaY;
+        this.scaledCursorPos[0] = this.cursorPos[0];
         return newRows;
     }
     drawRows(rows:TextRow[]):void
@@ -958,7 +1019,7 @@ class GuiTextBox implements GuiElement {
         if(this.active())
         {
             this.ctx.fillStyle = "#000000";
-            this.ctx.fillRect(this.cursorPos[0], this.cursorPos[1] - this.fontSize+3, 2, this.fontSize-2);
+            this.ctx.fillRect(this.scaledCursorPos[0], this.scaledCursorPos[1] - this.fontSize+3, 2, this.fontSize-2);
         }
     }
     color():RGB
@@ -990,7 +1051,7 @@ class GuiTextBox implements GuiElement {
     }
 };
 class GuiLabel extends GuiTextBox {
-    constructor(text:string, width:number, fontSize:number = 16, height:number = 2*fontSize, flags:number = 1,
+    constructor(text:string, width:number, fontSize:number = 16, flags:number = GuiTextBox.bottom, height:number = 2*fontSize, 
         backgroundColor:RGB = new RGB(255, 255, 255, 0))
     {
         super(false, width, null, fontSize, height, flags, backgroundColor, backgroundColor);
@@ -1050,13 +1111,14 @@ class PenTool extends Tool {
     {
         super(toolName, pathToImage);
         this.lineWidth = strokeWith;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,2],[200,200]);
+        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,6],[200,200]);
         this.tbSize = new GuiTextBox(true, 100);
         this.btUpdate = new GuiButton(e => { 
             this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128?this.tbSize.asNumber.get():this.lineWidth; 
             this.tbSize.setText(String(this.lineWidth))},
             "update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
+        this.layoutManager.elements.push(new GuiLabel("Line Width:", 150, 16));
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
     }
@@ -1091,7 +1153,7 @@ class DrawingScreenSettingsTool extends Tool {
         super(toolName, pathToImage);
         this.dim = dim;
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [60,6],[200,200]);
+        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [4,6],[200,200]);
         this.tbX = new GuiTextBox(true, 70);
         this.tbY = new GuiTextBox(true, 70);//, null, 16, 100);
         this.btUpdate = new GuiButton(e => this.recalcDim(),
@@ -1099,10 +1161,11 @@ class DrawingScreenSettingsTool extends Tool {
         //this.layoutManager.pixelDim[1] = this.tbX.height() * 2;
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
-        this.layoutManager.elements.push(new GuiLabel("width:", 85));
+        this.layoutManager.elements.push(new GuiLabel("Width:", 85, 16));
+        this.layoutManager.elements.push(new GuiLabel("Height:", 85, 16));
         this.layoutManager.elements.push(this.tbX);
-        this.layoutManager.elements.push(new GuiLabel("height:", 85));
         this.layoutManager.elements.push(this.tbY);
+        this.layoutManager.elements.push(new GuiLabel(" ", 85));
         this.layoutManager.elements.push(this.btUpdate);
     }
     activateOptionPanel():void { this.layoutManager.activate(); }
@@ -3749,3 +3812,5 @@ async function main()
     }
 }
 main();
+//Below written by Ashley Moy
+console.log("Hey sexy");
