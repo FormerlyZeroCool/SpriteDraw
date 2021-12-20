@@ -1116,9 +1116,9 @@ class PenTool extends Tool {
         this.btUpdate = new GuiButton(e => { 
             this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128?this.tbSize.asNumber.get():this.lineWidth; 
             this.tbSize.setText(String(this.lineWidth))},
-            "update", 50, this.tbSize.height(), 12);
+            "Update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
-        this.layoutManager.elements.push(new GuiLabel("Line Width:", 150, 16));
+        this.layoutManager.elements.push(new GuiLabel("Line width:", 150, 16));
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
     }
@@ -1157,7 +1157,7 @@ class DrawingScreenSettingsTool extends Tool {
         this.tbX = new GuiTextBox(true, 70);
         this.tbY = new GuiTextBox(true, 70);//, null, 16, 100);
         this.btUpdate = new GuiButton(e => this.recalcDim(),
-            "update", 50, 22, 12);
+            "Update", 50, 22, 12);
         //this.layoutManager.pixelDim[1] = this.tbX.height() * 2;
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
