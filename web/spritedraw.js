@@ -871,9 +871,9 @@ class PenTool extends Tool {
         this.btUpdate = new GuiButton(e => {
             this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128 ? this.tbSize.asNumber.get() : this.lineWidth;
             this.tbSize.setText(String(this.lineWidth));
-        }, "update", 50, this.tbSize.height(), 12);
+        }, "Update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
-        this.layoutManager.elements.push(new GuiLabel("Line Width:", 150, 16));
+        this.layoutManager.elements.push(new GuiLabel("Line width:", 150, 16));
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
     }
@@ -893,6 +893,41 @@ class PenTool extends Tool {
     }
 }
 ;
+class ColorPickerTool extends Tool {
+    constructor(keyListener, touchHandler, field, toolName = "colorPicker", pathToImage = "images/colorPickerSprite.png") {
+        super(toolName, pathToImage);
+        this.field = field;
+        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 6], [200, 200]);
+        this.tbColor = new GuiTextBox(true, 200, null, 15);
+        this.setColorText();
+        this.btUpdate = new GuiButton(e => {
+            this.field.color.loadString(this.tbColor.text);
+        }, "Update", 50, this.tbColor.height(), 12);
+        this.tbColor.submissionButton = this.btUpdate;
+        this.layoutManager.elements.push(new GuiLabel("Color:", 150, 16));
+        this.layoutManager.elements.push(this.tbColor);
+        this.layoutManager.elements.push(this.btUpdate);
+    }
+    color() {
+        return this.field.color;
+    }
+    setColorText() {
+        if (this.color())
+            this.tbColor.setText(this.color().htmlRBGA());
+    }
+    activateOptionPanel() { this.layoutManager.activate(); }
+    deactivateOptionPanel() { this.layoutManager.deactivate(); }
+    getOptionPanel() {
+        return this.layoutManager;
+    }
+    optionPanelSize() {
+        return [this.layoutManager.width(), this.layoutManager.height()];
+    }
+    drawOptionPanel(ctx, x, y) {
+        this.layoutManager.draw(ctx, x, y);
+    }
+}
+;
 class DrawingScreenSettingsTool extends Tool {
     constructor(keyListener, touchHandler, dim = [524, 524], field, toolName = "pen", pathToImage = "images/penSprite.png") {
         super(toolName, pathToImage);
@@ -901,12 +936,12 @@ class DrawingScreenSettingsTool extends Tool {
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [4, 6], [200, 200]);
         this.tbX = new GuiTextBox(true, 70);
         this.tbY = new GuiTextBox(true, 70); //, null, 16, 100);
-        this.btUpdate = new GuiButton(e => this.recalcDim(), "update", 50, 22, 12);
+        this.btUpdate = new GuiButton(e => this.recalcDim(), "Update", 50, 22, 12);
         //this.layoutManager.pixelDim[1] = this.tbX.height() * 2;
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
-        this.layoutManager.elements.push(new GuiLabel("Width:", 85, 16));
-        this.layoutManager.elements.push(new GuiLabel("Height:", 85, 16));
+        this.layoutManager.elements.push(new GuiLabel("Width:", 90, 16));
+        this.layoutManager.elements.push(new GuiLabel("Height:", 90, 16));
         this.layoutManager.elements.push(this.tbX);
         this.layoutManager.elements.push(this.tbY);
         this.layoutManager.elements.push(new GuiLabel(" ", 85));
@@ -989,8 +1024,12 @@ class ToolSelector {
                 field.redoLast();
             }
         });
+        this.penTool = new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth(), "pen", "images/penSprite.png");
+        this.eraserTool = new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png");
+        this.settingsTool = new DrawingScreenSettingsTool(keyboardHandler, this.touchListener, [524, 524], field, "ScreenSettings", "images/settingsSprite.png");
+        this.colorPickerTool = new ColorPickerTool(keyboardHandler, this.touchListener, field, "colorPicker", "images/colorPickerSprite.png");
         this.toolArray = [];
-        this.toolArray.push(new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth(), "pen", "images/penSprite.png"));
+        this.toolArray.push(this.penTool);
         this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
         this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "line", "images/LineDrawSprite.png"));
         this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "rect", "images/rectSprite.png"));
@@ -1000,10 +1039,10 @@ class ToolSelector {
         this.toolArray.push(new GenericTool("drag", "images/dragSprite.png"));
         this.toolArray.push(new GenericTool("redo", "images/redoSprite.png"));
         this.toolArray.push(new GenericTool("undo", "images/undoSprite.png"));
-        this.toolArray.push(new GenericTool("colorPicker", "images/colorPickerSprite.png"));
-        this.toolArray.push(new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png"));
+        this.toolArray.push(this.colorPickerTool);
+        this.toolArray.push(this.eraserTool);
         this.toolArray.push(new GenericTool("rotate", "images/rotateSprite.png"));
-        this.toolArray.push(new DrawingScreenSettingsTool(keyboardHandler, this.touchListener, [524, 524], field, "ScreenSettings", "images/settingsSprite.png"));
+        this.toolArray.push(this.settingsTool);
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = "#000000";
@@ -1139,7 +1178,6 @@ class ClipBoard {
         ctx.fillStyle = "rgba(255,255,255,1)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(this.offscreenCanvas, 0, 0);
-        ctx.rotate(Math.PI / 2);
     }
 }
 class DrawingScreen {
@@ -1210,7 +1248,7 @@ class DrawingScreen {
             switch (this.toolSelector.selectedToolName()) {
                 case ("pen"):
                     {
-                        const pen = this.toolSelector.tool();
+                        const pen = this.toolSelector.penTool;
                         this.lineWidth = pen.lineWidth;
                         pen.tbSize.setText(String(this.lineWidth));
                     }
@@ -1219,7 +1257,7 @@ class DrawingScreen {
                     colorBackup.copy(this.color);
                     //this.lineWidth = dimensions[0] / bounds[0] * 4 * 3;
                     {
-                        const pen = this.toolSelector.tool();
+                        const pen = this.toolSelector.eraserTool;
                         this.lineWidth = pen.lineWidth;
                         pen.tbSize.setText(String(this.lineWidth));
                     }
@@ -1261,6 +1299,7 @@ class DrawingScreen {
                 case ("colorPicker"):
                     this.color.copy(this.screenBuffer[gx + gy * this.dimensions.first]);
                     newColorTextBox.value = this.color.htmlRBGA();
+                    this.toolSelector.colorPickerTool.setColorText();
                     break;
             }
         });
@@ -1364,7 +1403,7 @@ class DrawingScreen {
         return this.dimensions.first / this.bounds.first * 4;
     }
     setLineWidthPen() {
-        const pen = this.toolSelector.toolArray[0];
+        const pen = this.toolSelector.penTool;
         this.lineWidth = pen.penSize();
         pen.tbSize.setText(String(this.lineWidth));
     }
@@ -1705,32 +1744,32 @@ class DrawingScreen {
     }
     setDim(newDim) {
         if (newDim.length === 2) {
-            let maxX = 1000;
-            let maxY = 1000;
-            for (let i = 500; i < 1000; i++) {
-                if (maxX > i && i % newDim[0] == 0) {
-                    this.bounds.first = Math.floor(i / newDim[0]) * newDim[0];
-                    maxX = this.bounds.first;
-                }
-                if (maxY > i && i % newDim[1] == 0) {
-                    maxY = i;
-                    this.bounds.second = Math.floor(i / newDim[1]) * newDim[1];
-                }
+            if (newDim[0] < 300) {
+                this.bounds.first = newDim[0] * Math.floor(600 / newDim[0]);
+            }
+            else {
+                this.bounds.first = newDim[0];
+            }
+            if (newDim[1] < 300) {
+                this.bounds.second = newDim[1] * Math.floor(600 / newDim[1]);
+            }
+            else {
+                this.bounds.second = newDim[1];
             }
             const bounds = [this.bounds.first, this.bounds.second];
-            this.dimensions = new Pair(newDim[0], newDim[1]);
             const dimensions = [this.dimensions.first, this.dimensions.second];
             this.canvas.width = bounds[0];
             this.canvas.height = bounds[1];
             this.undoneUpdatesStack.empty();
             this.updatesStack.empty();
-            this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), this.keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
             if (this.screenBuffer.length != newDim[0] * newDim[1]) {
                 this.screenBuffer = [];
                 for (let i = this.screenBuffer.length; i < newDim[0] * newDim[1]; i++)
                     this.screenBuffer.push(new RGB(255, 255, 255, 0));
                 this.spriteScreenBuf = new Sprite([], this.bounds.first, this.bounds.second);
             }
+            this.dimensions = new Pair(newDim[0], newDim[1]);
+            this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), this.keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
         }
     }
     lowerPixelPercentage(a) {
@@ -3044,7 +3083,7 @@ async function main() {
         field.draw();
         if (animationGroupSelector.animationGroup())
             animationGroupSelector.draw();
-        if (counter++ % 2 == 0) {
+        if (counter++ % 3 == 0) {
             pallette.draw();
         }
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;

@@ -1141,30 +1141,33 @@ class PenTool extends Tool {
     }
 };
 class ColorPickerTool extends Tool {
-    color:RGB;
+    field:DrawingScreen;
     layoutManager:SimpleGridLayoutManager;
     tbColor:GuiTextBox;
     btUpdate:GuiButton;
-    constructor(keyListener:KeyboardHandler, touchHandler:SingleTouchListener, color:RGB, toolName:string = "colorPicker", pathToImage:string = "images/colorPickerSprite.png")
+    constructor(keyListener:KeyboardHandler, touchHandler:SingleTouchListener, field:DrawingScreen, toolName:string = "colorPicker", pathToImage:string = "images/colorPickerSprite.png")
     {
         super(toolName, pathToImage);
-        this.color = color;
+        this.field = field;
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,6],[200,200]);
-        this.tbColor = new GuiTextBox(true, 100);
+        this.tbColor = new GuiTextBox(true, 200, null, 15);
         this.setColorText();
         this.btUpdate = new GuiButton(e => { 
-            this.color.loadString(this.tbColor.text); 
-            this.tbColor.setText(String(this.color.htmlRBGA()))},
+            this.field.color.loadString(this.tbColor.text);},
             "Update", 50, this.tbColor.height(), 12);
         this.tbColor.submissionButton = this.btUpdate;
         this.layoutManager.elements.push(new GuiLabel("Color:", 150, 16));
         this.layoutManager.elements.push(this.tbColor);
         this.layoutManager.elements.push(this.btUpdate);
     }
+    color():RGB
+    {
+        return this.field.color;
+    }
     setColorText():void
     {
-        if(this.color)
-        this.tbColor.setText(this.color.htmlRBGA());
+        if(this.color())
+        this.tbColor.setText(this.color().htmlRBGA());
     }
     activateOptionPanel():void { this.layoutManager.activate(); }
     deactivateOptionPanel():void { this.layoutManager.deactivate(); }
@@ -1309,7 +1312,7 @@ class ToolSelector {
         this.penTool = new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth(), "pen","images/penSprite.png");
         this.eraserTool = new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth() * 3, "eraser","images/eraserSprite.png");
         this.settingsTool = new DrawingScreenSettingsTool(keyboardHandler, this.touchListener, [524, 524], field, "ScreenSettings","images/settingsSprite.png");
-        this.colorPickerTool = new ColorPickerTool(keyboardHandler, this.touchListener, field.color,"colorPicker", "images/colorPickerSprite.png");
+        this.colorPickerTool = new ColorPickerTool(keyboardHandler, this.touchListener, field,"colorPicker", "images/colorPickerSprite.png");
         this.toolArray = [];
         this.toolArray.push(this.penTool);
         this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
@@ -1596,7 +1599,7 @@ class DrawingScreen {
             {
                 case("pen"):
                 {
-                    const pen:PenTool = (<PenTool> this.toolSelector.tool());
+                    const pen:PenTool = this.toolSelector.penTool;
                     this.lineWidth = pen.lineWidth;
                     pen.tbSize.setText(String(this.lineWidth));
                 }
@@ -1605,7 +1608,7 @@ class DrawingScreen {
                 colorBackup.copy(this.color);
                 //this.lineWidth = dimensions[0] / bounds[0] * 4 * 3;
                 {
-                    const pen:PenTool = (<PenTool> this.toolSelector.tool());
+                    const pen:PenTool = this.toolSelector.eraserTool;
                     this.lineWidth = pen.lineWidth;
                     pen.tbSize.setText(String(this.lineWidth));
                 }
@@ -1647,7 +1650,6 @@ class DrawingScreen {
                 case("colorPicker"):
                 this.color.copy(this.screenBuffer[gx + gy*this.dimensions.first]);
                 newColorTextBox.value = this.color.htmlRBGA();
-                this.toolSelector.colorPickerTool.color.copy(this.color);
                 this.toolSelector.colorPickerTool.setColorText();
                 break;
             }
@@ -2188,7 +2190,6 @@ class DrawingScreen {
             this.undoneUpdatesStack.empty();
             this.updatesStack.empty();
 
-        this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), this.keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
             if(this.screenBuffer.length != newDim[0]*newDim[1])
             {
                 this.screenBuffer = [];
@@ -2197,6 +2198,7 @@ class DrawingScreen {
                 this.spriteScreenBuf = new Sprite([], this.bounds.first, this.bounds.second); 
             }
             this.dimensions = new Pair(newDim[0], newDim[1]);
+            this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), this.keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
 
         }
     }
