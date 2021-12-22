@@ -1153,7 +1153,7 @@ class ColorPickerTool extends Tool {
         this.tbColor = new GuiTextBox(true, 200, null, 15);
         this.setColorText();
         this.btUpdate = new GuiButton(e => { 
-            this.field.color.loadString(this.tbColor.text);},
+            this.field.palette.setSelectedColor(this.tbColor.text);},
             "Update", 50, this.tbColor.height(), 12);
         this.tbColor.submissionButton = this.btUpdate;
         this.layoutManager.elements.push(new GuiLabel("Color:", 150, 16));
@@ -1511,6 +1511,7 @@ class DrawingScreen {
     screenBuffer:Array<RGB>;
     clipBoard:ClipBoard;
     color:RGB;
+    palette:Pallette;
     listeners:SingleTouchListener;
     keyboardHandler:KeyboardHandler;
     selectionRect:Array<number>;
@@ -1523,9 +1524,10 @@ class DrawingScreen {
     dragDataMinPoint:number;
     lineWidth:number;
 
-    constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, offset:Array<number>, dimensions:Array<number>, newColorTextBox:HTMLInputElement)
+    constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, palette:Pallette, offset:Array<number>, dimensions:Array<number>, newColorTextBox:HTMLInputElement)
     {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
+        this.palette = palette;
         this.dimensions = new Pair<number>(dimensions[0], dimensions[1]);
         this.offset = new Pair<number>(offset[0], offset[1]);
         this.bounds = new Pair<number>(bounds[0], bounds[1]);
@@ -1597,13 +1599,6 @@ class DrawingScreen {
             
             switch (this.toolSelector.selectedToolName())
             {
-                case("pen"):
-                {
-                    const pen:PenTool = this.toolSelector.penTool;
-                    this.lineWidth = pen.lineWidth;
-                    pen.tbSize.setText(String(this.lineWidth));
-                }
-                break;
                 case("eraser"):
                 colorBackup.copy(this.color);
                 //this.lineWidth = dimensions[0] / bounds[0] * 4 * 3;
@@ -1614,9 +1609,6 @@ class DrawingScreen {
                 }
                 break;
                 case("fill"):
-                break;
-                case("line"):
-                this.setLineWidthPen();
                 break;
                 case("rotate"):
                 this.saveDragDataToScreenAntiAliased();
@@ -1634,9 +1626,14 @@ class DrawingScreen {
                 break;
                 case("oval"):
                 case("rect"):
-                this.setLineWidthPen();
                 case("copy"):
                 this.selectionRect = [e.touchPos[0], e.touchPos[1],0,0];
+                case("line"):
+                case("pen"):
+                {
+                    this.setLineWidthPen();
+                    this.color = this.palette.calcColor();
+                }
                 break;
                 case("paste"):                
                 this.pasteRect = [e.touchPos[0] - this.pasteRect[2]/2, e.touchPos[1] - this.pasteRect[3]/2,this.pasteRect[2],this.pasteRect[3]];
@@ -3765,7 +3762,8 @@ async function main()
 {
     const newColor:HTMLInputElement = <HTMLInputElement> document.getElementById("newColor");
     const keyboardHandler:KeyboardHandler = new KeyboardHandler();
-    const field:DrawingScreen = new DrawingScreen(<HTMLCanvasElement> document.getElementById("screen"), keyboardHandler,[0,0], dim, newColor);
+    const pallette:Pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler, newColor);
+    const field:DrawingScreen = new DrawingScreen(<HTMLCanvasElement> document.getElementById("screen"), keyboardHandler, pallette,[0,0], dim, newColor);
     
     const animationGroupSelector:AnimationGroupsSelector = new AnimationGroupsSelector(field, keyboardHandler, "animation_group_selector", "animations", "sprites_canvas", dim[0], dim[1], 128, 128);
     animationGroupSelector.createAnimationGroup();
@@ -3786,7 +3784,6 @@ async function main()
         animationGroupSelector.cloneSelectedAnimationGroup();
     });
     
-    const pallette:Pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler, newColor);
     const setPalletteColorButton = document.getElementById("setPalletteColorButton");
     const palletteColorButtonListener:SingleTouchListener = new SingleTouchListener(setPalletteColorButton, true, true);
     palletteColorButtonListener.registerCallBack("touchstart", e => true, e => {
