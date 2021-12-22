@@ -27,7 +27,7 @@ class Queue {
         this.length = 0;
     }
     push(val) {
-        if (this.length == this.data.length) {
+        if (this.length === this.data.length) {
             const newData = [];
             newData.length = this.data.length << 1;
             for (let i = 0; i < this.data.length; i++) {
@@ -582,13 +582,13 @@ class GuiTextBox {
         this.drawInternalAndClear();
     }
     center() {
-        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) == GuiTextBox.center;
+        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) === GuiTextBox.center;
     }
     top() {
-        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) == GuiTextBox.top;
+        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) === GuiTextBox.top;
     }
     bottom() {
-        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) == GuiTextBox.bottom;
+        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) === GuiTextBox.bottom;
     }
     handleKeyBoardEvents(type, e) {
         if (this.active())
@@ -738,7 +738,7 @@ class GuiTextBox {
         let index = 0;
         for (let i = 0; i < this.rows.length; i++) {
             const row = this.rows[i];
-            if (row.y == this.cursor[1])
+            if (row.y === this.cursor[1])
                 index = i;
         }
         return index;
@@ -984,6 +984,8 @@ class ToolSelector {
             const imgPerColumn = (this.canvas.height / this.imgHeight);
             if (document.activeElement.id === "body" || field.canvas === document.activeElement || this.canvas === document.activeElement) {
                 e.preventDefault();
+                if (this.tool())
+                    this.tool().deactivateOptionPanel();
                 if (e.code === "ArrowUp")
                     if (this.selectedTool !== 0)
                         this.selectedTool--;
@@ -1005,6 +1007,8 @@ class ToolSelector {
                     else
                         this.selectedTool = this.toolArray.length - 1;
                 }
+                if (this.tool())
+                    this.tool().activateOptionPanel();
             }
         });
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
@@ -1015,12 +1019,16 @@ class ToolSelector {
             const x = Math.floor(e.touchPos[0] / this.imgWidth);
             const clicked = y + x * imgPerColumn;
             if (clicked < this.toolArray.length) {
+                if (this.tool())
+                    this.tool().deactivateOptionPanel();
                 this.selectedTool = clicked;
+                if (this.tool())
+                    this.tool().activateOptionPanel();
             }
-            if (this.selectedToolName() == "undo") {
+            if (this.selectedToolName() === "undo") {
                 field.undoLast();
             }
-            else if (this.selectedToolName() == "redo") {
+            else if (this.selectedToolName() === "redo") {
                 field.redoLast();
             }
         });
@@ -1231,7 +1239,7 @@ class DrawingScreen {
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
-            if (this.updatesStack.length() == 0 || this.updatesStack.get(this.updatesStack.length() - 1).length) {
+            if (this.updatesStack.length() === 0 || this.updatesStack.get(this.updatesStack.length() - 1).length) {
                 if (this.toolSelector.selectedToolName() !== "redo" && this.toolSelector.selectedToolName() !== "undo") {
                     this.updatesStack.push(new Array());
                     this.undoneUpdatesStack.empty();
@@ -1249,11 +1257,11 @@ class DrawingScreen {
             switch (this.toolSelector.selectedToolName()) {
                 case ("eraser"):
                     colorBackup.copy(this.color);
-                    //this.lineWidth = dimensions[0] / bounds[0] * 4 * 3;
                     {
-                        const pen = this.toolSelector.eraserTool;
-                        this.lineWidth = pen.lineWidth;
-                        pen.tbSize.setText(String(this.lineWidth));
+                        const eraser = this.toolSelector.eraserTool;
+                        this.lineWidth = eraser.lineWidth;
+                        eraser.tbSize.setText(String(this.lineWidth));
+                        this.color.copy(noColor);
                     }
                     break;
                 case ("fill"):
@@ -1294,8 +1302,8 @@ class DrawingScreen {
                     break;
                 case ("colorPicker"):
                     this.color.copy(this.screenBuffer[gx + gy * this.dimensions.first]);
-                    newColorTextBox.value = this.color.htmlRBGA();
-                    this.toolSelector.colorPickerTool.setColorText();
+                    newColorTextBox.value = this.color.htmlRBGA(); //for html instead of Gui lib
+                    this.toolSelector.colorPickerTool.setColorText(); // for Gui lib
                     break;
             }
         });
@@ -1307,7 +1315,6 @@ class DrawingScreen {
                     this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                     break;
                 case ("eraser"):
-                    this.color.copy(noColor);
                     this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                     break;
                 case ("drag"):
@@ -1315,7 +1322,7 @@ class DrawingScreen {
                     this.dragData.first.second += (e.deltaY / this.bounds.second) * this.dimensions.second;
                     break;
                 case ("rotate"):
-                    if (e.moveCount % 2 == 0)
+                    if (e.moveCount % 2 === 0)
                         if (e.deltaY > 0)
                             this.rotateSelectedPixelGroup(Math.PI / 32, [(this.listeners.startTouchPos[0] / this.bounds.first) * this.dimensions.first,
                                 (this.listeners.startTouchPos[1] / this.bounds.second) * this.dimensions.second]);
@@ -1355,10 +1362,8 @@ class DrawingScreen {
                     this.handleTap(e);
                     break;
                 case ("eraser"):
-                    this.color.copy(noColor);
                     this.handleTap(e);
                     this.color.copy(colorBackup);
-                    this.setLineWidthPen();
                     break;
                 case ("rotate"):
                     this.saveDragDataToScreenAntiAliased();
@@ -1374,10 +1379,12 @@ class DrawingScreen {
                     this.fillArea(new Pair(gx, gy));
                     break;
                 case ("line"):
-                    this.handleTap(e);
                     const x1 = e.touchPos[0] - e.deltaX;
                     const y1 = e.touchPos[1] - e.deltaY;
-                    await this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
+                    if (e.deltaX === 0 && e.deltaY === 0) {
+                        this.handleTap(e);
+                    }
+                    this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                     break;
                 case ("copy"):
                     const bounds = this.saveToBuffer(this.selectionRect, this.clipBoard.clipBoardBuffer);
@@ -1388,7 +1395,7 @@ class DrawingScreen {
                     this.paste();
                     break;
                 case ("rect"):
-                    await this.drawRect([this.selectionRect[0], this.selectionRect[1]], [this.selectionRect[0] + this.selectionRect[2], this.selectionRect[1] + this.selectionRect[3]]);
+                    this.drawRect([this.selectionRect[0], this.selectionRect[1]], [this.selectionRect[0] + this.selectionRect[2], this.selectionRect[1] + this.selectionRect[3]]);
                     this.selectionRect = [0, 0, 0, 0];
                     break;
             }
@@ -1473,7 +1480,7 @@ class DrawingScreen {
             }
         }
     }
-    async fillArea(startCoordinate) {
+    fillArea(startCoordinate) {
         const altHeld = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
         let stack;
         if (this.keyboardHandler.keysHeld["KeyS"]) //possibly more visiually appealling algo (bfs), 
@@ -1690,7 +1697,7 @@ class DrawingScreen {
             const backedUpFrame = new Array();
             this.undoneUpdatesStack.push(backedUpFrame);
             const divisor = 60 * 10;
-            const interval = data.length / divisor == 0 ? 1 : Math.floor(data.length / divisor);
+            const interval = data.length / divisor === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter = 0;
             for (let i = 0; i < data.length; i++) {
                 intervalCounter++;
@@ -1699,7 +1706,7 @@ class DrawingScreen {
                 const color = (this.screenBuffer[el.first]).color;
                 this.screenBuffer[el.first].copy(el.second);
                 el.second.color = color;
-                if (intervalCounter % interval == 0 && this.keyboardHandler.keysHeld["KeyS"]) {
+                if (intervalCounter % interval === 0 && this.keyboardHandler.keysHeld["KeyS"]) {
                     await sleep(1);
                 }
             }
@@ -1714,7 +1721,7 @@ class DrawingScreen {
             const backedUpFrame = new Array();
             this.updatesStack.push(backedUpFrame);
             const divisor = 60 * 10;
-            const interval = data.length / divisor == 0 ? 1 : Math.floor(data.length / divisor);
+            const interval = data.length / divisor === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter = 0;
             for (let i = 0; i < data.length; i++) {
                 intervalCounter++;
@@ -1723,7 +1730,7 @@ class DrawingScreen {
                 const color = this.screenBuffer[el.first].color;
                 this.screenBuffer[el.first].copy(el.second);
                 el.second.color = color;
-                if (intervalCounter % interval == 0 && this.keyboardHandler.keysHeld["KeyS"]) {
+                if (intervalCounter % interval === 0 && this.keyboardHandler.keysHeld["KeyS"]) {
                     await sleep(1);
                 }
             }
@@ -1731,9 +1738,6 @@ class DrawingScreen {
         else {
             console.log("Error, nothing to redo");
         }
-    }
-    hashP(x, y) {
-        return x + y * this.dimensions.first;
     }
     inBufferBounds(x, y) {
         return x >= 0 && x < this.dimensions.first && y >= 0 && y < this.dimensions.second;
@@ -1861,7 +1865,7 @@ class DrawingScreen {
         const source = new RGB(0, 0, 0, 0);
         const toCopy = new RGB(0, 0, 0, 0);
         spriteScreenBuf.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
-        if (this.dimensions.first == this.canvas.width && this.dimensions.second == this.canvas.height) { //if drawing screen dimensions, and canvas dimensions are the same just update per pixel
+        if (this.dimensions.first === this.canvas.width && this.dimensions.second === this.canvas.height) { //if drawing screen dimensions, and canvas dimensions are the same just update per pixel
             for (let y = 0; y < this.dimensions.second; y++) {
                 for (let x = 0; x < this.dimensions.first; x++) {
                     const index = (x + y * this.dimensions.first);
@@ -2107,7 +2111,7 @@ class SingleTouchListener {
         ++this.moveCount;
         let touchMove = event.changedTouches.item(0);
         for (let i = 0; i < event.changedTouches["length"]; i++) {
-            if (event.changedTouches.item(i).identifier == this.touchStart.identifier) {
+            if (event.changedTouches.item(i).identifier === this.touchStart.identifier) {
                 touchMove = event.changedTouches.item(i);
             }
         }
@@ -2148,7 +2152,7 @@ class SingleTouchListener {
         if (this.registeredTouch) {
             let touchEnd = event.changedTouches.item(0);
             for (let i = 0; i < event.changedTouches["length"]; i++) {
-                if (event.changedTouches.item(i).identifier == this.touchStart.identifier) {
+                if (event.changedTouches.item(i).identifier === this.touchStart.identifier) {
                     touchEnd = event.changedTouches.item(i);
                 }
             }
@@ -2227,11 +2231,11 @@ class Pallette {
             let b = 30;
             const delta = 85;
             for (let i = 0; i < colorCount; i++) {
-                r += ((i % 3 == 0) ? delta : 0);
-                r += ((i % 5 == 2) ? delta : 0);
-                g += ((i % 3 == 1) ? delta : 0);
-                b += ((i % 2 == 1) ? delta : 0);
-                b += ((i % 3 == 2) ? delta : 0);
+                r += ((i % 3 === 0) ? delta : 0);
+                r += ((i % 5 === 2) ? delta : 0);
+                g += ((i % 3 === 1) ? delta : 0);
+                b += ((i % 2 === 1) ? delta : 0);
+                b += ((i % 3 === 2) ? delta : 0);
                 this.colors.push(new RGB(r % 256, g % 256, b % 256, 255));
             }
         }
@@ -2283,7 +2287,7 @@ class Pallette {
             visibleColor.setAlpha(255);
             this.ctx.fillStyle = visibleColor.htmlRBGA();
             this.ctx.fillText((i + 1) % 10, i * width + width * 0.5, height / 3);
-            if (i == this.highLightedCell) {
+            if (i === this.highLightedCell) {
                 this.ctx.strokeStyle = "#000000";
                 for (let j = 0; j < height; j += 5)
                     ctx.strokeRect(i * width + j, j, width - j * 2, height - j * 2);
@@ -2493,7 +2497,7 @@ class SpriteSelector {
         });
         listener.registerCallBack("touchmove", e => true, e => {
             const clickedSprite = Math.floor(e.touchPos[0] / canvas.width * this.spritesPerRow) + spritesPerRow * Math.floor(e.touchPos[1] / this.spriteHeight);
-            if (e.moveCount == 1 && this.sprites()[clickedSprite] && this.sprites().length > 1) {
+            if (e.moveCount === 1 && this.sprites()[clickedSprite] && this.sprites().length > 1) {
                 if (this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"]) {
                     const dragSprite = new Sprite([], 1, 1);
                     dragSprite.copySprite(this.sprites()[clickedSprite]);
@@ -2613,7 +2617,7 @@ class AnimationGroup {
             document.activeElement.blur();
         });
         listener.registerCallBack("touchmove", e => true, e => {
-            if (e.moveCount == 1) {
+            if (e.moveCount === 1) {
                 const clickedSprite = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
                 this.dragSprite = this.animations.splice(clickedSprite, 1)[0];
                 this.dragSpritePos[0] = e.touchPos[0] - this.animationWidth / 2;
@@ -2787,7 +2791,7 @@ class AnimationGroup {
         for (let i = 0; i < this.animations.length; i++) {
             x = (dragSpriteAdjustment) % this.animationsPerRow;
             y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
-            if (this.dragSprite && x == touchX && y == touchY) {
+            if (this.dragSprite && x === touchX && y === touchY) {
                 dragSpriteAdjustment++;
                 x = (dragSpriteAdjustment) % this.animationsPerRow;
                 y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
@@ -2832,7 +2836,7 @@ class AnimationGroupsSelector {
         });
         this.listener.registerCallBack("touchmove", e => true, e => {
             const clickedIndex = Math.floor(e.touchPos[0] / this.renderWidth) + Math.floor(e.touchPos[1] / this.renderHeight);
-            if (e.moveCount == 1 && this.animationGroups.length > 1) {
+            if (e.moveCount === 1 && this.animationGroups.length > 1) {
                 this.dragAnimationGroup = this.animationGroups.splice(clickedIndex, 1)[0];
                 if (this.selectedAnimationGroup > 0 && this.selectedAnimationGroup >= this.animationGroups.length) {
                     this.selectedAnimationGroup--;
@@ -2952,7 +2956,7 @@ class AnimationGroupsSelector {
         const clickedIndex = Math.floor(this.listener.touchPos[0] / this.renderWidth) + Math.floor(this.listener.touchPos[1] / this.renderHeight);
         let offSetI = 0;
         for (let i = 0; i < this.animationGroups.length; i++, offSetI++) {
-            if (i == clickedIndex && this.dragAnimationGroup)
+            if (i === clickedIndex && this.dragAnimationGroup)
                 offSetI++;
             if (this.animationGroup())
                 this.drawIndex(ctx, i, offSetI);
@@ -2961,11 +2965,11 @@ class AnimationGroupsSelector {
             let spriteIndex = this.dragAnimationGroup.second.second++;
             let animationIndex = this.dragAnimationGroup.second.first;
             const group = this.dragAnimationGroup.first;
-            if (group.animations[animationIndex].sprites.length == spriteIndex) {
+            if (group.animations[animationIndex].sprites.length === spriteIndex) {
                 animationIndex++;
                 spriteIndex = 0;
             }
-            if (group.animations.length == animationIndex)
+            if (group.animations.length === animationIndex)
                 animationIndex = 0;
             this.dragAnimationGroup.second.first = animationIndex;
             this.dragAnimationGroup.second.second = spriteIndex;
@@ -3079,14 +3083,14 @@ async function main() {
         field.draw();
         if (animationGroupSelector.animationGroup())
             animationGroupSelector.draw();
-        if (counter++ % 3 == 0) {
+        if (counter++ % 3 === 0) {
             pallette.draw();
         }
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
         if (1000 / (Date.now() - start) < fps - 2) {
             //console.log("avgfps:",Math.floor(1000/(Date.now() - start)))
-            if (1000 / (Date.now() - start) == 0)
+            if (1000 / (Date.now() - start) === 0)
                 console.log("frame time:", 1000 / (Date.now() - start));
         }
     }

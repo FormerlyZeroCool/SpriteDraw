@@ -37,7 +37,7 @@ class Queue<T> {
     }
     push(val):void
     {
-        if(this.length == this.data.length)
+        if(this.length === this.data.length)
         {
             const newData:T[] = [];
             newData.length = this.data.length << 1;
@@ -779,15 +779,15 @@ class GuiTextBox implements GuiElement {
     
     center():boolean
     {
-        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) == GuiTextBox.center;
+        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) === GuiTextBox.center;
     }
     top():boolean
     {
-        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) == GuiTextBox.top;
+        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) === GuiTextBox.top;
     }
     bottom():boolean
     {
-        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) == GuiTextBox.bottom;
+        return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) === GuiTextBox.bottom;
     }
     handleKeyBoardEvents(type:string, e:any):void
     {
@@ -963,7 +963,7 @@ class GuiTextBox implements GuiElement {
         for(let i = 0; i < this.rows.length; i++)
         {
             const row:TextRow = this.rows[i];
-            if(row.y == this.cursor[1])
+            if(row.y === this.cursor[1])
                 index = i;
         }
         return index;
@@ -1265,6 +1265,9 @@ class ToolSelector {
                 if(document.activeElement.id === "body" || field.canvas === document.activeElement || this.canvas === document.activeElement)
                 {
                     e.preventDefault();
+                    if(this.tool())
+                        this.tool().deactivateOptionPanel();
+                        
                     if(e.code === "ArrowUp")
                         if(this.selectedTool !== 0)    
                             this.selectedTool--;
@@ -1286,6 +1289,8 @@ class ToolSelector {
                         else
                             this.selectedTool = this.toolArray.length - 1;
                     }
+                    if(this.tool())
+                        this.tool().activateOptionPanel();
                 }  
             });
         this.touchListener = new SingleTouchListener(this.canvas, true, true);       
@@ -1297,13 +1302,17 @@ class ToolSelector {
             const clicked:number = y + x * imgPerColumn;
             if(clicked < this.toolArray.length)
             {
+                if(this.tool())
+                    this.tool().deactivateOptionPanel();
                 this.selectedTool = clicked;
+                if(this.tool())
+                    this.tool().activateOptionPanel();
             }
-            if(this.selectedToolName() == "undo")
+            if(this.selectedToolName() === "undo")
             {
                 field.undoLast();
             }
-            else if(this.selectedToolName() == "redo")
+            else if(this.selectedToolName() === "redo")
             {
                 field.redoLast();
             }
@@ -1576,7 +1585,7 @@ class DrawingScreen {
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.listeners.registerCallBack("touchstart", e => true, e => {
             //save for undo
-            if(this.updatesStack.length() == 0 || this.updatesStack.get(this.updatesStack.length() - 1).length)
+            if(this.updatesStack.length() === 0 || this.updatesStack.get(this.updatesStack.length() - 1).length)
             {
                 if(this.toolSelector.selectedToolName() !== "redo" && this.toolSelector.selectedToolName() !== "undo")
                 {
@@ -1601,11 +1610,11 @@ class DrawingScreen {
             {
                 case("eraser"):
                 colorBackup.copy(this.color);
-                //this.lineWidth = dimensions[0] / bounds[0] * 4 * 3;
                 {
-                    const pen:PenTool = this.toolSelector.eraserTool;
-                    this.lineWidth = pen.lineWidth;
-                    pen.tbSize.setText(String(this.lineWidth));
+                    const eraser:PenTool = this.toolSelector.eraserTool;
+                    this.lineWidth = eraser.lineWidth;
+                    eraser.tbSize.setText(String(this.lineWidth));
+                    this.color.copy(noColor);
                 }
                 break;
                 case("fill"):
@@ -1646,8 +1655,8 @@ class DrawingScreen {
                 break;
                 case("colorPicker"):
                 this.color.copy(this.screenBuffer[gx + gy*this.dimensions.first]);
-                newColorTextBox.value = this.color.htmlRBGA();
-                this.toolSelector.colorPickerTool.setColorText();
+                newColorTextBox.value = this.color.htmlRBGA();//for html instead of Gui lib
+                this.toolSelector.colorPickerTool.setColorText();// for Gui lib
                 break;
             }
         });
@@ -1661,7 +1670,6 @@ class DrawingScreen {
                 this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                 break;
                 case("eraser"):
-                this.color.copy(noColor);
                 this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                 break;
                 case("drag"):
@@ -1669,7 +1677,7 @@ class DrawingScreen {
                 this.dragData.first.second += (e.deltaY / this.bounds.second) * this.dimensions.second;
                 break;
                 case("rotate"):
-                if(e.moveCount % 2 == 0)
+                if(e.moveCount % 2 === 0)
                     if(e.deltaY > 0)
                         this.rotateSelectedPixelGroup(Math.PI/32, [(this.listeners.startTouchPos[0] / this.bounds.first) * this.dimensions.first,
                             (this.listeners.startTouchPos[1] / this.bounds.second) * this.dimensions.second]);
@@ -1714,46 +1722,43 @@ class DrawingScreen {
                 this.handleTap(e);
                 break;
                 case("eraser"):
-                this.color.copy(noColor);
-                this.handleTap(e);
-                this.color.copy(colorBackup);
-                this.setLineWidthPen();
+                    this.handleTap(e);
+                    this.color.copy(colorBackup);
                 break;
                 case("rotate"):
-                this.saveDragDataToScreenAntiAliased();
-                this.dragData = null;
+                    this.saveDragDataToScreenAntiAliased();
+                    this.dragData = null;
                 break;
                 case("drag"):
-                this.saveDragDataToScreen();
-                this.dragData = null;
+                    this.saveDragDataToScreen();
+                    this.dragData = null;
                 break;
                 case("fill"):
-                const gx:number = Math.floor((e.touchPos[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
-                const gy:number = Math.floor((e.touchPos[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
+                    const gx:number = Math.floor((e.touchPos[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
+                    const gy:number = Math.floor((e.touchPos[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
 
-                this.fillArea(new Pair<number>(gx, gy));
+                    this.fillArea(new Pair<number>(gx, gy));
                 break;
                 case("line"):
-                this.handleTap(e);
-                const x1:number = e.touchPos[0] - e.deltaX;
-                const y1:number = e.touchPos[1] - e.deltaY;
-                await this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
-
+                    const x1:number = e.touchPos[0] - e.deltaX;
+                    const y1:number = e.touchPos[1] - e.deltaY;
+                    if(e.deltaX === 0 && e.deltaY === 0)
+                    {
+                        this.handleTap(e);
+                    }
+                    this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                 break;
                 case("copy"):
                     const bounds:Pair<number> = this.saveToBuffer(this.selectionRect, this.clipBoard.clipBoardBuffer);
                     this.clipBoard.refreshImageFromBuffer(bounds.first, bounds.second);
                     this.selectionRect = [0,0,0,0];
-
                 break;
                 case("paste"):
-                this.paste();
-
+                    this.paste();
                 break;
                 case("rect"):
-                await this.drawRect([this.selectionRect[0], this.selectionRect[1]], [this.selectionRect[0]+this.selectionRect[2], this.selectionRect[1]+ this.selectionRect[3]]);
-                this.selectionRect = [0,0,0,0];
-
+                    this.drawRect([this.selectionRect[0], this.selectionRect[1]], [this.selectionRect[0]+this.selectionRect[2], this.selectionRect[1]+ this.selectionRect[3]]);
+                    this.selectionRect = [0,0,0,0];
                 break;
             }
         });
@@ -1803,7 +1808,7 @@ class DrawingScreen {
         }
         return new Pair(width, height);
     }
-    paste()
+    paste():void
     {
         const dest_x:number = Math.floor((this.pasteRect[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
         const dest_y:number = Math.floor((this.pasteRect[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
@@ -1856,7 +1861,7 @@ class DrawingScreen {
             }
         }
     }
-    async fillArea(startCoordinate:Pair<number>)
+    fillArea(startCoordinate:Pair<number>):void
     {
         const altHeld:boolean = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
         let stack:any;
@@ -2103,7 +2108,7 @@ class DrawingScreen {
             const backedUpFrame = new Array<Pair<number, RGB>>();
             this.undoneUpdatesStack.push(backedUpFrame);
             const divisor:number =  60*10;
-            const interval:number = data.length/divisor == 0 ? 1 : Math.floor(data.length / divisor);
+            const interval:number = data.length/divisor === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter:number = 0;
             for(let i = 0; i < data.length; i++)
             {
@@ -2113,7 +2118,7 @@ class DrawingScreen {
                     const color:number = (this.screenBuffer[el.first]).color;
                     this.screenBuffer[el.first].copy(el.second);
                     el.second.color = color;
-                    if(intervalCounter % interval == 0 && this.keyboardHandler.keysHeld["KeyS"])
+                    if(intervalCounter % interval === 0 && this.keyboardHandler.keysHeld["KeyS"])
                     {
                         await sleep(1);
                     }
@@ -2132,7 +2137,7 @@ class DrawingScreen {
             const backedUpFrame = new Array<Pair<number, RGB>>();
             this.updatesStack.push(backedUpFrame);
             const divisor:number =  60*10;
-            const interval:number = data.length/divisor == 0 ? 1 : Math.floor(data.length / divisor);
+            const interval:number = data.length/divisor === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter:number = 0;
             for(let i = 0; i < data.length; i++)
             {
@@ -2142,7 +2147,7 @@ class DrawingScreen {
                     const color:number = this.screenBuffer[el.first].color;
                     this.screenBuffer[el.first].copy(el.second);
                     el.second.color = color;
-                    if(intervalCounter % interval == 0 && this.keyboardHandler.keysHeld["KeyS"])
+                    if(intervalCounter % interval === 0 && this.keyboardHandler.keysHeld["KeyS"])
                     {
                         await sleep(1);
                     }
@@ -2151,10 +2156,6 @@ class DrawingScreen {
         else{
             console.log("Error, nothing to redo");
         }
-    }
-    hashP(x:number, y:number):number
-    {
-        return x + y*this.dimensions.first;
     }
     inBufferBounds(x:number, y:number)
     {
@@ -2196,7 +2197,6 @@ class DrawingScreen {
             }
             this.dimensions = new Pair(newDim[0], newDim[1]);
             this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), this.keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
-
         }
     }
     lowerPixelPercentage(a:number):number
@@ -2310,7 +2310,7 @@ class DrawingScreen {
         const toCopy:RGB = new RGB(0,0,0,0);
         spriteScreenBuf.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
         
-        if(this.dimensions.first == this.canvas.width && this.dimensions.second == this.canvas.height)
+        if(this.dimensions.first === this.canvas.width && this.dimensions.second === this.canvas.height)
         {//if drawing screen dimensions, and canvas dimensions are the same just update per pixel
             for(let y = 0; y < this.dimensions.second; y++)
             {
@@ -2633,7 +2633,7 @@ class SingleTouchListener
         let touchMove = event.changedTouches.item(0);
         for(let i = 0; i < event.changedTouches["length"]; i++)
         {
-            if(event.changedTouches.item(i).identifier == this.touchStart.identifier){
+            if(event.changedTouches.item(i).identifier === this.touchStart.identifier){
                 touchMove = event.changedTouches.item(i);
             }
         }  
@@ -2681,7 +2681,7 @@ class SingleTouchListener
             let touchEnd = event.changedTouches.item(0);
             for(let i = 0; i < event.changedTouches["length"]; i++)
             {
-                if(event.changedTouches.item(i).identifier == this.touchStart.identifier){
+                if(event.changedTouches.item(i).identifier === this.touchStart.identifier){
                     touchEnd = event.changedTouches.item(i);
                 }
             } 
@@ -2782,11 +2782,11 @@ class Pallette {
             
             for(let i = 0; i < colorCount; i++)
             {
-                r += ((i % 3 == 0) ? delta : 0);
-                r += ((i % 5 == 2) ? delta : 0);
-                g += ((i % 3 == 1) ? delta : 0);
-                b += ((i % 2 == 1) ? delta : 0);
-                b += ((i % 3 == 2) ? delta : 0);
+                r += ((i % 3 === 0) ? delta : 0);
+                r += ((i % 5 === 2) ? delta : 0);
+                g += ((i % 3 === 1) ? delta : 0);
+                b += ((i % 2 === 1) ? delta : 0);
+                b += ((i % 3 === 2) ? delta : 0);
                 this.colors.push(new RGB(r%256, g%256, b%256, 255));
             }
         }
@@ -2850,7 +2850,7 @@ class Pallette {
             this.ctx.fillStyle = visibleColor.htmlRBGA();
             this.ctx.fillText((i+1)%10, i*width+width*0.5, height/3);
        
-            if(i == this.highLightedCell)
+            if(i === this.highLightedCell)
             {
                 this.ctx.strokeStyle = "#000000";
                 for(let j = 0; j < height; j += 5)
@@ -3121,7 +3121,7 @@ class SpriteSelector {
         listener.registerCallBack("touchmove", e => true, e => {
             const clickedSprite:number = Math.floor(e.touchPos[0]/canvas.width*this.spritesPerRow) + spritesPerRow*Math.floor(e.touchPos[1] / this.spriteHeight);
             
-            if(e.moveCount == 1 && this.sprites()[clickedSprite] && this.sprites().length > 1)
+            if(e.moveCount === 1 && this.sprites()[clickedSprite] && this.sprites().length > 1)
             {
                 if(this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"])
                 {
@@ -3277,7 +3277,7 @@ class AnimationGroup {
             (<any>document.activeElement).blur();
         });
         listener.registerCallBack("touchmove", e => true, e => {
-            if(e.moveCount == 1)
+            if(e.moveCount === 1)
             { 
                 const clickedSprite:number = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
     
@@ -3317,7 +3317,7 @@ class AnimationGroup {
         this.animations.push(animation);
         //if this animation has no sprites in it 
         //then push the current buffer in the drawing screen as new sprite to animation
-        if(animation.sprites.length === 0)
+        if(animation.sprites.length  ===  0)
             this.pushDrawingScreenToAnimation(animation);
         //resize canvas if necessary
         this.autoResizeCanvas();
@@ -3489,7 +3489,7 @@ class AnimationGroup {
         {
             x = (dragSpriteAdjustment) % this.animationsPerRow;
             y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
-            if(this.dragSprite && x == touchX && y == touchY)
+            if(this.dragSprite && x === touchX && y === touchY)
             {
                 dragSpriteAdjustment++;
                 x = (dragSpriteAdjustment) % this.animationsPerRow;
@@ -3555,7 +3555,7 @@ class AnimationGroupsSelector {
         });
         this.listener.registerCallBack("touchmove", e => true, e => {
             const clickedIndex:number = Math.floor(e.touchPos[0] / this.renderWidth) + Math.floor(e.touchPos[1] / this.renderHeight);
-            if(e.moveCount == 1 && this.animationGroups.length > 1)
+            if(e.moveCount === 1 && this.animationGroups.length > 1)
             {
                 this.dragAnimationGroup = this.animationGroups.splice(clickedIndex, 1)[0];
                 if(this.selectedAnimationGroup > 0 && this.selectedAnimationGroup >= this.animationGroups.length)
@@ -3572,7 +3572,7 @@ class AnimationGroupsSelector {
         this.listener.registerCallBack("touchend", e => true, e => {
             const clickedIndex:number = Math.floor(e.touchPos[0] / this.renderWidth) + Math.floor(e.touchPos[1] / this.renderHeight);
             
-            if(clickedIndex >= 0 && clickedIndex <= this.animationGroups.length)
+            if(clickedIndex >= 0 && clickedIndex  <=  this.animationGroups.length)
             {
                 if(this.dragAnimationGroup)
                 {
@@ -3707,7 +3707,7 @@ class AnimationGroupsSelector {
         let offSetI = 0;
         for(let i = 0; i < this.animationGroups.length; i++, offSetI++)
         {
-            if(i == clickedIndex && this.dragAnimationGroup)
+            if(i === clickedIndex && this.dragAnimationGroup)
                 offSetI++;
             if(this.animationGroup())
                 this.drawIndex(ctx, i, offSetI);
@@ -3717,12 +3717,12 @@ class AnimationGroupsSelector {
             let spriteIndex:number = this.dragAnimationGroup.second.second++;
             let animationIndex:number = this.dragAnimationGroup.second.first;
             const group = this.dragAnimationGroup.first;
-            if(group.animations[animationIndex].sprites.length == spriteIndex)
+            if(group.animations[animationIndex].sprites.length === spriteIndex)
             {
                 animationIndex++;
                 spriteIndex = 0;
             }
-            if(group.animations.length == animationIndex)
+            if(group.animations.length === animationIndex)
                 animationIndex = 0;
             
             this.dragAnimationGroup.second.first = animationIndex;
@@ -3849,7 +3849,7 @@ async function main()
         field.draw();
         if(animationGroupSelector.animationGroup())
             animationGroupSelector.draw();
-        if(counter++ % 3 == 0)
+        if(counter++ % 3 === 0)
         {
             pallette.draw();
         }
@@ -3857,7 +3857,7 @@ async function main()
         await sleep(goalSleep - adjustment);
         if(1000/(Date.now() - start) < fps - 2){
             //console.log("avgfps:",Math.floor(1000/(Date.now() - start)))
-            if(1000/(Date.now() - start) == 0)
+            if(1000/(Date.now() - start) === 0)
                 console.log("frame time:",1000/(Date.now() - start));
         }
     }
