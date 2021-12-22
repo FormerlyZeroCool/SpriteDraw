@@ -341,6 +341,7 @@ class SimpleGridLayoutManager {
     }
     deactivate() {
         this.focused = false;
+        this.elements.forEach(el => el.deactivate());
     }
     activate() {
         this.focused = true;
@@ -877,7 +878,7 @@ class PenTool extends Tool {
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
     }
-    activateOptionPanel() { this.layoutManager.activate(); }
+    activateOptionPanel() { this.layoutManager.activate(); this.tbSize.activate(); }
     deactivateOptionPanel() { this.layoutManager.deactivate(); }
     getOptionPanel() {
         return this.layoutManager;
@@ -915,7 +916,7 @@ class ColorPickerTool extends Tool {
         if (this.color())
             this.tbColor.setText(this.color().htmlRBGA());
     }
-    activateOptionPanel() { this.layoutManager.activate(); }
+    activateOptionPanel() { this.layoutManager.activate(); this.tbColor.activate(); }
     deactivateOptionPanel() { this.layoutManager.deactivate(); }
     getOptionPanel() {
         return this.layoutManager;

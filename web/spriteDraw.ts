@@ -459,6 +459,7 @@ class SimpleGridLayoutManager implements GuiElement {
     deactivate():void
     {
         this.focused = false;
+        this.elements.forEach(el => el.deactivate());
     }
     activate():void
     {
@@ -1122,7 +1123,7 @@ class PenTool extends Tool {
         this.layoutManager.elements.push(this.tbSize);
         this.layoutManager.elements.push(this.btUpdate);
     }
-    activateOptionPanel():void { this.layoutManager.activate(); }
+    activateOptionPanel():void { this.layoutManager.activate(); this.tbSize.activate();}
     deactivateOptionPanel():void { this.layoutManager.deactivate(); }
     getOptionPanel():SimpleGridLayoutManager {
         return this.layoutManager;
@@ -1169,7 +1170,7 @@ class ColorPickerTool extends Tool {
         if(this.color())
         this.tbColor.setText(this.color().htmlRBGA());
     }
-    activateOptionPanel():void { this.layoutManager.activate(); }
+    activateOptionPanel():void { this.layoutManager.activate(); this.tbColor.activate();}
     deactivateOptionPanel():void { this.layoutManager.deactivate(); }
     getOptionPanel():SimpleGridLayoutManager {
         return this.layoutManager;
@@ -1267,7 +1268,7 @@ class ToolSelector {
                     e.preventDefault();
                     if(this.tool())
                         this.tool().deactivateOptionPanel();
-                        
+
                     if(e.code === "ArrowUp")
                         if(this.selectedTool !== 0)    
                             this.selectedTool--;
