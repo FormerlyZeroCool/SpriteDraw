@@ -325,15 +325,19 @@ class SimpleGridLayoutManager {
         this.elements.forEach(el => el.handleKeyBoardEvents(type, e));
     }
     handleTouchEvents(type, e) {
-        this.elementsPositions.forEach(el => {
-            el.element.deactivate();
-            if (e.touchPos[0] >= el.x + this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
-                e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height()) {
-                el.element.activate();
-                el.element.handleTouchEvents(type, e);
-            }
-            el.element.refresh();
-        });
+        if (e.touchPos[0] >= this.x && e.touchPos[0] < this.x + this.width() &&
+            e.touchPos[1] >= this.y && e.touchPos[1] < this.y + this.height()) {
+            e.preventDefault();
+            this.elementsPositions.forEach(el => {
+                el.element.deactivate();
+                if (e.touchPos[0] >= el.x + this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
+                    e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height()) {
+                    el.element.activate();
+                    el.element.handleTouchEvents(type, e);
+                }
+                el.element.refresh();
+            });
+        }
     }
     refresh() {
         this.refreshMetaData();
@@ -427,10 +431,9 @@ class SimpleGridLayoutManager {
     }
     addElement(element) {
         let inserted = false;
-        if (element.width() <= this.pixelDim[0] && this.hasSpace(element)) {
-            inserted = true;
-            this.elements.push(element);
-        }
+        this.elements.push(element);
+        this.refreshMetaData();
+        this.refreshCanvas();
         return inserted;
     }
     elementPosition(element) {
@@ -438,10 +441,9 @@ class SimpleGridLayoutManager {
         return [elPos.x, elPos.y];
     }
     draw(ctx, xPos = this.x, yPos = this.y, offsetX = 0, offsetY = 0) {
-        this.refreshMetaData();
-        this.refreshCanvas();
         this.x = xPos + offsetX;
         this.y = yPos + offsetY;
+        this.refreshCanvas();
         ctx.drawImage(this.canvas, xPos + offsetX, yPos + offsetY);
     }
 }
@@ -826,6 +828,9 @@ class GuiLabel extends GuiTextBox {
     //override the textbox's handlers
     handleKeyBoardEvents(type, e) { }
     handleTouchEvents(type, e) { }
+    active() {
+        return false;
+    }
 }
 ;
 GuiTextBox.initGlobalText();
@@ -863,6 +868,15 @@ class ViewLayoutTool extends Tool {
     }
 }
 ;
+class PenViewTool extends ViewLayoutTool {
+    constructor(pen, name, path) {
+        super(pen.getOptionPanel(), name, path);
+        this.pen = pen;
+    }
+    activateOptionPanel() { this.layoutManager.activate(); this.pen.tbSize.activate(); this.pen.tbSize.refresh(); }
+    deactivateOptionPanel() { this.layoutManager.deactivate(); this.pen.tbSize.refresh(); }
+}
+;
 class PenTool extends Tool {
     constructor(keyListener, touchHandler, strokeWith, toolName = "pen", pathToImage = "images/penSprite.png") {
         super(toolName, pathToImage);
@@ -874,12 +888,12 @@ class PenTool extends Tool {
             this.tbSize.setText(String(this.lineWidth));
         }, "Update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
-        this.layoutManager.elements.push(new GuiLabel("Line width:", 150, 16));
-        this.layoutManager.elements.push(this.tbSize);
-        this.layoutManager.elements.push(this.btUpdate);
+        this.layoutManager.addElement(new GuiLabel("Line width:", 150, 16));
+        this.layoutManager.addElement(this.tbSize);
+        this.layoutManager.addElement(this.btUpdate);
     }
-    activateOptionPanel() { this.layoutManager.activate(); this.tbSize.activate(); }
-    deactivateOptionPanel() { this.layoutManager.deactivate(); }
+    activateOptionPanel() { this.layoutManager.activate(); this.tbSize.activate(); this.tbSize.refresh(); }
+    deactivateOptionPanel() { this.layoutManager.deactivate(); this.tbSize.refresh(); }
     getOptionPanel() {
         return this.layoutManager;
     }
@@ -905,9 +919,9 @@ class ColorPickerTool extends Tool {
             this.field.palette.setSelectedColor(this.tbColor.text);
         }, "Update", 50, this.tbColor.height(), 12);
         this.tbColor.submissionButton = this.btUpdate;
-        this.layoutManager.elements.push(new GuiLabel("Color:", 150, 16));
-        this.layoutManager.elements.push(this.tbColor);
-        this.layoutManager.elements.push(this.btUpdate);
+        this.layoutManager.addElement(new GuiLabel("Color:", 150, 16));
+        this.layoutManager.addElement(this.tbColor);
+        this.layoutManager.addElement(this.btUpdate);
     }
     color() {
         return this.field.color;
@@ -916,7 +930,7 @@ class ColorPickerTool extends Tool {
         if (this.color())
             this.tbColor.setText(this.color().htmlRBGA());
     }
-    activateOptionPanel() { this.layoutManager.activate(); this.tbColor.activate(); }
+    activateOptionPanel() { this.layoutManager.activate(); this.tbColor.activate(); this.tbColor.refresh(); }
     deactivateOptionPanel() { this.layoutManager.deactivate(); }
     getOptionPanel() {
         return this.layoutManager;
@@ -941,12 +955,12 @@ class DrawingScreenSettingsTool extends Tool {
         //this.layoutManager.pixelDim[1] = this.tbX.height() * 2;
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
-        this.layoutManager.elements.push(new GuiLabel("Width:", 90, 16));
-        this.layoutManager.elements.push(new GuiLabel("Height:", 90, 16));
-        this.layoutManager.elements.push(this.tbX);
-        this.layoutManager.elements.push(this.tbY);
-        this.layoutManager.elements.push(new GuiLabel(" ", 85));
-        this.layoutManager.elements.push(this.btUpdate);
+        this.layoutManager.addElement(new GuiLabel("Width:", 90, 16));
+        this.layoutManager.addElement(new GuiLabel("Height:", 90, 16));
+        this.layoutManager.addElement(this.tbX);
+        this.layoutManager.addElement(this.tbY);
+        this.layoutManager.addElement(new GuiLabel(" ", 85));
+        this.layoutManager.addElement(this.btUpdate);
     }
     activateOptionPanel() { this.layoutManager.activate(); }
     deactivateOptionPanel() { this.layoutManager.deactivate(); }
@@ -1019,12 +1033,14 @@ class ToolSelector {
             const y = Math.floor(e.touchPos[1] / this.imgHeight);
             const x = Math.floor(e.touchPos[0] / this.imgWidth);
             const clicked = y + x * imgPerColumn;
-            if (clicked < this.toolArray.length) {
+            if (clicked >= 0 && clicked < this.toolArray.length) {
                 if (this.tool())
                     this.tool().deactivateOptionPanel();
                 this.selectedTool = clicked;
-                if (this.tool())
+                if (this.tool()) {
                     this.tool().activateOptionPanel();
+                    console.log(this.tool());
+                }
             }
             if (this.selectedToolName() === "undo") {
                 field.undoLast();
@@ -1040,9 +1056,9 @@ class ToolSelector {
         this.toolArray = [];
         this.toolArray.push(this.penTool);
         this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
-        this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "line", "images/LineDrawSprite.png"));
-        this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "rect", "images/rectSprite.png"));
-        this.toolArray.push(new ViewLayoutTool(this.toolArray[0].layoutManager, "oval", "images/ovalSprite.png"));
+        this.toolArray.push(new PenViewTool(this.penTool, "line", "images/LineDrawSprite.png"));
+        this.toolArray.push(new PenViewTool(this.penTool, "rect", "images/rectSprite.png"));
+        this.toolArray.push(new PenViewTool(this.penTool, "oval", "images/ovalSprite.png"));
         this.toolArray.push(new GenericTool("copy", "images/copySprite.png"));
         this.toolArray.push(new GenericTool("paste", "images/pasteSprite.png"));
         this.toolArray.push(new GenericTool("drag", "images/dragSprite.png"));
@@ -1075,13 +1091,11 @@ class ToolSelector {
         const imgPerRow = (this.toolPixelDim[0] / this.imgWidth);
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         for (let i = 0; i < this.toolArray.length; i++) {
-            this.toolArray[i].deactivateOptionPanel();
             if (this.toolArray[i].image())
                 this.toolArray[i].drawImage(this.ctx, Math.floor(i / imgPerColumn) * this.imgWidth, i * this.toolArray[i].image().height % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
         }
         this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
         if (this.tool()) {
-            this.tool().activateOptionPanel();
             this.tool().drawOptionPanel(this.ctx, this.imgWidth * imgPerRow, 0);
         }
     }
@@ -1091,7 +1105,7 @@ class ToolSelector {
         return null;
     }
     tool() {
-        if (this.toolArray[this.selectedTool]) {
+        if (this.selectedTool >= 0 && this.selectedTool < this.toolArray.length) {
             return this.toolArray[this.selectedTool];
         }
         return null;
