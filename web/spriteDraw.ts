@@ -2,7 +2,7 @@ function sleep(ms):Promise<void> {
     return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
-const dim = [528,528];
+const dim = [128,128];
 
 function threeByThreeMat(a:number[], b:number[]):number[]
 {
@@ -374,7 +374,7 @@ class LexicoGraphicNumericPair extends Pair<number, number> {
     {
         return this.first * this.rollOver + this.second;
     }
-}
+};
 class RowRecord {
     x:number;
     y:number;
@@ -407,7 +407,7 @@ class SimpleGridLayoutManager implements GuiElement {
     {
         this.matrixDim = matrixDim;
         this.pixelDim = pixelDim;
-        this.focused = true;
+        this.focused = false;
         this.x = x;
         this.y = y;
         this.refreshRate = 4;
@@ -731,7 +731,7 @@ class Optional<T> {
     {
         this.null = true;
     }
-}
+};
 class GuiTextBox implements GuiElement {
     text:string;
     asNumber:Optional<number>;
@@ -1085,7 +1085,7 @@ class GenericTool extends Tool {
         return [0, 0];
     }
     drawOptionPanel(ctx, x:number, y:number):void {}
-}
+};
 class ViewLayoutTool extends Tool {
     layoutManager:SimpleGridLayoutManager;
     constructor(layoutManager:SimpleGridLayoutManager, name:string, path:string)
@@ -1115,8 +1115,8 @@ class PenViewTool extends ViewLayoutTool {
         super(pen.getOptionPanel(), name, path);
         this.pen = pen;
     }
-    activateOptionPanel():void { this.layoutManager.activate(); this.pen.tbSize.activate(); this.pen.tbSize.refresh(); }
-    deactivateOptionPanel():void { this.layoutManager.deactivate(); this.pen.tbSize.refresh();}
+    //activateOptionPanel():void { this.layoutManager.activate(); this.pen.tbSize.activate(); this.pen.tbSize.refresh(); }
+    //deactivateOptionPanel():void { this.layoutManager.deactivate(); this.pen.tbSize.refresh();}
 };
 class PenTool extends Tool {
     lineWidth:number;
@@ -1138,8 +1138,16 @@ class PenTool extends Tool {
         this.layoutManager.addElement(this.tbSize);
         this.layoutManager.addElement(this.btUpdate);
     }
-    activateOptionPanel():void { this.layoutManager.activate(); this.tbSize.activate(); this.tbSize.refresh(); }
-    deactivateOptionPanel():void { this.layoutManager.deactivate(); this.tbSize.refresh();}
+    activateOptionPanel():void 
+    { 
+        this.layoutManager.activate(); 
+        //this.tbSize.activate(); this.tbSize.refresh(); 
+    }
+    deactivateOptionPanel():void 
+    { 
+        this.layoutManager.deactivate(); 
+        //this.tbSize.refresh();
+    }
     getOptionPanel():SimpleGridLayoutManager {
         return this.layoutManager;
     }
@@ -1217,7 +1225,6 @@ class DrawingScreenSettingsTool extends Tool {
         this.tbY = new GuiTextBox(true, 70);//, null, 16, 100);
         this.btUpdate = new GuiButton(e => this.recalcDim(),
             "Update", 50, 22, 12);
-        //this.layoutManager.pixelDim[1] = this.tbX.height() * 2;
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
         this.layoutManager.addElement(new GuiLabel("Width:", 90, 16));
@@ -2126,7 +2133,7 @@ class DrawingScreen {
             const backedUpFrame = new Array<Pair<number, RGB>>();
             this.undoneUpdatesStack.push(backedUpFrame);
             const divisor:number =  60*10;
-            const interval:number = data.length/divisor === 0 ? 1 : Math.floor(data.length / divisor);
+            const interval:number = Math.floor(data.length/divisor) === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter:number = 0;
             for(let i = 0; i < data.length; i++)
             {
@@ -2155,7 +2162,7 @@ class DrawingScreen {
             const backedUpFrame = new Array<Pair<number, RGB>>();
             this.updatesStack.push(backedUpFrame);
             const divisor:number =  60*10;
-            const interval:number = data.length/divisor === 0 ? 1 : Math.floor(data.length / divisor);
+            const interval:number = Math.floor(data.length/divisor) === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter:number = 0;
             for(let i = 0; i < data.length; i++)
             {
@@ -2542,7 +2549,7 @@ class ListenerTypes {
         this.touchmove = new Array<TouchHandler>();
         this.touchend = new Array<TouchHandler>();
     }
-}
+};
 interface TouchMoveEvent {
 
     deltaX:number;
@@ -3858,7 +3865,7 @@ async function main()
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    const fps = 30;
+    const fps = 27;
     const goalSleep = 1000/fps;
     let counter = 0;
     while(true)

@@ -1,7 +1,7 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-const dim = [528, 528];
+const dim = [128, 128];
 function threeByThreeMat(a, b) {
     return [a[0] * b[0] + a[1] * b[3] + a[2] * b[6],
         a[0] * b[1] + a[1] * b[4] + a[2] * b[7],
@@ -287,6 +287,7 @@ class LexicoGraphicNumericPair extends Pair {
         return this.first * this.rollOver + this.second;
     }
 }
+;
 class RowRecord {
     constructor(x, y, width, height, element) {
         this.x = x;
@@ -300,7 +301,7 @@ class SimpleGridLayoutManager {
     constructor(keyboardHandler, touchHandler, matrixDim, pixelDim, x = 0, y = 0) {
         this.matrixDim = matrixDim;
         this.pixelDim = pixelDim;
-        this.focused = true;
+        this.focused = false;
         this.x = x;
         this.y = y;
         this.refreshRate = 4;
@@ -562,6 +563,7 @@ class Optional {
         this.null = true;
     }
 }
+;
 class GuiTextBox {
     constructor(keyListener, width, submit = null, fontSize = 16, height = 2 * fontSize, flags = GuiTextBox.center, selectedColor = new RGB(80, 80, 220), unSelectedColor = new RGB(100, 100, 100)) {
         this.cursor = 0;
@@ -850,6 +852,7 @@ class GenericTool extends Tool {
     }
     drawOptionPanel(ctx, x, y) { }
 }
+;
 class ViewLayoutTool extends Tool {
     constructor(layoutManager, name, path) {
         super(name, path);
@@ -873,8 +876,6 @@ class PenViewTool extends ViewLayoutTool {
         super(pen.getOptionPanel(), name, path);
         this.pen = pen;
     }
-    activateOptionPanel() { this.layoutManager.activate(); this.pen.tbSize.activate(); this.pen.tbSize.refresh(); }
-    deactivateOptionPanel() { this.layoutManager.deactivate(); this.pen.tbSize.refresh(); }
 }
 ;
 class PenTool extends Tool {
@@ -892,8 +893,14 @@ class PenTool extends Tool {
         this.layoutManager.addElement(this.tbSize);
         this.layoutManager.addElement(this.btUpdate);
     }
-    activateOptionPanel() { this.layoutManager.activate(); this.tbSize.activate(); this.tbSize.refresh(); }
-    deactivateOptionPanel() { this.layoutManager.deactivate(); this.tbSize.refresh(); }
+    activateOptionPanel() {
+        this.layoutManager.activate();
+        //this.tbSize.activate(); this.tbSize.refresh(); 
+    }
+    deactivateOptionPanel() {
+        this.layoutManager.deactivate();
+        //this.tbSize.refresh();
+    }
     getOptionPanel() {
         return this.layoutManager;
     }
@@ -952,7 +959,6 @@ class DrawingScreenSettingsTool extends Tool {
         this.tbX = new GuiTextBox(true, 70);
         this.tbY = new GuiTextBox(true, 70); //, null, 16, 100);
         this.btUpdate = new GuiButton(e => this.recalcDim(), "Update", 50, 22, 12);
-        //this.layoutManager.pixelDim[1] = this.tbX.height() * 2;
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
         this.layoutManager.addElement(new GuiLabel("Width:", 90, 16));
@@ -1712,7 +1718,7 @@ class DrawingScreen {
             const backedUpFrame = new Array();
             this.undoneUpdatesStack.push(backedUpFrame);
             const divisor = 60 * 10;
-            const interval = data.length / divisor === 0 ? 1 : Math.floor(data.length / divisor);
+            const interval = Math.floor(data.length / divisor) === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter = 0;
             for (let i = 0; i < data.length; i++) {
                 intervalCounter++;
@@ -1736,7 +1742,7 @@ class DrawingScreen {
             const backedUpFrame = new Array();
             this.updatesStack.push(backedUpFrame);
             const divisor = 60 * 10;
-            const interval = data.length / divisor === 0 ? 1 : Math.floor(data.length / divisor);
+            const interval = Math.floor(data.length / divisor) === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter = 0;
             for (let i = 0; i < data.length; i++) {
                 intervalCounter++;
@@ -2056,6 +2062,7 @@ class ListenerTypes {
         this.touchend = new Array();
     }
 }
+;
 function isTouchSupported() {
     return (('ontouchstart' in window) ||
         (navigator.maxTouchPoints > 0));
@@ -3090,7 +3097,7 @@ async function main() {
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    const fps = 30;
+    const fps = 27;
     const goalSleep = 1000 / fps;
     let counter = 0;
     while (true) {
