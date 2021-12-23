@@ -537,6 +537,94 @@ class GuiButton {
     }
 }
 ;
+class GuiCheckBox {
+    constructor(callBack, text, width = 200, height = 50, fontSize = 12, pressedColor = new RGB(150, 150, 200, 1), unPressedColor = new RGB(150, 150, 150)) {
+        this.text = text;
+        this.fontSize = fontSize;
+        this.dimensions = [width, height];
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this.ctx = this.canvas.getContext("2d");
+        this.pressedColor = pressedColor;
+        this.unPressedColor = unPressedColor;
+        this.pressed = false;
+        this.focused = true;
+        this.callback = callBack;
+        this.drawInternal();
+    }
+    handleKeyBoardEvents(type, e) {
+        if (this.active()) {
+            if (e.code === "Enter") {
+                switch (type) {
+                    case ("keydown"):
+                        this.pressed = true;
+                        this.drawInternal();
+                        break;
+                    case ("keyup"):
+                        this.callback(e);
+                        this.pressed = false;
+                        this.drawInternal();
+                        this.deactivate();
+                        break;
+                }
+            }
+        }
+    }
+    handleTouchEvents(type, e) {
+        if (this.active())
+            switch (type) {
+                case ("touchstart"):
+                    this.pressed = true;
+                    this.drawInternal();
+                    break;
+                case ("touchend"):
+                    this.callback(e);
+                    this.pressed = false;
+                    this.drawInternal();
+                    break;
+            }
+    }
+    active() {
+        return this.focused;
+    }
+    deactivate() {
+        this.focused = false;
+    }
+    activate() {
+        this.focused = true;
+    }
+    width() {
+        return this.dimensions[0];
+    }
+    height() {
+        return this.dimensions[1];
+    }
+    setCtxState(ctx) {
+        ctx.strokeStyle = "#000000";
+        if (this.pressed)
+            ctx.fillStyle = this.pressedColor.htmlRBG();
+        else
+            ctx.fillStyle = this.unPressedColor.htmlRBG();
+        ctx.font = this.fontSize + 'px Calibri';
+    }
+    refresh() {
+        this.drawInternal();
+    }
+    drawInternal(ctx = this.ctx) {
+        const fs = ctx.fillStyle;
+        this.setCtxState(ctx);
+        ctx.fillRect(0, 0, this.width(), this.height());
+        ctx.strokeRect(0, 0, this.width(), this.height());
+        ctx.fillStyle = "#000000";
+        ctx.fillText(this.text, 0 + this.fontSize, 0 + this.fontSize, this.width());
+        ctx.fillStyle = fs;
+    }
+    draw(ctx, x, y, offsetX = 0, offsetY = 0) {
+        ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
+    }
+}
+;
 class TextRow {
     constructor(text, x, y, width) {
         this.text = text;
@@ -2547,7 +2635,12 @@ class SpriteSelector {
             }
             if (this.sprites() && this.sprites()[clickedSprite]) {
                 this.selectedSprite = clickedSprite;
-                this.sprites()[clickedSprite].copyToBuffer(this.drawingField.screenBuffer);
+                const sprite = this.sprites()[clickedSprite];
+                if (sprite.width !== this.drawingField.spriteScreenBuf.width || sprite.height !== this.drawingField.spriteScreenBuf.height) {
+                    this.drawingField.setDim([sprite.width, sprite.height]);
+                }
+                sprite.copyToBuffer(this.drawingField.screenBuffer);
+                sprite.copyToBuffer(this.drawingField.screenBuffer);
             }
             else if (this.sprites() && this.sprites().length > 1)
                 this.selectedSprite = this.sprites().length - 1;
@@ -2661,8 +2754,13 @@ class AnimationGroup {
             }
             if (clickedSprite < this.animations.length && this.spriteSelector.sprites()) {
                 this.selectedAnimation = clickedSprite;
-                if (this.spriteSelector.sprites().length)
-                    this.spriteSelector.sprites()[0].copyToBuffer(this.drawingField.screenBuffer);
+                if (this.spriteSelector.sprites().length) {
+                    const sprite = this.spriteSelector.sprites()[0];
+                    if (sprite.width !== this.drawingField.spriteScreenBuf.width || sprite.height !== this.drawingField.spriteScreenBuf.height) {
+                        this.drawingField.setDim([sprite.width, sprite.height]);
+                    }
+                    sprite.copyToBuffer(this.drawingField.screenBuffer);
+                }
             }
         });
         this.autoResizeCanvas();

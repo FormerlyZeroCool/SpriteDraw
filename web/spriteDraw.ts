@@ -697,6 +697,116 @@ class GuiButton implements GuiElement {
         ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
     }
 };
+class GuiCheckBox implements GuiElement {
+
+    text:string;
+    canvas:HTMLCanvasElement;
+    ctx:CanvasRenderingContext2D;
+    dimensions:number[];//[width, height]
+    fontSize:number;
+    pressedColor:RGB;
+    unPressedColor:RGB;
+    pressed:boolean;
+    focused:boolean;
+    callback:(event) => void;
+    constructor(callBack:(event) => void, text:string, width:number = 200, height:number = 50, fontSize:number = 12, pressedColor:RGB = new RGB(150, 150, 200, 1), unPressedColor:RGB = new RGB(150, 150, 150))
+    {
+        this.text = text;
+        this.fontSize = fontSize;
+        this.dimensions = [width, height];
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this.ctx = this.canvas.getContext("2d");
+        this.pressedColor = pressedColor;
+        this.unPressedColor = unPressedColor;
+        this.pressed = false;
+        this.focused = true;
+        this.callback = callBack;
+        this.drawInternal();
+    }
+    handleKeyBoardEvents(type:string, e:any):void
+    {
+        if(this.active()){
+            if(e.code === "Enter"){
+                switch(type)
+                {
+                    case("keydown"):
+                        this.pressed = true;
+                        this.drawInternal();
+                    break;
+                    case("keyup"):
+                        this.callback(e);
+                        this.pressed = false;
+                        this.drawInternal();
+                        this.deactivate();
+                    break;
+                }
+            }
+        }
+    }
+    handleTouchEvents(type:string, e:any):void
+    {
+        if(this.active())
+            switch(type)
+            {
+                case("touchstart"):
+                    this.pressed = true;
+                    this.drawInternal();
+                break;
+                case("touchend"):
+                    this.callback(e);
+                    this.pressed = false;
+                    this.drawInternal();
+                break;
+            }
+            
+    }
+    active():boolean
+    {
+        return this.focused;
+    }
+    deactivate():void
+    {
+        this.focused = false;
+    }
+    activate():void
+    {
+        this.focused = true;
+    }
+    width(): number {
+        return this.dimensions[0];
+    }
+    height(): number {
+        return this.dimensions[1];
+    }
+    setCtxState(ctx:CanvasRenderingContext2D):void
+    {
+        ctx.strokeStyle = "#000000";
+        if(this.pressed)
+            ctx.fillStyle = this.pressedColor.htmlRBG();
+        else
+            ctx.fillStyle = this.unPressedColor.htmlRBG();
+        ctx.font = this.fontSize + 'px Calibri';
+    }
+    refresh(): void {
+        this.drawInternal();
+    }
+    drawInternal(ctx:CanvasRenderingContext2D = this.ctx):void
+    {
+        const fs = ctx.fillStyle;
+        this.setCtxState(ctx);
+        ctx.fillRect(0, 0, this.width(), this.height());
+        ctx.strokeRect(0, 0, this.width(), this.height());
+        ctx.fillStyle = "#000000";
+        ctx.fillText(this.text, 0 + this.fontSize, 0 + this.fontSize, this.width());
+        ctx.fillStyle = fs;
+    } 
+    draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0):void
+    {
+        ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
+    }
+};
 class TextRow { 
     text:string;
     x:number;
@@ -3180,7 +3290,14 @@ class SpriteSelector {
             if(this.sprites() && this.sprites()[clickedSprite])
             {
                 this.selectedSprite = clickedSprite;
-                this.sprites()[clickedSprite].copyToBuffer(this.drawingField.screenBuffer);
+
+                const sprite:Sprite = this.sprites()[clickedSprite];
+                if(sprite.width !== this.drawingField.spriteScreenBuf.width || sprite.height !== this.drawingField.spriteScreenBuf.height)
+                {
+                    this.drawingField.setDim([sprite.width, sprite.height]);
+                }
+                sprite.copyToBuffer(this.drawingField.screenBuffer);
+                sprite.copyToBuffer(this.drawingField.screenBuffer);
             }
             else if(this.sprites() && this.sprites().length > 1)
                 this.selectedSprite = this.sprites().length - 1;
@@ -3332,7 +3449,14 @@ class AnimationGroup {
             {
                 this.selectedAnimation = clickedSprite;
                 if(this.spriteSelector.sprites().length)
-                    this.spriteSelector.sprites()[0].copyToBuffer(this.drawingField.screenBuffer);
+                {
+                    const sprite:Sprite = this.spriteSelector.sprites()[0];
+                    if(sprite.width !== this.drawingField.spriteScreenBuf.width || sprite.height !== this.drawingField.spriteScreenBuf.height)
+                    {
+                        this.drawingField.setDim([sprite.width, sprite.height]);
+                    }
+                    sprite.copyToBuffer(this.drawingField.screenBuffer);
+                }
             }
         });
         this.autoResizeCanvas();
