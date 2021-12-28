@@ -3256,7 +3256,7 @@ class SpriteSelector {
         listener.registerCallBack("touchmove", e => true, e => {
             const clickedSprite:number = Math.floor(e.touchPos[0]/canvas.width*this.spritesPerRow) + spritesPerRow*Math.floor(e.touchPos[1] / this.spriteHeight);
             
-            if(e.moveCount === 1 && this.sprites()[clickedSprite] && this.sprites().length > 1)
+            if(e.moveCount === 1 && this.sprites() && this.sprites()[clickedSprite] && this.sprites().length > 1)
             {
                 if(this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"])
                 {
