@@ -979,7 +979,6 @@ class PenTool extends Tool {
         this.layoutManager.addElement(new GuiLabel("Line width:", 150, 16));
         this.layoutManager.addElement(this.tbSize);
         this.layoutManager.addElement(this.btUpdate);
-        this.layoutManager.addElement(new GuiCheckBox((e) => null));
     }
     activateOptionPanel() {
         this.layoutManager.activate();
