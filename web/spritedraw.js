@@ -2702,11 +2702,11 @@ class SpriteSelector {
         return null;
     }
     sprites() {
-        if (this.animationGroup.animations[this.animationGroup.selectedAnimation])
+        if (this.animationGroup.animations[this.animationGroup.selectedAnimation] && this.animationGroup.animations[this.animationGroup.selectedAnimation].sprites)
             return this.animationGroup.animations[this.animationGroup.selectedAnimation].sprites;
-        else if (this.animationGroup.animations.length) {
+        else if (this.animationGroup.animations.length && this.animationGroup.animations[0]) {
             this.animationGroup.selectedAnimation = 0;
-            return this.animationGroup.animations[this.animationGroup.selectedAnimation].sprites;
+            return this.animationGroup.animations[0].sprites;
         }
         return null;
     }
@@ -2895,7 +2895,7 @@ class AnimationGroup {
         return this.animations[this.selectedAnimation];
     }
     drawAnimation(ctx, animationIndex, spriteIndex, x, y, width, height) {
-        if (animationIndex < this.animations.length && spriteIndex < this.animations[animationIndex].sprites.length) {
+        if (this.animations[animationIndex] && spriteIndex < this.animations[animationIndex].sprites.length) {
             this.animations[animationIndex].sprites[spriteIndex].draw(ctx, x, y, width, height);
         }
     }

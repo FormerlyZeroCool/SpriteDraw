@@ -3374,12 +3374,12 @@ class SpriteSelector {
     }
     sprites():Array<Sprite>
     {
-        if(this.animationGroup.animations[this.animationGroup.selectedAnimation])
+        if(this.animationGroup.animations[this.animationGroup.selectedAnimation] && this.animationGroup.animations[this.animationGroup.selectedAnimation].sprites)
             return this.animationGroup.animations[this.animationGroup.selectedAnimation].sprites;
-        else if(this.animationGroup.animations.length)
+        else if(this.animationGroup.animations.length && this.animationGroup.animations[0])
         {
             this.animationGroup.selectedAnimation = 0;
-            return this.animationGroup.animations[this.animationGroup.selectedAnimation].sprites;
+            return this.animationGroup.animations[0].sprites;
         }
         return null;
         }
@@ -3618,7 +3618,7 @@ class AnimationGroup {
     }
     drawAnimation(ctx:CanvasRenderingContext2D, animationIndex:number, spriteIndex:number, x:number, y:number, width:number, height:number):void
     {
-        if(animationIndex < this.animations.length && spriteIndex < this.animations[animationIndex].sprites.length)
+        if(this.animations[animationIndex] && spriteIndex < this.animations[animationIndex].sprites.length)
         {
             this.animations[animationIndex].sprites[spriteIndex].draw(ctx, x, y, width, height);
         }
