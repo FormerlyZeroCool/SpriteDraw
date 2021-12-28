@@ -1133,7 +1133,6 @@ class ToolSelector {
                 this.selectedTool = clicked;
                 if (this.tool()) {
                     this.tool().activateOptionPanel();
-                    console.log(this.tool());
                 }
             }
             if (this.selectedToolName() === "undo") {
