@@ -14,11 +14,32 @@
 
     <div id="post-drawing-field" style="display: inline-block;">
 
-        <canvas id="animations"></canvas>
-    <h3>Animations Controls:</h3>
-    
+        
+    </div>
+    </div>
+    <div>
+        <canvas id="pallette_screen" width="500" height="50"
+        style="border:1px solid #000000;">
+        </canvas>
         <button id="setPalletteColorButton" style="width: 100px; height: 40px">Set Color:</button> 
         <input type="text" id="newColor" style="width: 160px;"><br><br>
+    
+    </div>
+
+    <div id="sprites_group" style="display: inline;">
+        <h3>Sprites/Frames:</h3>
+        <!--<button id="save_server">Save To Server</button><br>!-->
+        <div id="sprites" style="display: inline-block;">
+            <canvas id="sprites_canvas" width="500" height="100"
+            style="border:1px solid #000000;"></canvas>
+            <br>
+            <button id="add_sprite">Add Sprite</button>
+            <button id="save_sprite">Save Sprite</button><br><br>
+            <button id="delete_sprite">Delete Sprite</button><br><br>
+        </div>
+    </div>
+    <h3>Animations:</h3>
+    <br><canvas id="animations" style="border:1px solid #c3c3c3"></canvas>
     
     <div id="animations_group" style="display: inline-block;">
     </p>
@@ -27,36 +48,16 @@
         <button id="clone_animation">Clone Animation</button>
         <br>
 </p>
-    </div>
-    </div>
-    </div>
-    <div>
-        <canvas id="pallette_screen" width="500" height="50"
-        style="border:1px solid #000000;">
-        </canvas>
-    </div>
-
-    <div id="sprites_group" style="display: inline;">
-        <h3>Sprites</h3>
-        <button id="add_sprite">Add Sprite</button>
-        <button id="save_sprite">Save Sprite</button><br><br>
-        <button id="delete_sprite">Delete Sprite</button><br><br>
-        <!--<button id="save_server">Save To Server</button><br>!-->
-        <div id="sprites" style="display: inline-block;">
-            <canvas id="sprites_canvas" width="500" height="100"
-            style="border:1px solid #000000;">
-        </div>
-    </div>
-    <br>
+    </div><br>
 
     <div style="display: inline-block;">
         <h3>Animation Groups</h3>
         <canvas id="animation_group_selector" width="500" height="50" 
-        style="border:1px solid #c3c3c3"></canvas><br>
+        style="border:1px solid #c3c3c3"></canvas><p>
         <button id="add_animationGroup">Add Animation Group</button>
         <button id="clone_animationGroup">Clone Animation Group</button><br><br>
         <button id="delete_animationGroup">Delete Animation Group</button>
-        </div>
+        </p></div>
     <br>
     <script src="spritedraw.js"></script>
 </body>
