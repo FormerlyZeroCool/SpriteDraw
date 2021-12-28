@@ -2708,6 +2708,7 @@ class SpriteSelector {
             this.animationGroup.selectedAnimation = 0;
             return this.animationGroup.animations[0].sprites;
         }
+        this.animationGroup.selectedAnimation = -1;
         return null;
     }
 }
