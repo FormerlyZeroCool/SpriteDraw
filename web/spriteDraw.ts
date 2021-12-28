@@ -699,7 +699,7 @@ class GuiButton implements GuiElement {
 };
 class GuiCheckBox implements GuiElement {
 
-    text:string;
+    checked:boolean;
     canvas:HTMLCanvasElement;
     ctx:CanvasRenderingContext2D;
     dimensions:number[];//[width, height]
@@ -709,9 +709,9 @@ class GuiCheckBox implements GuiElement {
     pressed:boolean;
     focused:boolean;
     callback:(event) => void;
-    constructor(callBack:(event) => void, text:string, width:number = 200, height:number = 50, fontSize:number = 12, pressedColor:RGB = new RGB(150, 150, 200, 1), unPressedColor:RGB = new RGB(150, 150, 150))
+    constructor(callBack:(event) => void, checked:boolean = false, width:number = 50, height:number = 50, fontSize:number = height - 10, pressedColor:RGB = new RGB(150, 150, 200, 255), unPressedColor:RGB = new RGB(200, 200, 200, 255))
     {
-        this.text = text;
+        this.checked = checked;
         this.fontSize = fontSize;
         this.dimensions = [width, height];
         this.canvas = document.createElement("canvas");
@@ -755,8 +755,9 @@ class GuiCheckBox implements GuiElement {
                     this.drawInternal();
                 break;
                 case("touchend"):
-                    this.callback(e);
+                    this.checked = !this.checked;
                     this.pressed = false;
+                    this.callback(e);
                     this.drawInternal();
                 break;
             }
@@ -782,11 +783,10 @@ class GuiCheckBox implements GuiElement {
     }
     setCtxState(ctx:CanvasRenderingContext2D):void
     {
-        ctx.strokeStyle = "#000000";
         if(this.pressed)
-            ctx.fillStyle = this.pressedColor.htmlRBG();
+            ctx.fillStyle = this.pressedColor.htmlRBGA();
         else
-            ctx.fillStyle = this.unPressedColor.htmlRBG();
+            ctx.fillStyle = this.unPressedColor.htmlRBGA();
         ctx.font = this.fontSize + 'px Calibri';
     }
     refresh(): void {
@@ -797,9 +797,8 @@ class GuiCheckBox implements GuiElement {
         const fs = ctx.fillStyle;
         this.setCtxState(ctx);
         ctx.fillRect(0, 0, this.width(), this.height());
-        ctx.strokeRect(0, 0, this.width(), this.height());
         ctx.fillStyle = "#000000";
-        ctx.fillText(this.text, 0 + this.fontSize, 0 + this.fontSize, this.width());
+        ctx.fillText(this.checked?"\u2713":"", this.width()/2 - this.ctx.measureText("\u2713").width/2, 0 + this.fontSize, this.width());
         ctx.fillStyle = fs;
     } 
     draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0):void
@@ -1247,6 +1246,7 @@ class PenTool extends Tool {
         this.layoutManager.addElement(new GuiLabel("Line width:", 150, 16));
         this.layoutManager.addElement(this.tbSize);
         this.layoutManager.addElement(this.btUpdate);
+        this.layoutManager.addElement(new GuiCheckBox((e) => null));
     }
     activateOptionPanel():void 
     { 
@@ -2158,11 +2158,12 @@ class DrawingScreen {
         const deltaX = x2 - x1;
         const m:number = deltaY/deltaX;
         const b:number = y2-m*x2;
+        const delta:number = this.lineWidth <= 2? 0.1 : 1;
         if(Math.abs(deltaX) > Math.abs(deltaY))
         {
             const min:number = Math.min(x1, x2);
             const max:number = Math.max(x1, x2);
-            for(let x = min; x < max; x++)
+            for(let x = min; x < max; x+=delta)
             {
                 const y:number = m*x + b;
                 
@@ -2190,7 +2191,7 @@ class DrawingScreen {
         {
             const min:number = Math.min(y1, y2);
             const max:number = Math.max(y1, y2);
-            for(let y = min; y < max; y++)
+            for(let y = min; y < max; y+=delta)
             {
                 const x:number = Math.abs(deltaX)>0?(y - b)/m:x2;
                 const gx:number = Math.floor((x-this.offset.first)/this.bounds.first*this.dimensions.first);
