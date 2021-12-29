@@ -709,7 +709,7 @@ class GuiCheckBox implements GuiElement {
     pressed:boolean;
     focused:boolean;
     callback:(event) => void;
-    constructor(callBack:(event) => void, checked:boolean = false, width:number = 50, height:number = 50, fontSize:number = height - 10, pressedColor:RGB = new RGB(150, 150, 200, 255), unPressedColor:RGB = new RGB(200, 200, 200, 255))
+    constructor(callBack:(event) => void, width:number = 50, height:number = 50, checked:boolean = false, fontSize:number = height - 10, pressedColor:RGB = new RGB(150, 150, 200, 255), unPressedColor:RGB = new RGB(200, 200, 200, 255))
     {
         this.checked = checked;
         this.fontSize = fontSize;
@@ -1195,6 +1195,11 @@ class GenericTool extends Tool {
     }
     drawOptionPanel(ctx, x:number, y:number):void {}
 };
+/*
+this.chbxBlendAlpha = new GuiCheckBox((event => null));
+this.layoutManager.addElement(new GuiLabel("Blend Alpha: ", 150, 16));
+this.layoutManager.addElement(this.chbxBlendAlpha);
+*/
 class ViewLayoutTool extends Tool {
     layoutManager:SimpleGridLayoutManager;
     constructor(layoutManager:SimpleGridLayoutManager, name:string, path:string)
@@ -1246,7 +1251,6 @@ class PenTool extends Tool {
         this.layoutManager.addElement(new GuiLabel("Line width:", 150, 16));
         this.layoutManager.addElement(this.tbSize);
         this.layoutManager.addElement(this.btUpdate);
-        this.layoutManager.addElement(new GuiCheckBox((e) => null));
     }
     activateOptionPanel():void 
     { 
@@ -1454,6 +1458,7 @@ class ToolSelector {
         });
 
         this.penTool = new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth(), "pen","images/penSprite.png");
+        this.penTool.activateOptionPanel();
         this.eraserTool = new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth() * 3, "eraser","images/eraserSprite.png");
         this.settingsTool = new DrawingScreenSettingsTool(keyboardHandler, this.touchListener, [524, 524], field, "ScreenSettings","images/settingsSprite.png");
         this.colorPickerTool = new ColorPickerTool(keyboardHandler, this.touchListener, field,"colorPicker", "images/colorPickerSprite.png");
@@ -2931,20 +2936,16 @@ class Pallette {
         }
         else
         {
-            let r:number = 25;
-            let g:number = 50;
-            let b:number = 30;
-            const delta = 85;
-            
-            for(let i = 0; i < colorCount; i++)
-            {
-                r += ((i % 3 === 0) ? delta : 0);
-                r += ((i % 5 === 2) ? delta : 0);
-                g += ((i % 3 === 1) ? delta : 0);
-                b += ((i % 2 === 1) ? delta : 0);
-                b += ((i % 3 === 2) ? delta : 0);
-                this.colors.push(new RGB(r%256, g%256, b%256, 255));
-            }
+            this.colors.push(new RGB(0, 0, 0, 255));
+            this.colors.push(new RGB(255, 255, 255, 255));
+            this.colors.push(new RGB(194, 49, 28, 255));
+            this.colors.push(new RGB(224, 135, 19, 255));
+            this.colors.push(new RGB(224, 220, 129, 255));
+            this.colors.push(new RGB(220, 180, 19, 255));
+            this.colors.push(new RGB(19, 220, 20, 255));
+            this.colors.push(new RGB(24, 220, 229, 255));
+            this.colors.push(new RGB(224, 49, 213, 255));
+            this.colors.push(new RGB(23, 49, 198, 255));
         }
         this.listeners.registerCallBack("touchstart", e => true, e => {
             (<any>document.activeElement).blur();
