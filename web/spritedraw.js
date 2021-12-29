@@ -2230,7 +2230,9 @@ class SingleTouchListener {
             event.preventDefault();
     }
     touchMoveHandler(event) {
-        this.registeredTouch = SingleTouchListener.mouseDown.mouseDown;
+        if (this.registeredTouch !== SingleTouchListener.mouseDown.mouseDown) {
+            this.touchEndHandler(event);
+        }
         if (!this.registeredTouch)
             return false;
         ++this.moveCount;
