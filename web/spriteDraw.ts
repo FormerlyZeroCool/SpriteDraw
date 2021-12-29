@@ -1246,6 +1246,7 @@ class PenTool extends Tool {
         this.layoutManager.addElement(new GuiLabel("Line width:", 150, 16));
         this.layoutManager.addElement(this.tbSize);
         this.layoutManager.addElement(this.btUpdate);
+        this.layoutManager.addElement(new GuiCheckBox((e) => null));
     }
     activateOptionPanel():void 
     { 
@@ -2675,6 +2676,24 @@ function isTouchSupported():boolean {
     return (('ontouchstart' in window) ||
       (navigator.maxTouchPoints > 0));
 }
+class MouseDownTracker {
+    mouseDown:boolean;
+    constructor()
+    {
+        const component = document;
+        this.mouseDown = false;
+        if(isTouchSupported())
+        {
+            component.addEventListener('touchstart', event => this.mouseDown = true, false);
+            component.addEventListener('touchend', event => this.mouseDown = false, false);
+        }
+        if(!isTouchSupported()){
+            component.addEventListener('mousedown', event => this.mouseDown = true );
+            component.addEventListener('mouseup', event => this.mouseDown = false );
+    
+        }
+    }
+}
 class SingleTouchListener
 {
     lastTouchTime:number;
@@ -2682,6 +2701,7 @@ class SingleTouchListener
     preventDefault:any;
     touchStart:any;
     registeredTouch:boolean;
+    static mouseDown:MouseDownTracker = new MouseDownTracker();
     touchPos:Array<number>;
     startTouchPos:number[];
     offset:Array<number>;
@@ -2760,6 +2780,7 @@ class SingleTouchListener
     }
     touchMoveHandler(event:any):boolean
     {
+        this.registeredTouch = SingleTouchListener.mouseDown.mouseDown;
        if(!this.registeredTouch)
             return false;
         ++this.moveCount;

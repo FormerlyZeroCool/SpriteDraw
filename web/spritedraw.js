@@ -979,6 +979,7 @@ class PenTool extends Tool {
         this.layoutManager.addElement(new GuiLabel("Line width:", 150, 16));
         this.layoutManager.addElement(this.tbSize);
         this.layoutManager.addElement(this.btUpdate);
+        this.layoutManager.addElement(new GuiCheckBox((e) => null));
     }
     activateOptionPanel() {
         this.layoutManager.activate();
@@ -2154,6 +2155,20 @@ function isTouchSupported() {
     return (('ontouchstart' in window) ||
         (navigator.maxTouchPoints > 0));
 }
+class MouseDownTracker {
+    constructor() {
+        const component = document;
+        this.mouseDown = false;
+        if (isTouchSupported()) {
+            component.addEventListener('touchstart', event => this.mouseDown = true, false);
+            component.addEventListener('touchend', event => this.mouseDown = false, false);
+        }
+        if (!isTouchSupported()) {
+            component.addEventListener('mousedown', event => this.mouseDown = true);
+            component.addEventListener('mouseup', event => this.mouseDown = false);
+        }
+    }
+}
 class SingleTouchListener {
     constructor(component, preventDefault, mouseEmulation) {
         this.lastTouchTime = Date.now();
@@ -2215,6 +2230,7 @@ class SingleTouchListener {
             event.preventDefault();
     }
     touchMoveHandler(event) {
+        this.registeredTouch = SingleTouchListener.mouseDown.mouseDown;
         if (!this.registeredTouch)
             return false;
         ++this.moveCount;
@@ -2310,6 +2326,7 @@ class SingleTouchListener {
         return a[0] * b[0] + a[1] * b[1];
     }
 }
+SingleTouchListener.mouseDown = new MouseDownTracker();
 ;
 class Pallette {
     constructor(canvas, keyboardHandler, textBoxColor, colorCount = 10, colors = null) {
