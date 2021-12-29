@@ -2943,9 +2943,9 @@ class Pallette {
             this.colors.push(new RGB(224, 220, 129, 255));
             this.colors.push(new RGB(220, 180, 19, 255));
             this.colors.push(new RGB(19, 220, 20, 255));
-            this.colors.push(new RGB(24, 220, 229, 255));
-            this.colors.push(new RGB(224, 49, 213, 255));
             this.colors.push(new RGB(23, 49, 198, 255));
+            this.colors.push(new RGB(224, 49, 213, 255));
+            this.colors.push(new RGB(24, 220, 229, 255));
         }
         this.listeners.registerCallBack("touchstart", e => true, e => {
             (<any>document.activeElement).blur();
