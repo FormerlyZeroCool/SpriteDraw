@@ -1622,36 +1622,18 @@ class ToolSelector {
 class ClipBoard {
     canvas:HTMLCanvasElement;
     offscreenCanvas:HTMLCanvasElement;
-    pixelWidth:number;
-    pixelHeight:number;
-    pixelCountY:number;
-    pixelCountX:number;
-    innerWidth:number;
-    innerHeight:number;
-    centerX:number;
-    centerY:number;
     clipBoardBuffer:Array<Pair<RGB, number>>;
     currentDim:Array<number>;
     touchListener:SingleTouchListener;
     angle:number;
-    constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, maxWidth:number, maxHeight:number, pixelWidth:number, pixelHeight:number, pixelCountX:number, pixelCountY:number)
+    constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, pixelCountX:number, pixelCountY:number)
     {
         this.canvas = canvas;
-        this.currentDim = [0,0];
-        this.pixelCountX = pixelCountX;
-        this.pixelCountY = pixelCountY;
+        this.currentDim = [pixelCountX,pixelCountY];
         this.offscreenCanvas = document.createElement("canvas");
         this.clipBoardBuffer = new Array<Pair<RGB, number>>();
-        this.canvas.width = maxWidth / 4;
-        this.canvas.height = maxHeight / 4;
-        this.offscreenCanvas.width = maxWidth;
-        this.offscreenCanvas.height = maxHeight;
-        this.pixelWidth = Math.floor(pixelWidth+0.5);
-        this.pixelHeight = Math.floor(pixelHeight);
-        this.centerX = Math.floor(maxWidth / 8);
-        this.centerY = Math.floor(maxHeight / 8);
-        this.innerWidth = 0;
-        this.innerHeight = 0;
+        this.offscreenCanvas.width = pixelCountX;
+        this.offscreenCanvas.height = pixelCountY;
         this.angle = 0;
         this.touchListener = new SingleTouchListener(canvas, true, true);
         this.touchListener.registerCallBack("touchmove", e => true, e =>{
@@ -1666,11 +1648,21 @@ class ClipBoard {
             }
         });
     }
+    resize(dim:number[])
+    {
+        if(dim.length === 2)
+        {
+            this.currentDim[0] = dim[0];
+            this.currentDim[1] = dim[1];
+            this.offscreenCanvas.width = dim[0];
+            this.offscreenCanvas.height = dim[1];
+        }
+    }
     //only really works for rotation by pi/2
     rotate(theta:number):void
     {
-        const dx:number = this.pixelCountX/2;
-        const dy:number = this.pixelCountY/2;
+        const dx:number = this.currentDim[0]/2;
+        const dy:number = this.currentDim[1]/2;
         const initTransMatrix:number[] = [1,0,dx*-1,
                                  0,1,dy*-1,
                                  0,0,1];
@@ -1686,15 +1678,15 @@ class ClipBoard {
         const vec:number[] = [0,0,0];
         for(const rec of this.clipBoardBuffer.entries())
         {
-            let x:number = rec[1].second % this.pixelCountX;
-            let y:number = Math.floor(rec[1].second / this.pixelCountX);
+            let x:number = rec[1].second % this.currentDim[0];
+            let y:number = Math.floor(rec[1].second / this.currentDim[0]);
             vec[0] = x;
             vec[1] = y;
             vec[2] = 1;
             const transformed = matByVec(finalTransformationMatrix, vec);
             x = Math.floor(transformed[0]);
             y = Math.floor(transformed[1]);
-            rec[1].second = Math.floor((x) + (y) * this.pixelCountX);
+            rec[1].second = Math.floor((x) + (y) * this.currentDim[0]);
         }
         this.clipBoardBuffer.sort((a, b) => a.second - b.second);
         this.refreshImageFromBuffer(this.currentDim[1], this.currentDim[0]);
@@ -1703,27 +1695,25 @@ class ClipBoard {
     //copies array of rgb values to canvas offscreen, centered within the canvas
     refreshImageFromBuffer(width:number, height:number):void
     {
-        this.currentDim = [width, height];
         width = Math.floor(width + 0.5);
         height = Math.floor(height + 0.5);
-        this.innerWidth = width * this.pixelWidth;
-        this.innerHeight = height * this.pixelHeight;
+        this.currentDim = [width, height];
         const ctx = this.offscreenCanvas.getContext("2d");
-        this.offscreenCanvas.width = this.canvas.width;
-        this.offscreenCanvas.height = this.canvas.height;
         ctx.fillStyle = "rgba(255,255,255,1)";
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.fillRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
         const start_x:number = 0//(this.centerX / this.canvas.width * this.pixelCountX) - ((width * this.pixelWidth/4)/2);
         const start_y:number = 0//(this.centerY / this.canvas.height * this.pixelCountY) - ((height * this.pixelHeight/4)/2);
-
+        ctx.scale(this.canvas.width / this.offscreenCanvas.width, this.canvas.height / this.offscreenCanvas.height);
+           
         for(let y = 0; y < height; y++)
         {
             for(let x = 0; x < width; x++)
             {
-                const sx:number = ((x + start_x) * this.pixelWidth/4);
-                const sy:number = ((y + start_y) * this.pixelHeight/4);
+                const sx:number = ((x + start_x));
+                const sy:number = ((y + start_y));
                 ctx.fillStyle = this.clipBoardBuffer[Math.floor(x + y * width)].first.htmlRBGA();
-                ctx.fillRect(sx, sy, this.pixelWidth/4, this.pixelHeight/4);
+
+                ctx.fillRect(sx, sy, 1, 1);
             }
         }
     }
@@ -1784,7 +1774,7 @@ class DrawingScreen {
         this.screenBuffer = new Array<RGB>();
         this.selectionRect = [0,0,0,0];
         this.pasteRect = [0,0,0,0];
-        this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
+        this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), keyboardHandler, dimensions[0], dimensions[1]);
         for(let i = 0; i < dimensions[0] * dimensions[1]; i++)
         {
             this.screenBuffer.push(new RGB(0,0,0,0));
@@ -2430,7 +2420,7 @@ class DrawingScreen {
                 this.spriteScreenBuf = new Sprite([], this.bounds.first, this.bounds.second); 
             }
             this.dimensions = new Pair(newDim[0], newDim[1]);
-            this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), this.keyboardHandler, bounds[0], bounds[1], bounds[0] / dimensions[0], bounds[1] / dimensions[1], dimensions[0], dimensions[1]);
+            this.clipBoard.resize(newDim);
         }
     }
     lowerPixelPercentage(a:number):number
@@ -2595,8 +2585,8 @@ class DrawingScreen {
                 const copyAreaX:number = i%width;
                 const copyAreaY:number = Math.floor(i/width);
                 const destIndex:number = initialIndex + copyAreaX + copyAreaY*this.dimensions.first;
-                const x:number = destIndex % this.clipBoard.pixelCountX;
-                const y:number = Math.floor(destIndex/this.clipBoard.pixelCountX);
+                const x:number = destIndex % this.dimensions.first;
+                const y:number = Math.floor(destIndex/this.dimensions.first);
                 source.color = this.clipBoard.clipBoardBuffer[i].first.color;
                 if(this.screenBuffer[destIndex])
                 {
