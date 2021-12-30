@@ -763,12 +763,14 @@ class GuiTextBox {
                 case ("touchend"):
                     if (isTouchSupported()) {
                         let value = prompt(this.promptText, this.text);
-                        this.setText(value);
-                        this.calcNumber();
-                        this.deactivate();
-                        if (this.submissionButton) {
-                            this.submissionButton.activate();
-                            this.submissionButton.callback();
+                        if (value) {
+                            this.setText(value);
+                            this.calcNumber();
+                            this.deactivate();
+                            if (this.submissionButton) {
+                                this.submissionButton.activate();
+                                this.submissionButton.callback();
+                            }
                         }
                     }
                     this.drawInternalAndClear();

@@ -997,13 +997,16 @@ class GuiTextBox implements GuiElement {
                 if(isTouchSupported())
                 {
                     let value = prompt(this.promptText, this.text);
-                    this.setText(value);
-                    this.calcNumber();
-                    this.deactivate();
-                    if(this.submissionButton)
+                    if(value)
                     {
-                        this.submissionButton.activate();
-                        this.submissionButton.callback();
+                        this.setText(value);
+                        this.calcNumber();
+                        this.deactivate();
+                        if(this.submissionButton)
+                        {
+                            this.submissionButton.activate();
+                            this.submissionButton.callback();
+                        }
                     }
                 }
                 this.drawInternalAndClear();
