@@ -3537,7 +3537,7 @@ class AnimationGroup {
             (<any>document.activeElement).blur();
         });
         listener.registerCallBack("touchmove", e => true, e => {
-            if(e.moveCount === 1)
+            if(e.moveCount === 1 && this.animations.length > 1)
             { 
                 const clickedSprite:number = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
     

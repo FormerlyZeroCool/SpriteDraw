@@ -2833,7 +2833,7 @@ class AnimationGroup {
             document.activeElement.blur();
         });
         listener.registerCallBack("touchmove", e => true, e => {
-            if (e.moveCount === 1) {
+            if (e.moveCount === 1 && this.animations.length > 1) {
                 const clickedSprite = Math.floor(e.touchPos[0] / spriteWidth) + Math.floor(e.touchPos[1] / spriteHeight) * animationsPerRow;
                 this.dragSprite = this.animations.splice(clickedSprite, 1)[0];
                 this.dragSpritePos[0] = e.touchPos[0] - this.animationWidth / 2;
