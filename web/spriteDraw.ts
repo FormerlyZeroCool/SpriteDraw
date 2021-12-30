@@ -3552,12 +3552,15 @@ class AnimationGroup {
             }
         });
         listener.registerCallBack("touchend", e => true, e => {
-            const clickedSprite:number = Math.floor(e.touchPos[0] / animationWidth) + Math.floor(e.touchPos[1] / animationHeight) * animationsPerRow;
+            let clickedSprite:number = Math.floor(e.touchPos[0] / animationWidth) + Math.floor(e.touchPos[1] / animationHeight) * animationsPerRow;
 
             if(clickedSprite >= 0)
             {
-                if(this.dragSprite !== null)
+                if(this.dragSprite !== null){
+                    if(clickedSprite >= this.animations.length)
+                        clickedSprite = this.animations.length?this.animations.length-1:0;
                     this.animations.splice(clickedSprite, 0, this.dragSprite);
+                }
 
                 this.dragSprite = null;
                 this.dragSpritePos[0] = -1;
