@@ -1805,7 +1805,7 @@ class DrawingScreen {
                 case("pen"):
                 {
                     this.setLineWidthPen();
-                    this.color = this.palette.calcColor();
+                    //this.color = this.palette.calcColor();
                 }
                 break;
                 case("paste"):                
