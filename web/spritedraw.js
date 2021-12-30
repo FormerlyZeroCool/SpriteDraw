@@ -747,6 +747,7 @@ class GuiTextBox {
     setText(text) {
         this.text = text;
         this.cursor = text.length;
+        this.calcNumber();
         this.drawInternalAndClear();
     }
     calcNumber() {
@@ -1033,6 +1034,8 @@ class PenTool extends Tool {
         this.lineWidth = strokeWith;
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 6], [200, 200]);
         this.tbSize = new GuiTextBox(true, 100);
+        this.tbSize.promptText = "Enter line width:";
+        this.tbSize.setText(String(this.lineWidth));
         this.btUpdate = new GuiButton(() => {
             this.lineWidth = this.tbSize.asNumber.get() ? (this.tbSize.asNumber.get() <= 128 ? this.tbSize.asNumber.get() : 128) : this.lineWidth;
             this.tbSize.setText(String(this.lineWidth));
@@ -1070,6 +1073,7 @@ class ColorPickerTool extends Tool {
         this.field = field;
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 6], [200, 200]);
         this.tbColor = new GuiTextBox(true, 200, null, 15);
+        this.tbColor.promptText = "Enter RGBA color here:";
         this.setColorText();
         this.btUpdate = new GuiButton(() => {
             this.field.palette.setSelectedColor(this.tbColor.text);
@@ -1085,6 +1089,8 @@ class ColorPickerTool extends Tool {
     setColorText() {
         if (this.color())
             this.tbColor.setText(this.color().htmlRBGA());
+        else
+            this.tbColor.setText(new RGB(0, 0, 0, 0).htmlRBGA());
     }
     activateOptionPanel() { this.layoutManager.activate(); this.tbColor.activate(); this.tbColor.refresh(); }
     deactivateOptionPanel() { this.layoutManager.deactivate(); }
@@ -1106,7 +1112,11 @@ class DrawingScreenSettingsTool extends Tool {
         this.field = field;
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [4, 6], [200, 200]);
         this.tbX = new GuiTextBox(true, 70);
+        this.tbX.promptText = "Enter width:";
+        this.tbX.setText(String(this.dim[0]));
         this.tbY = new GuiTextBox(true, 70); //, null, 16, 100);
+        this.tbY.promptText = "Enter height:";
+        this.tbY.setText(String(this.dim[1]));
         this.btUpdate = new GuiButton(() => this.recalcDim(), "Update", 50, 22, 12);
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
