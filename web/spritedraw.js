@@ -1286,7 +1286,7 @@ class ToolSelector {
 class ClipBoard {
     constructor(canvas, keyboardHandler, pixelCountX, pixelCountY) {
         this.canvas = canvas;
-        this.currentDim = [pixelCountX, pixelCountY];
+        this.dim = [pixelCountX, pixelCountY];
         this.offscreenCanvas = document.createElement("canvas");
         this.clipBoardBuffer = new Array();
         this.offscreenCanvas.width = pixelCountX;
@@ -1305,16 +1305,16 @@ class ClipBoard {
     }
     resize(dim) {
         if (dim.length === 2) {
-            this.currentDim[0] = dim[0];
-            this.currentDim[1] = dim[1];
+            this.dim[0] = dim[0];
+            this.dim[1] = dim[1];
             this.offscreenCanvas.width = dim[0];
             this.offscreenCanvas.height = dim[1];
         }
     }
     //only really works for rotation by pi/2
     rotate(theta) {
-        const dx = this.currentDim[0] / 2;
-        const dy = this.currentDim[1] / 2;
+        const dx = this.dim[0] / 2;
+        const dy = this.dim[1] / 2;
         const initTransMatrix = [1, 0, dx * -1,
             0, 1, dy * -1,
             0, 0, 1];
@@ -1329,15 +1329,15 @@ class ClipBoard {
         const finalTransformationMatrix = threeByThreeMat(threeByThreeMat(initTransMatrix, rotationMatrix), revertTransMatrix);
         const vec = [0, 0, 0];
         for (const rec of this.clipBoardBuffer.entries()) {
-            let x = rec[1].second % this.currentDim[0];
-            let y = Math.floor(rec[1].second / this.currentDim[0]);
+            let x = rec[1].second % this.dim[0];
+            let y = Math.floor(rec[1].second / this.dim[0]);
             vec[0] = x;
             vec[1] = y;
             vec[2] = 1;
             const transformed = matByVec(finalTransformationMatrix, vec);
             x = Math.floor(transformed[0]);
             y = Math.floor(transformed[1]);
-            rec[1].second = Math.floor((x) + (y) * this.currentDim[0]);
+            rec[1].second = Math.floor((x) + (y) * this.dim[0]);
         }
         this.clipBoardBuffer.sort((a, b) => a.second - b.second);
         this.refreshImageFromBuffer(this.currentDim[1], this.currentDim[0]);
@@ -1350,8 +1350,8 @@ class ClipBoard {
         const ctx = this.offscreenCanvas.getContext("2d");
         ctx.fillStyle = "rgba(255,255,255,1)";
         ctx.fillRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
-        const start_x = 0; //(this.centerX / this.canvas.width * this.pixelCountX) - ((width * this.pixelWidth/4)/2);
-        const start_y = 0; //(this.centerY / this.canvas.height * this.pixelCountY) - ((height * this.pixelHeight/4)/2);
+        const start_x = this.dim[0] / 2 - this.currentDim[0] / 2; //(this.centerX / this.canvas.width * this.pixelCountX) - ((width * this.pixelWidth/4)/2);
+        const start_y = this.dim[1] / 2 - this.currentDim[1] / 2; //(this.centerY / this.canvas.height * this.pixelCountY) - ((height * this.pixelHeight/4)/2);
         ctx.scale(this.canvas.width / this.offscreenCanvas.width, this.canvas.height / this.offscreenCanvas.height);
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {

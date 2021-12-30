@@ -1622,14 +1622,15 @@ class ToolSelector {
 class ClipBoard {
     canvas:HTMLCanvasElement;
     offscreenCanvas:HTMLCanvasElement;
-    clipBoardBuffer:Array<Pair<RGB, number>>;
-    currentDim:Array<number>;
+    clipBoardBuffer:Pair<RGB, number>[];
+    currentDim:number[];
+    dim:number[];
     touchListener:SingleTouchListener;
     angle:number;
     constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, pixelCountX:number, pixelCountY:number)
     {
         this.canvas = canvas;
-        this.currentDim = [pixelCountX,pixelCountY];
+        this.dim = [pixelCountX,pixelCountY];
         this.offscreenCanvas = document.createElement("canvas");
         this.clipBoardBuffer = new Array<Pair<RGB, number>>();
         this.offscreenCanvas.width = pixelCountX;
@@ -1652,8 +1653,8 @@ class ClipBoard {
     {
         if(dim.length === 2)
         {
-            this.currentDim[0] = dim[0];
-            this.currentDim[1] = dim[1];
+            this.dim[0] = dim[0];
+            this.dim[1] = dim[1];
             this.offscreenCanvas.width = dim[0];
             this.offscreenCanvas.height = dim[1];
         }
@@ -1661,8 +1662,8 @@ class ClipBoard {
     //only really works for rotation by pi/2
     rotate(theta:number):void
     {
-        const dx:number = this.currentDim[0]/2;
-        const dy:number = this.currentDim[1]/2;
+        const dx:number = this.dim[0]/2;
+        const dy:number = this.dim[1]/2;
         const initTransMatrix:number[] = [1,0,dx*-1,
                                  0,1,dy*-1,
                                  0,0,1];
@@ -1678,15 +1679,15 @@ class ClipBoard {
         const vec:number[] = [0,0,0];
         for(const rec of this.clipBoardBuffer.entries())
         {
-            let x:number = rec[1].second % this.currentDim[0];
-            let y:number = Math.floor(rec[1].second / this.currentDim[0]);
+            let x:number = rec[1].second % this.dim[0];
+            let y:number = Math.floor(rec[1].second / this.dim[0]);
             vec[0] = x;
             vec[1] = y;
             vec[2] = 1;
             const transformed = matByVec(finalTransformationMatrix, vec);
             x = Math.floor(transformed[0]);
             y = Math.floor(transformed[1]);
-            rec[1].second = Math.floor((x) + (y) * this.currentDim[0]);
+            rec[1].second = Math.floor((x) + (y) * this.dim[0]);
         }
         this.clipBoardBuffer.sort((a, b) => a.second - b.second);
         this.refreshImageFromBuffer(this.currentDim[1], this.currentDim[0]);
@@ -1701,8 +1702,8 @@ class ClipBoard {
         const ctx = this.offscreenCanvas.getContext("2d");
         ctx.fillStyle = "rgba(255,255,255,1)";
         ctx.fillRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
-        const start_x:number = 0//(this.centerX / this.canvas.width * this.pixelCountX) - ((width * this.pixelWidth/4)/2);
-        const start_y:number = 0//(this.centerY / this.canvas.height * this.pixelCountY) - ((height * this.pixelHeight/4)/2);
+        const start_x:number = this.dim[0] / 2 - this.currentDim[0] / 2//(this.centerX / this.canvas.width * this.pixelCountX) - ((width * this.pixelWidth/4)/2);
+        const start_y:number = this.dim[1] / 2 - this.currentDim[1] / 2//(this.centerY / this.canvas.height * this.pixelCountY) - ((height * this.pixelHeight/4)/2);
         ctx.scale(this.canvas.width / this.offscreenCanvas.width, this.canvas.height / this.offscreenCanvas.height);
            
         for(let y = 0; y < height; y++)
@@ -1712,7 +1713,6 @@ class ClipBoard {
                 const sx:number = ((x + start_x));
                 const sy:number = ((y + start_y));
                 ctx.fillStyle = this.clipBoardBuffer[Math.floor(x + y * width)].first.htmlRBGA();
-
                 ctx.fillRect(sx, sy, 1, 1);
             }
         }
