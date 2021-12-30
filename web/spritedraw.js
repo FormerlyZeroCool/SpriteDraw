@@ -474,7 +474,7 @@ class GuiButton {
                         this.drawInternal();
                         break;
                     case ("keyup"):
-                        this.callback(e);
+                        this.callback();
                         this.pressed = false;
                         this.drawInternal();
                         this.deactivate();
@@ -491,7 +491,7 @@ class GuiButton {
                     this.drawInternal();
                     break;
                 case ("touchend"):
-                    this.callback(e);
+                    this.callback();
                     this.pressed = false;
                     this.drawInternal();
                     break;
@@ -656,6 +656,7 @@ class GuiTextBox {
         this.cursor = 0;
         this.flags = flags;
         this.focused = false;
+        this.promptText = "Enter text here:";
         this.submissionButton = submit;
         this.selectedColor = selectedColor;
         this.unSelectedColor = unSelectedColor;
@@ -748,13 +749,26 @@ class GuiTextBox {
         this.cursor = text.length;
         this.drawInternalAndClear();
     }
+    calcNumber() {
+        if (!isNaN(Number(this.text))) {
+            this.asNumber.set(Number(this.text));
+        }
+        else
+            this.asNumber.clear();
+    }
     handleTouchEvents(type, e) {
         if (this.active()) {
             switch (type) {
                 case ("touchend"):
                     if (isTouchSupported()) {
-                        let value = prompt("Enter text here", this.text);
-                        this.text = value;
+                        let value = prompt(this.promptText, this.text);
+                        this.setText(value);
+                        this.calcNumber();
+                        this.deactivate();
+                        if (this.submissionButton) {
+                            this.submissionButton.activate();
+                            this.submissionButton.callback();
+                        }
                     }
                     this.drawInternalAndClear();
             }
@@ -1019,7 +1033,7 @@ class PenTool extends Tool {
         this.lineWidth = strokeWith;
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 6], [200, 200]);
         this.tbSize = new GuiTextBox(true, 100);
-        this.btUpdate = new GuiButton(e => {
+        this.btUpdate = new GuiButton(() => {
             this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128 ? this.tbSize.asNumber.get() : this.lineWidth;
             this.tbSize.setText(String(this.lineWidth));
         }, "Update", 50, this.tbSize.height(), 12);
@@ -1057,7 +1071,7 @@ class ColorPickerTool extends Tool {
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 6], [200, 200]);
         this.tbColor = new GuiTextBox(true, 200, null, 15);
         this.setColorText();
-        this.btUpdate = new GuiButton(e => {
+        this.btUpdate = new GuiButton(() => {
             this.field.palette.setSelectedColor(this.tbColor.text);
         }, "Update", 50, this.tbColor.height(), 12);
         this.tbColor.submissionButton = this.btUpdate;
@@ -1093,7 +1107,7 @@ class DrawingScreenSettingsTool extends Tool {
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [4, 6], [200, 200]);
         this.tbX = new GuiTextBox(true, 70);
         this.tbY = new GuiTextBox(true, 70); //, null, 16, 100);
-        this.btUpdate = new GuiButton(e => this.recalcDim(), "Update", 50, 22, 12);
+        this.btUpdate = new GuiButton(() => this.recalcDim(), "Update", 50, 22, 12);
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
         this.layoutManager.addElement(new GuiLabel("Sprite Resolution:", 200, 16, GuiTextBox.bottom));

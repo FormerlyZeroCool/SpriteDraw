@@ -598,8 +598,8 @@ class GuiButton implements GuiElement {
     unPressedColor:RGB;
     pressed:boolean;
     focused:boolean;
-    callback:(event) => void;
-    constructor(callBack:(event) => void, text:string, width:number = 200, height:number = 50, fontSize:number = 12, pressedColor:RGB = new RGB(150, 150, 200, 1), unPressedColor:RGB = new RGB(150, 150, 150))
+    callback:() => void;
+    constructor(callBack:() => void, text:string, width:number = 200, height:number = 50, fontSize:number = 12, pressedColor:RGB = new RGB(150, 150, 200, 1), unPressedColor:RGB = new RGB(150, 150, 150))
     {
         this.text = text;
         this.fontSize = fontSize;
@@ -626,7 +626,7 @@ class GuiButton implements GuiElement {
                         this.drawInternal();
                     break;
                     case("keyup"):
-                        this.callback(e);
+                        this.callback();
                         this.pressed = false;
                         this.drawInternal();
                         this.deactivate();
@@ -645,7 +645,7 @@ class GuiButton implements GuiElement {
                     this.drawInternal();
                 break;
                 case("touchend"):
-                    this.callback(e);
+                    this.callback();
                     this.pressed = false;
                     this.drawInternal();
                 break;
@@ -865,12 +865,14 @@ class GuiTextBox implements GuiElement {
     static specialChars = {};
     flags:number;
     submissionButton:GuiButton;
+    promptText:string;
     constructor(keyListener:boolean, width:number, submit:GuiButton = null, fontSize:number = 16, height:number = 2*fontSize, flags:number = GuiTextBox.center,
         selectedColor:RGB = new RGB(80, 80, 220), unSelectedColor:RGB = new RGB(100, 100, 100))
     {
         this.cursor = 0;
         this.flags = flags;
         this.focused = false;
+        this.promptText = "Enter text here:";
         this.submissionButton = submit;
         this.selectedColor = selectedColor;
         this.unSelectedColor = unSelectedColor;
@@ -976,6 +978,15 @@ class GuiTextBox implements GuiElement {
         this.cursor = text.length;
         this.drawInternalAndClear();
     }
+    calcNumber():void
+    {
+        if(!isNaN(Number(this.text)))
+        {
+            this.asNumber.set(Number(this.text))
+        }
+        else
+            this.asNumber.clear();
+    }
     handleTouchEvents(type:string, e:any):void
     {
         if(this.active()){
@@ -984,8 +995,15 @@ class GuiTextBox implements GuiElement {
                 case("touchend"):
                 if(isTouchSupported())
                 {
-                    let value = prompt("Enter text here", this.text);
-                    this.text = value;
+                    let value = prompt(this.promptText, this.text);
+                    this.setText(value);
+                    this.calcNumber();
+                    this.deactivate();
+                    if(this.submissionButton)
+                    {
+                        this.submissionButton.activate();
+                        this.submissionButton.callback();
+                    }
                 }
                 this.drawInternalAndClear();
 
@@ -1293,7 +1311,7 @@ class PenTool extends Tool {
         this.lineWidth = strokeWith;
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,6],[200,200]);
         this.tbSize = new GuiTextBox(true, 100);
-        this.btUpdate = new GuiButton(e => { 
+        this.btUpdate = new GuiButton(() => { 
             this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128?this.tbSize.asNumber.get():this.lineWidth; 
             this.tbSize.setText(String(this.lineWidth))},
             "Update", 50, this.tbSize.height(), 12);
@@ -1340,7 +1358,7 @@ class ColorPickerTool extends Tool {
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,6],[200,200]);
         this.tbColor = new GuiTextBox(true, 200, null, 15);
         this.setColorText();
-        this.btUpdate = new GuiButton(e => { 
+        this.btUpdate = new GuiButton(() => { 
             this.field.palette.setSelectedColor(this.tbColor.text);},
             "Update", 50, this.tbColor.height(), 12);
         this.tbColor.submissionButton = this.btUpdate;
@@ -1387,7 +1405,7 @@ class DrawingScreenSettingsTool extends Tool {
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [4,6],[200,200]);
         this.tbX = new GuiTextBox(true, 70);
         this.tbY = new GuiTextBox(true, 70);//, null, 16, 100);
-        this.btUpdate = new GuiButton(e => this.recalcDim(),
+        this.btUpdate = new GuiButton(() => this.recalcDim(),
             "Update", 50, 22, 12);
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
