@@ -538,7 +538,7 @@ class GuiButton {
 }
 ;
 class GuiCheckBox {
-    constructor(callBack, width = 50, height = 50, checked = false, fontSize = height - 10, pressedColor = new RGB(150, 150, 200, 255), unPressedColor = new RGB(200, 200, 200, 255)) {
+    constructor(callBack, width = 50, height = 50, checked = false, unPressedColor = new RGB(245, 245, 245, 255), pressedColor = new RGB(150, 150, 200, 255), fontSize = height - 10) {
         this.checked = checked;
         this.fontSize = fontSize;
         this.dimensions = [width, height];
@@ -948,7 +948,10 @@ this.layoutManager.addElement(this.chbxBlendAlpha);
 class DragTool extends GenericTool {
     constructor(keyboardHandler, touchListener, name, imagePath) {
         super(name, imagePath);
-        this.optionPanel = new SimpleGridLayoutManager(keyboardHandler, touchListener, [6, 6], [200, 400]);
+        this.optionPanel = new SimpleGridLayoutManager(keyboardHandler, touchListener, [6, 12], [200, 400]);
+        this.chbxOnlySameColor = new GuiCheckBox((e) => null, 40, 40);
+        this.optionPanel.addElement(new GuiLabel("Only drag one color", 200, 16, GuiTextBox.center, 40));
+        this.optionPanel.addElement(this.chbxOnlySameColor);
     }
     activateOptionPanel() { this.optionPanel.activate(); }
     deactivateOptionPanel() { this.optionPanel.deactivate(); }
@@ -1169,6 +1172,7 @@ class ToolSelector {
         this.eraserTool = new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png");
         this.settingsTool = new DrawingScreenSettingsTool(keyboardHandler, this.touchListener, [524, 524], field, "ScreenSettings", "images/settingsSprite.png");
         this.colorPickerTool = new ColorPickerTool(keyboardHandler, this.touchListener, field, "colorPicker", "images/colorPickerSprite.png");
+        this.dragTool = new DragTool(keyboardHandler, this.touchListener, "drag", "images/dragSprite.png");
         this.toolArray = [];
         this.toolArray.push(this.penTool);
         this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
@@ -1177,7 +1181,7 @@ class ToolSelector {
         this.toolArray.push(new PenViewTool(this.penTool, "oval", "images/ovalSprite.png"));
         this.toolArray.push(new GenericTool("copy", "images/copySprite.png"));
         this.toolArray.push(new GenericTool("paste", "images/pasteSprite.png"));
-        this.toolArray.push(new GenericTool("drag", "images/dragSprite.png"));
+        this.toolArray.push(this.dragTool);
         this.toolArray.push(new GenericTool("redo", "images/redoSprite.png"));
         this.toolArray.push(new GenericTool("undo", "images/undoSprite.png"));
         this.toolArray.push(this.colorPickerTool);
@@ -1406,7 +1410,7 @@ class DrawingScreen {
                     break;
                 case ("drag"):
                     this.saveDragDataToScreen();
-                    if (this.keyboardHandler.keysHeld["AltLeft"])
+                    if (this.keyboardHandler.keysHeld["AltLeft"] || this.toolSelector.dragTool.chbxOnlySameColor.checked)
                         this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), true);
                     else
                         this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), false);
@@ -1441,6 +1445,8 @@ class DrawingScreen {
         this.listeners.registerCallBack("touchmove", e => true, e => {
             const x1 = e.touchPos[0] - e.deltaX;
             const y1 = e.touchPos[1] - e.deltaY;
+            const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
+            const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
             switch (this.toolSelector.selectedToolName()) {
                 case ("pen"):
                     this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
@@ -1462,8 +1468,6 @@ class DrawingScreen {
                                 (this.listeners.startTouchPos[1] / this.bounds.second) * this.dimensions.second]);
                     break;
                 case ("fill"):
-                    const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
-                    const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
                     this.fillArea(new Pair(gx, gy));
                     break;
                 case ("oval"):
@@ -1480,6 +1484,11 @@ class DrawingScreen {
                 case ("paste"):
                     this.pasteRect[0] += e.deltaX;
                     this.pasteRect[1] += e.deltaY;
+                    break;
+                case ("colorPicker"):
+                    this.color.copy(this.screenBuffer[gx + gy * this.dimensions.first]);
+                    newColorTextBox.value = this.color.htmlRBGA(); //for html instead of Gui lib
+                    this.toolSelector.colorPickerTool.setColorText(); // for Gui lib
                     break;
             }
         });
@@ -1929,7 +1938,7 @@ class DrawingScreen {
                 else
                     this.screenBuffer[key].color = color.color;
             }
-            this.updatesStack.get(this.updatesStack.length() - 1).sort((a, b) => a.first - b.first);
+            //this.updatesStack.get(this.updatesStack.length()-1).sort((a, b) => a.first - b.first);
         }
     }
     saveDragDataToScreenAntiAliased() {
