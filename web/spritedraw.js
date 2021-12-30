@@ -1887,7 +1887,7 @@ class DrawingScreen {
     async undoLast() {
         if (this.updatesStack.length()) {
             const data = this.updatesStack.pop();
-            const backedUpFrame = new Array();
+            const backedUpFrame = [];
             const divisor = 60 * 10;
             const interval = Math.floor(data.length / divisor) === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter = 0;
@@ -1911,7 +1911,7 @@ class DrawingScreen {
     async redoLast() {
         if (this.undoneUpdatesStack.length()) {
             const data = this.undoneUpdatesStack.pop();
-            const backedUpFrame = new Array();
+            const backedUpFrame = [];
             const divisor = 60 * 10;
             const interval = Math.floor(data.length / divisor) === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter = 0;

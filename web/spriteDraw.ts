@@ -2339,7 +2339,7 @@ class DrawingScreen {
         if(this.updatesStack.length())
         {
             const data:Pair<number, RGB>[] = this.updatesStack.pop();
-            const backedUpFrame = new Array<Pair<number, RGB>>();
+            const backedUpFrame = [];
             const divisor:number =  60*10;
             const interval:number = Math.floor(data.length/divisor) === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter:number = 0;
@@ -2368,7 +2368,7 @@ class DrawingScreen {
         if(this.undoneUpdatesStack.length())
         {
             const data = this.undoneUpdatesStack.pop();
-            const backedUpFrame = new Array<Pair<number, RGB>>();
+            const backedUpFrame = [];
             const divisor:number =  60*10;
             const interval:number = Math.floor(data.length/divisor) === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter:number = 0;
