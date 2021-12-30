@@ -1958,7 +1958,7 @@ class DrawingScreen {
             if (this.screenBuffer.length != newDim[0] * newDim[1]) {
                 this.screenBuffer = [];
                 for (let i = this.screenBuffer.length; i < newDim[0] * newDim[1]; i++)
-                    this.screenBuffer.push(new RGB(255, 255, 255, 0));
+                    this.screenBuffer.push(new RGB(0, 0, 0, 0));
                 this.spriteScreenBuf = new Sprite([], this.bounds.first, this.bounds.second);
             }
             this.dimensions = new Pair(newDim[0], newDim[1]);
