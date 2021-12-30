@@ -1195,21 +1195,17 @@ class GenericTool extends Tool {
     }
     drawOptionPanel(ctx, x:number, y:number):void {}
 };
-/*
-this.chbxBlendAlpha = new GuiCheckBox((event => null));
-this.layoutManager.addElement(new GuiLabel("Blend Alpha: ", 150, 16));
-this.layoutManager.addElement(this.chbxBlendAlpha);
-*/
-class DragTool extends GenericTool {
+
+class SingleCheckBoxTool extends GenericTool {
     optionPanel:SimpleGridLayoutManager;
-    chbxOnlySameColor:GuiCheckBox;
-    constructor(keyboardHandler:KeyboardHandler, touchListener:SingleTouchListener, name:string, imagePath:string)
+    checkBox:GuiCheckBox;
+    constructor(keyboardHandler:KeyboardHandler, touchListener:SingleTouchListener, label:string, name:string, imagePath:string, callback:() => void = () => null)
     {
         super(name, imagePath);
         this.optionPanel = new SimpleGridLayoutManager(keyboardHandler, touchListener, [6,12], [200, 400]);
-        this.chbxOnlySameColor = new GuiCheckBox((e) => null, 40, 40);
-        this.optionPanel.addElement(new GuiLabel("Only drag one color", 200, 16, GuiTextBox.center, 40));
-        this.optionPanel.addElement(this.chbxOnlySameColor);
+        this.checkBox = new GuiCheckBox(callback, 40, 40);
+        this.optionPanel.addElement(new GuiLabel(label, 200, 16, GuiTextBox.center, 40));
+        this.optionPanel.addElement(this.checkBox);
     }
     activateOptionPanel():void { this.optionPanel.activate(); }
     deactivateOptionPanel():void { this.optionPanel.deactivate(); }
@@ -1222,6 +1218,23 @@ class DragTool extends GenericTool {
     }
     drawOptionPanel(ctx, x:number, y:number):void {
         this.optionPanel.draw(ctx, x, y);
+    }
+};
+/*
+this.chbxBlendAlpha = new GuiCheckBox((event => null));
+this.layoutManager.addElement(new GuiLabel("Blend Alpha: ", 150, 16));
+this.layoutManager.addElement(this.chbxBlendAlpha);
+*/
+class DragTool extends SingleCheckBoxTool {
+    constructor(keyboardHandler:KeyboardHandler, touchListener:SingleTouchListener, name:string, imagePath:string)
+    {
+        super(keyboardHandler, touchListener, "Only drag one color", name, imagePath);
+    }
+};
+class UndoRedoTool extends SingleCheckBoxTool {
+    constructor(toolSelector:ToolSelector, name:string, imagePath:string, callback: () => void)
+    {
+        super(toolSelector.keyboardHandler, toolSelector.touchListener, "Slow mode", name, imagePath, callback);
     }
 };
 class ViewLayoutTool extends Tool {
@@ -1244,6 +1257,13 @@ class ViewLayoutTool extends Tool {
     drawOptionPanel(ctx, x:number, y:number):void
     {
         this.layoutManager.draw(ctx, x, y);
+    }
+};
+class ExtendedTool extends ViewLayoutTool {
+    constructor(toolSelector:ToolSelector, name:string, path:string, optionPanes:SimpleGridLayoutManager[], dim:number[])
+    {
+        super(new SimpleGridLayoutManager(toolSelector.keyboardHandler, toolSelector.touchListener, [24,24], dim), name, path);
+
     }
 };
 class PenViewTool extends ViewLayoutTool {
@@ -1365,6 +1385,7 @@ class DrawingScreenSettingsTool extends Tool {
             "Update", 50, 22, 12);
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
+        this.layoutManager.addElement(new GuiLabel("Sprite Resolution:", 200, 16, GuiTextBox.bottom));
         this.layoutManager.addElement(new GuiLabel("Width:", 90, 16));
         this.layoutManager.addElement(new GuiLabel("Height:", 90, 16));
         this.layoutManager.addElement(this.tbX);
@@ -1413,6 +1434,7 @@ class ToolSelector {
     settingsTool:DrawingScreenSettingsTool;
     colorPickerTool:ColorPickerTool;
     dragTool:DragTool;
+    undoTool:UndoRedoTool;
     constructor(field:DrawingScreen, keyboardHandler:KeyboardHandler, imgWidth:number = 50, imgHeight:number = 50)
     {
         this.imgWidth = imgWidth;
@@ -1488,6 +1510,7 @@ class ToolSelector {
         this.settingsTool = new DrawingScreenSettingsTool(keyboardHandler, this.touchListener, [524, 524], field, "ScreenSettings","images/settingsSprite.png");
         this.colorPickerTool = new ColorPickerTool(keyboardHandler, this.touchListener, field,"colorPicker", "images/colorPickerSprite.png");
         this.dragTool = new DragTool(keyboardHandler, this.touchListener, "drag", "images/dragSprite.png");
+        this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.slow = !field.slow);
         this.toolArray = [];
         this.toolArray.push(this.penTool);
         this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
@@ -1497,8 +1520,8 @@ class ToolSelector {
         this.toolArray.push(new GenericTool("copy", "images/copySprite.png"));
         this.toolArray.push(new GenericTool("paste", "images/pasteSprite.png"));
         this.toolArray.push(this.dragTool);
-        this.toolArray.push(new GenericTool("redo", "images/redoSprite.png"));
-        this.toolArray.push(new GenericTool("undo", "images/undoSprite.png"));
+        this.toolArray.push(new ViewLayoutTool(this.undoTool.getOptionPanel(), "redo", "images/redoSprite.png"));
+        this.toolArray.push(this.undoTool);
         this.toolArray.push(this.colorPickerTool);
         this.toolArray.push(this.eraserTool);
         this.toolArray.push(new GenericTool("rotate", "images/rotateSprite.png"));
@@ -1680,6 +1703,7 @@ class DrawingScreen {
     dimensions:Pair<number>;
     canvas:HTMLCanvasElement;
     ctx:CanvasRenderingContext2D;
+    slow:boolean;
     spriteScreenBuf:Sprite;
     screenBuffer:Array<RGB>;
     clipBoard:ClipBoard;
@@ -1701,6 +1725,7 @@ class DrawingScreen {
     {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
+        this.slow = false;
         this.dimensions = new Pair<number>(dimensions[0], dimensions[1]);
         this.offset = new Pair<number>(offset[0], offset[1]);
         this.bounds = new Pair<number>(bounds[0], bounds[1]);
@@ -1792,7 +1817,7 @@ class DrawingScreen {
                 break;
                 case("drag"):
                 this.saveDragDataToScreen();
-                if(this.keyboardHandler.keysHeld["AltLeft"] || this.toolSelector.dragTool.chbxOnlySameColor.checked)
+                if(this.keyboardHandler.keysHeld["AltLeft"] || this.toolSelector.dragTool.checkBox.checked)
                     this.dragData = this.getSelectedPixelGroup(new Pair<number>(gx,gy), true);
                 else
                     this.dragData = this.getSelectedPixelGroup(new Pair<number>(gx,gy), false);
@@ -2034,7 +2059,7 @@ class DrawingScreen {
     {
         const altHeld:boolean = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
         let stack:any;
-        if(this.keyboardHandler.keysHeld["KeyS"])//possibly more visiually appealling algo (bfs), 
+        if(this.slow || this.keyboardHandler.keysHeld["KeyS"])//possibly more visiually appealling algo (bfs), 
         //but slower because it makes much worse use of the cache with very high random access
             stack = new Queue<number>(this.screenBuffer.length >> 4);
         else
@@ -2276,7 +2301,6 @@ class DrawingScreen {
         {
             const data:Pair<number, RGB>[] = this.updatesStack.pop();
             const backedUpFrame = new Array<Pair<number, RGB>>();
-            this.undoneUpdatesStack.push(backedUpFrame);
             const divisor:number =  60*10;
             const interval:number = Math.floor(data.length/divisor) === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter:number = 0;
@@ -2288,11 +2312,12 @@ class DrawingScreen {
                     const color:number = (this.screenBuffer[el.first]).color;
                     this.screenBuffer[el.first].copy(el.second);
                     el.second.color = color;
-                    if(intervalCounter % interval === 0 && this.keyboardHandler.keysHeld["KeyS"])
+                    if(intervalCounter % interval === 0 && (this.slow || this.keyboardHandler.keysHeld["KeyS"]))
                     {
                         await sleep(1);
                     }
             }
+            this.undoneUpdatesStack.push(backedUpFrame);
         }
         else{
             console.log("Error, nothing to undo");
@@ -2305,7 +2330,6 @@ class DrawingScreen {
         {
             const data = this.undoneUpdatesStack.pop();
             const backedUpFrame = new Array<Pair<number, RGB>>();
-            this.updatesStack.push(backedUpFrame);
             const divisor:number =  60*10;
             const interval:number = Math.floor(data.length/divisor) === 0 ? 1 : Math.floor(data.length / divisor);
             let intervalCounter:number = 0;
@@ -2317,11 +2341,12 @@ class DrawingScreen {
                     const color:number = this.screenBuffer[el.first].color;
                     this.screenBuffer[el.first].copy(el.second);
                     el.second.color = color;
-                    if(intervalCounter % interval === 0 && this.keyboardHandler.keysHeld["KeyS"])
+                    if(intervalCounter % interval === 0 && (this.slow || this.keyboardHandler.keysHeld["KeyS"]))
                     {
                         await sleep(1);
                     }
             }
+            this.updatesStack.push(backedUpFrame);
         }
         else{
             console.log("Error, nothing to redo");
