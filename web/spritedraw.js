@@ -1034,7 +1034,7 @@ class PenTool extends Tool {
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 6], [200, 200]);
         this.tbSize = new GuiTextBox(true, 100);
         this.btUpdate = new GuiButton(() => {
-            this.lineWidth = this.tbSize.asNumber.get() && this.tbSize.asNumber.get() <= 128 ? this.tbSize.asNumber.get() : this.lineWidth;
+            this.lineWidth = this.tbSize.asNumber.get() ? (this.tbSize.asNumber.get() <= 128 ? this.tbSize.asNumber.get() : 128) : this.lineWidth;
             this.tbSize.setText(String(this.lineWidth));
         }, "Update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
