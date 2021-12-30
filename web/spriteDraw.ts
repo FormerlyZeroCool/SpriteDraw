@@ -982,7 +982,13 @@ class GuiTextBox implements GuiElement {
             switch(type)
             {
                 case("touchend"):
+                if(isTouchSupported())
+                {
+                    let value = prompt("Enter text here", this.text);
+                    this.text = value;
+                }
                 this.drawInternalAndClear();
+
             }
         }
     }
