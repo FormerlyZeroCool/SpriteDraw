@@ -996,7 +996,7 @@ class GuiTextBox implements GuiElement {
                 case("touchend"):
                 if(isTouchSupported())
                 {
-                    let value = prompt(this.promptText, this.text);
+                    const value = prompt(this.promptText, this.text);
                     if(value)
                     {
                         this.setText(value);
@@ -1366,7 +1366,9 @@ class ColorPickerTool extends Tool {
         this.tbColor.promptText = "Enter RGBA color here (RGB 0-255 A 0-1):";
         this.setColorText();
         this.btUpdate = new GuiButton(() => { 
-            this.field.palette.setSelectedColor(this.tbColor.text);},
+            this.field.palette.setSelectedColor(this.tbColor.text);
+            this.field.color = this.field.palette.calcColor();
+        },
             "Update", 50, this.tbColor.height(), 12);
         this.tbColor.submissionButton = this.btUpdate;
         this.layoutManager.addElement(new GuiLabel("Color:", 150, 16));

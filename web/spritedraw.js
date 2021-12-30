@@ -762,7 +762,7 @@ class GuiTextBox {
             switch (type) {
                 case ("touchend"):
                     if (isTouchSupported()) {
-                        let value = prompt(this.promptText, this.text);
+                        const value = prompt(this.promptText, this.text);
                         if (value) {
                             this.setText(value);
                             this.calcNumber();
@@ -1079,6 +1079,7 @@ class ColorPickerTool extends Tool {
         this.setColorText();
         this.btUpdate = new GuiButton(() => {
             this.field.palette.setSelectedColor(this.tbColor.text);
+            this.field.color = this.field.palette.calcColor();
         }, "Update", 50, this.tbColor.height(), 12);
         this.tbColor.submissionButton = this.btUpdate;
         this.layoutManager.addElement(new GuiLabel("Color:", 150, 16));
