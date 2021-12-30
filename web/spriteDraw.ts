@@ -1360,7 +1360,7 @@ class ColorPickerTool extends Tool {
         this.field = field;
         this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,6],[200,200]);
         this.tbColor = new GuiTextBox(true, 200, null, 15);
-        this.tbColor.promptText = "Enter RGBA color here:";
+        this.tbColor.promptText = "Enter RGBA color here (RGB 0-255 A 0-1):";
         this.setColorText();
         this.btUpdate = new GuiButton(() => { 
             this.field.palette.setSelectedColor(this.tbColor.text);},
