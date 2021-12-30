@@ -3317,5 +3317,3 @@ async function main() {
     }
 }
 main();
-//Below written by Ashley Moy
-console.log("Hey sexy");
