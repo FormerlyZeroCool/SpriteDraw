@@ -1361,6 +1361,7 @@ class ClipBoard {
                 ctx.fillRect(sx, sy, 1, 1);
             }
         }
+        ctx.scale(this.offscreenCanvas.width / this.canvas.width, this.offscreenCanvas.height / this.canvas.height);
     }
     draw(canvas = this.canvas) {
         const ctx = canvas.getContext("2d");

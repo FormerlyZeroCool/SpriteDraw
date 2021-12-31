@@ -1715,7 +1715,8 @@ class ClipBoard {
                 ctx.fillStyle = this.clipBoardBuffer[Math.floor(x + y * width)].first.htmlRBGA();
                 ctx.fillRect(sx, sy, 1, 1);
             }
-        }
+        }        
+        ctx.scale(this.offscreenCanvas.width / this.canvas.width, this.offscreenCanvas.height / this.canvas.height);
     }
 
     draw(canvas:HTMLCanvasElement = this.canvas)
