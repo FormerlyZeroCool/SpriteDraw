@@ -403,7 +403,7 @@ class SimpleGridLayoutManager implements GuiElement {
     pixelDim:number[];
     elementsPositions:RowRecord[];
     focused:boolean;
-    constructor(keyboardHandler:KeyboardHandler, touchHandler:SingleTouchListener, matrixDim:number[], pixelDim:number[], x:number = 0, y:number = 0)
+    constructor(matrixDim:number[], pixelDim:number[], x:number = 0, y:number = 0)
     {
         this.matrixDim = matrixDim;
         this.pixelDim = pixelDim;
@@ -418,6 +418,9 @@ class SimpleGridLayoutManager implements GuiElement {
         this.canvas.width = pixelDim[0];
         this.canvas.height = pixelDim[1];
         this.ctx = this.canvas.getContext("2d");
+    } 
+    createHandlers(keyboardHandler:KeyboardHandler, touchHandler:SingleTouchListener):void
+    {
         if(keyboardHandler)
         {
             keyboardHandler.registerCallBack("keydown", e => this.active(), 
@@ -434,7 +437,7 @@ class SimpleGridLayoutManager implements GuiElement {
             touchHandler.registerCallBack("touchend", e => this.active(), 
             e => this.handleTouchEvents("touchend", e));
         }
-    }    
+    }   
     handleKeyBoardEvents(type:string, e:any):void
     {
         this.elements.forEach(el => el.handleKeyBoardEvents(type, e));
@@ -508,7 +511,9 @@ class SimpleGridLayoutManager implements GuiElement {
                     clearSpace = this.isCellFree(j, counter.first);
                 }
                 if(!clearSpace && j < elementWidth)
-                    counter.incLower();
+                {
+                    counter.incLower(j - counter.second);
+                }
                 else if(!clearSpace && j >= elementWidth)
                 {
                     counter.incHigher();
@@ -519,7 +524,10 @@ class SimpleGridLayoutManager implements GuiElement {
             const y:number = counter.first * this.rowHeight();
             counter.second += elementWidth;
             this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
-            
+            if((<any>element).elementsPositions)
+            {
+                console.log("hi")
+            }
         }
     }
     refreshCanvas(ctx:CanvasRenderingContext2D = this.ctx, x:number = 0, y:number = 0):void
@@ -536,8 +544,14 @@ class SimpleGridLayoutManager implements GuiElement {
     width(): number {
         return this.pixelDim[0];
     }
+    setWidth(val:number): void {
+        this.pixelDim[0] = val;
+    }
     height(): number {
         return this.pixelDim[1];
+    }
+    setHeight(val:number): void {
+        this.pixelDim[1] = val;
     }
     rowHeight():number
     {
@@ -565,10 +579,17 @@ class SimpleGridLayoutManager implements GuiElement {
         //todo
         return false;
     }
-    addElement(element:GuiElement):boolean //error state
+    addElement(element:GuiElement, position:number = -1):boolean //error state
     {
         let inserted:boolean = false;
-        this.elements.push(element);
+        if(position === -1)
+        {
+            this.elements.push(element);
+        }
+        else
+        {
+            this.elements.splice(position, 0, element);
+        }
         this.refreshMetaData();
         this.refreshCanvas();
         return inserted;
@@ -580,8 +601,6 @@ class SimpleGridLayoutManager implements GuiElement {
     }
     draw(ctx:CanvasRenderingContext2D, xPos:number = this.x, yPos:number = this.y, offsetX:number = 0, offsetY:number = 0)
     {
-        this.x = xPos + offsetX;
-        this.y = yPos + offsetY;
         this.refreshCanvas();
         ctx.drawImage(this.canvas, xPos + offsetX, yPos + offsetY);
     }
@@ -949,7 +968,7 @@ class GuiTextBox implements GuiElement {
                     default:
                     {
                         let letter:string = e.code.substring(e.code.length - 1);
-                        if(!e.keyboardHandler.keysHeld["ShiftRight"] && !e.keyboardHandler.keysHeld["ShiftLeft"])
+                        if(!e.keysHeld["ShiftRight"] && !e.keysHeld["ShiftLeft"])
                             letter = letter.toLowerCase();
                         if(GuiTextBox.textLookup[e.code] || GuiTextBox.numbers[e.code])
                         {
@@ -1227,10 +1246,10 @@ class GenericTool extends Tool {
 class SingleCheckBoxTool extends GenericTool {
     optionPanel:SimpleGridLayoutManager;
     checkBox:GuiCheckBox;
-    constructor(keyboardHandler:KeyboardHandler, touchListener:SingleTouchListener, label:string, name:string, imagePath:string, callback:() => void = () => null)
+    constructor(label:string, name:string, imagePath:string, callback:() => void = () => null)
     {
         super(name, imagePath);
-        this.optionPanel = new SimpleGridLayoutManager(keyboardHandler, touchListener, [6,12], [200, 400]);
+        this.optionPanel = new SimpleGridLayoutManager([6,12], [200, 400]);
         this.checkBox = new GuiCheckBox(callback, 40, 40);
         this.optionPanel.addElement(new GuiLabel(label, 200, 16, GuiTextBox.center, 40));
         this.optionPanel.addElement(this.checkBox);
@@ -1245,7 +1264,10 @@ class SingleCheckBoxTool extends GenericTool {
         return [this.optionPanel.width(), this.optionPanel.height()];
     }
     drawOptionPanel(ctx, x:number, y:number):void {
-        this.optionPanel.draw(ctx, x, y);
+        const optionPanel:SimpleGridLayoutManager = this.getOptionPanel();
+        optionPanel.x = x;
+        optionPanel.y = y;
+        optionPanel.draw(ctx, x, y);
     }
 };
 /*
@@ -1254,15 +1276,15 @@ this.layoutManager.addElement(new GuiLabel("Blend Alpha: ", 150, 16));
 this.layoutManager.addElement(this.chbxBlendAlpha);
 */
 class DragTool extends SingleCheckBoxTool {
-    constructor(keyboardHandler:KeyboardHandler, touchListener:SingleTouchListener, name:string, imagePath:string)
+    constructor(name:string, imagePath:string)
     {
-        super(keyboardHandler, touchListener, "Only drag one color", name, imagePath);
+        super("Only drag one color", name, imagePath);
     }
 };
 class UndoRedoTool extends SingleCheckBoxTool {
     constructor(toolSelector:ToolSelector, name:string, imagePath:string, callback: () => void)
     {
-        super(toolSelector.keyboardHandler, toolSelector.touchListener, "Slow mode", name, imagePath, callback);
+        super("Slow mode", name, imagePath, callback);
     }
 };
 class ViewLayoutTool extends Tool {
@@ -1284,14 +1306,62 @@ class ViewLayoutTool extends Tool {
     }
     drawOptionPanel(ctx, x:number, y:number):void
     {
-        this.layoutManager.draw(ctx, x, y);
+        const optionPanel:SimpleGridLayoutManager = this.getOptionPanel();
+        optionPanel.x = x;
+        optionPanel.y = y;
+        optionPanel.draw(ctx, x, y);
     }
 };
 class ExtendedTool extends ViewLayoutTool {
+    localLayout:SimpleGridLayoutManager;
+    optionPanels:SimpleGridLayoutManager[];
     constructor(toolSelector:ToolSelector, name:string, path:string, optionPanes:SimpleGridLayoutManager[], dim:number[])
     {
-        super(new SimpleGridLayoutManager(toolSelector.keyboardHandler, toolSelector.touchListener, [24,24], dim), name, path);
+        super(new SimpleGridLayoutManager([24,24], dim), name, path);
+        this.localLayout = new SimpleGridLayoutManager([24,24], dim);
+        const parentPanel:SimpleGridLayoutManager = this.getOptionPanel();
+        parentPanel.addElement(this.localLayout);
+        this.optionPanels = [this.localLayout];
+        optionPanes.forEach(pane => {
+            parentPanel.addElement(pane);
+            this.optionPanels.push(pane);
+        });
+        parentPanel.refreshMetaData();
+        let maxY:number = 0;
+        let maxX:number = 0;
+        parentPanel.elementsPositions.forEach(el => {
+            if(el.y + el.height > maxY)
+            {
+                maxY = el.y + el.height;
+            }
+            if(el.x + el.width > maxY)
+            {
+                maxX = el.x + el.width;
+            }
+        });
+        parentPanel.setWidth(dim[0] + maxX);
+        parentPanel.setHeight(dim[1] + maxY);
+        parentPanel.refreshMetaData();
 
+    }
+    activateOptionPanel(): void {
+        this.getOptionPanel().activate();
+        this.optionPanels.forEach(element => {
+            element.activate();
+        });
+    }
+    deactivateOptionPanel(): void {
+        this.getOptionPanel().deactivate();
+        this.optionPanels.forEach(element => {
+            element.deactivate();
+        });
+    }
+};
+class FillTool extends ExtendedTool {
+    constructor(toolSelector:ToolSelector, name:string, path:string, optionPanes:SimpleGridLayoutManager[])
+    {
+        super(toolSelector, name, path, optionPanes, [200, 50]);
+        this.localLayout.addElement(new GuiLabel("Hello!", 85));
     }
 };
 class PenViewTool extends ViewLayoutTool {
@@ -1309,11 +1379,11 @@ class PenTool extends Tool {
     layoutManager:SimpleGridLayoutManager;
     tbSize:GuiTextBox;
     btUpdate:GuiButton;
-    constructor(keyListener:KeyboardHandler, touchHandler:SingleTouchListener, strokeWith:number, toolName:string = "pen", pathToImage:string = "images/penSprite.png")
+    constructor(strokeWith:number, toolName:string = "pen", pathToImage:string = "images/penSprite.png")
     {
         super(toolName, pathToImage);
         this.lineWidth = strokeWith;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,6],[200,200]);
+        this.layoutManager = new SimpleGridLayoutManager([2,6],[200,200]);
         this.tbSize = new GuiTextBox(true, 100);
         this.tbSize.promptText = "Enter line width:";
         this.tbSize.setText(String(this.lineWidth));
@@ -1345,7 +1415,10 @@ class PenTool extends Tool {
     }
     drawOptionPanel(ctx:CanvasRenderingContext2D, x:number, y:number):void 
     {
-        this.layoutManager.draw(ctx, x, y);
+        const optionPanel:SimpleGridLayoutManager = this.getOptionPanel();
+        optionPanel.x = x;
+        optionPanel.y = y;
+        optionPanel.draw(ctx, x, y);
     }
     penSize():number
     {
@@ -1357,11 +1430,11 @@ class ColorPickerTool extends Tool {
     layoutManager:SimpleGridLayoutManager;
     tbColor:GuiTextBox;
     btUpdate:GuiButton;
-    constructor(keyListener:KeyboardHandler, touchHandler:SingleTouchListener, field:DrawingScreen, toolName:string = "colorPicker", pathToImage:string = "images/colorPickerSprite.png")
+    constructor(field:DrawingScreen, toolName:string = "colorPicker", pathToImage:string = "images/colorPickerSprite.png")
     {
         super(toolName, pathToImage);
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2,6],[200,200]);
+        this.layoutManager = new SimpleGridLayoutManager([2,6],[200,200]);
         this.tbColor = new GuiTextBox(true, 200, null, 15);
         this.tbColor.promptText = "Enter RGBA color here (RGB 0-255 A 0-1):";
         this.setColorText();
@@ -1397,7 +1470,10 @@ class ColorPickerTool extends Tool {
     }
     drawOptionPanel(ctx:CanvasRenderingContext2D, x:number, y:number):void 
     {
-        this.layoutManager.draw(ctx, x, y);
+        const optionPanel:SimpleGridLayoutManager = this.getOptionPanel();
+        optionPanel.x = x;
+        optionPanel.y = y;
+        optionPanel.draw(ctx, x, y);
     }
 };
 class DrawingScreenSettingsTool extends Tool {
@@ -1408,12 +1484,12 @@ class DrawingScreenSettingsTool extends Tool {
     btUpdate:GuiButton;
     dim:number[];
     field:DrawingScreen;
-    constructor(keyListener:KeyboardHandler, touchHandler:SingleTouchListener, dim:number[] = [524, 524], field:DrawingScreen, toolName:string = "pen", pathToImage:string = "images/penSprite.png")
+    constructor(dim:number[] = [524, 524], field:DrawingScreen, toolName:string = "pen", pathToImage:string = "images/penSprite.png")
     {
         super(toolName, pathToImage);
         this.dim = dim;
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [4,6],[200,200]);
+        this.layoutManager = new SimpleGridLayoutManager([4,6],[200,200]);
         this.tbX = new GuiTextBox(true, 70);
         this.tbX.promptText = "Enter width:";
         this.tbX.setText(String(this.dim[0]));
@@ -1454,7 +1530,10 @@ class DrawingScreenSettingsTool extends Tool {
     }
     drawOptionPanel(ctx:CanvasRenderingContext2D, x:number, y:number):void 
     {
-        this.layoutManager.draw(ctx, x, y);
+        const optionPanel:SimpleGridLayoutManager = this.getOptionPanel();
+        optionPanel.x = x;
+        optionPanel.y = y;
+        optionPanel.draw(ctx, x, y);
     }
 };
 // To do refactor tools to make sure they load in the same order every time
@@ -1474,6 +1553,7 @@ class ToolSelector {
     colorPickerTool:ColorPickerTool;
     dragTool:DragTool;
     undoTool:UndoRedoTool;
+    fillTool:FillTool;
     constructor(field:DrawingScreen, keyboardHandler:KeyboardHandler, imgWidth:number = 50, imgHeight:number = 50)
     {
         this.imgWidth = imgWidth;
@@ -1482,6 +1562,8 @@ class ToolSelector {
         this.toolPixelDim = [imgWidth,imgHeight*10];
         this.canvas = <HTMLCanvasElement> document.getElementById("tool_selector_screen");
         this.keyboardHandler = keyboardHandler;
+        this.keyboardHandler.registerCallBack("keydown", e => true, e => this.tool().getOptionPanel().handleKeyBoardEvents("keydown", e));
+        this.keyboardHandler.registerCallBack("keyup", e => true, e => this.tool().getOptionPanel().handleKeyBoardEvents("keyup", e));
         this.keyboardHandler.registerCallBack("keydown", e => {if(e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "ArrowLeft" || e.code === "ArrowRight") return true;},
             e => {
                 const imgPerColumn:number = (this.canvas.height / this.imgHeight);
@@ -1516,7 +1598,10 @@ class ToolSelector {
                         this.tool().activateOptionPanel();
                 }  
             });
-        this.touchListener = new SingleTouchListener(this.canvas, true, true);       
+        this.touchListener = new SingleTouchListener(this.canvas, true, true);  
+        this.touchListener.registerCallBack("touchstart", e => true,  e => this.tool().getOptionPanel().handleTouchEvents("touchstart", e));
+        this.touchListener.registerCallBack("touchmove", e => true,  e => this.tool().getOptionPanel().handleTouchEvents("touchmove", e));
+        this.touchListener.registerCallBack("touchend", e => true,  e => this.tool().getOptionPanel().handleTouchEvents("touchend", e));     
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             (<any>document.activeElement).blur();
             const imgPerColumn:number = (this.canvas.height / this.imgHeight);
@@ -1543,16 +1628,17 @@ class ToolSelector {
             }
         });
 
-        this.penTool = new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth(), "pen","images/penSprite.png");
+        this.penTool = new PenTool(field.suggestedLineWidth(), "pen","images/penSprite.png");
         this.penTool.activateOptionPanel();
-        this.eraserTool = new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth() * 3, "eraser","images/eraserSprite.png");
-        this.settingsTool = new DrawingScreenSettingsTool(keyboardHandler, this.touchListener, [524, 524], field, "ScreenSettings","images/settingsSprite.png");
-        this.colorPickerTool = new ColorPickerTool(keyboardHandler, this.touchListener, field,"colorPicker", "images/colorPickerSprite.png");
-        this.dragTool = new DragTool(keyboardHandler, this.touchListener, "drag", "images/dragSprite.png");
+        this.eraserTool = new PenTool(field.suggestedLineWidth() * 3, "eraser","images/eraserSprite.png");
+        this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings","images/settingsSprite.png");
+        this.colorPickerTool = new ColorPickerTool(field,"colorPicker", "images/colorPickerSprite.png");
+        this.dragTool = new DragTool("drag", "images/dragSprite.png");
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.slow = !field.slow);
+        this.fillTool = new FillTool(this, "fill", "images/fillSprite.png", [this.undoTool.getOptionPanel()])
         this.toolArray = [];
         this.toolArray.push(this.penTool);
-        this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
+        this.toolArray.push(this.fillTool);
         this.toolArray.push(new PenViewTool(this.penTool, "line", "images/LineDrawSprite.png"));
         this.toolArray.push(new PenViewTool(this.penTool, "rect", "images/rectSprite.png"));
         this.toolArray.push(new PenViewTool(this.penTool, "oval", "images/ovalSprite.png"));
@@ -1702,8 +1788,8 @@ class ClipBoard {
         const ctx = this.offscreenCanvas.getContext("2d");
         ctx.fillStyle = "rgba(255,255,255,1)";
         ctx.fillRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
-        const start_x:number = this.dim[0] / 2 - this.currentDim[0] / 2//(this.centerX / this.canvas.width * this.pixelCountX) - ((width * this.pixelWidth/4)/2);
-        const start_y:number = this.dim[1] / 2 - this.currentDim[1] / 2//(this.centerY / this.canvas.height * this.pixelCountY) - ((height * this.pixelHeight/4)/2);
+        const start_x:number = this.dim[0] / 2 - this.currentDim[0] / 2;
+        const start_y:number = this.dim[1] / 2 - this.currentDim[1] / 2;
         ctx.scale(this.canvas.width / this.offscreenCanvas.width, this.canvas.height / this.offscreenCanvas.height);
            
         for(let y = 0; y < height; y++)

@@ -298,7 +298,7 @@ class RowRecord {
     }
 }
 class SimpleGridLayoutManager {
-    constructor(keyboardHandler, touchHandler, matrixDim, pixelDim, x = 0, y = 0) {
+    constructor(matrixDim, pixelDim, x = 0, y = 0) {
         this.matrixDim = matrixDim;
         this.pixelDim = pixelDim;
         this.focused = false;
@@ -312,6 +312,8 @@ class SimpleGridLayoutManager {
         this.canvas.width = pixelDim[0];
         this.canvas.height = pixelDim[1];
         this.ctx = this.canvas.getContext("2d");
+    }
+    createHandlers(keyboardHandler, touchHandler) {
         if (keyboardHandler) {
             keyboardHandler.registerCallBack("keydown", e => this.active(), e => { e.keyboardHandler = keyboardHandler; this.elements.forEach(el => el.handleKeyBoardEvents("keydown", e)); });
             keyboardHandler.registerCallBack("keyup", e => this.active(), e => { e.keyboardHandler = keyboardHandler; this.elements.forEach(el => el.handleKeyBoardEvents("keyup", e)); });
@@ -383,8 +385,9 @@ class SimpleGridLayoutManager {
                 for (; clearSpace && j < counter.second + elementWidth; j++) {
                     clearSpace = this.isCellFree(j, counter.first);
                 }
-                if (!clearSpace && j < elementWidth)
-                    counter.incLower();
+                if (!clearSpace && j < elementWidth) {
+                    counter.incLower(j - counter.second);
+                }
                 else if (!clearSpace && j >= elementWidth) {
                     counter.incHigher();
                     counter.second = 0;
@@ -394,6 +397,9 @@ class SimpleGridLayoutManager {
             const y = counter.first * this.rowHeight();
             counter.second += elementWidth;
             this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
+            if (element.elementsPositions) {
+                console.log("hi");
+            }
         }
     }
     refreshCanvas(ctx = this.ctx, x = 0, y = 0) {
@@ -407,8 +413,14 @@ class SimpleGridLayoutManager {
     width() {
         return this.pixelDim[0];
     }
+    setWidth(val) {
+        this.pixelDim[0] = val;
+    }
     height() {
         return this.pixelDim[1];
+    }
+    setHeight(val) {
+        this.pixelDim[1] = val;
     }
     rowHeight() {
         return this.pixelDim[1] / this.matrixDim[1];
@@ -430,9 +442,14 @@ class SimpleGridLayoutManager {
         //todo
         return false;
     }
-    addElement(element) {
+    addElement(element, position = -1) {
         let inserted = false;
-        this.elements.push(element);
+        if (position === -1) {
+            this.elements.push(element);
+        }
+        else {
+            this.elements.splice(position, 0, element);
+        }
         this.refreshMetaData();
         this.refreshCanvas();
         return inserted;
@@ -442,8 +459,6 @@ class SimpleGridLayoutManager {
         return [elPos.x, elPos.y];
     }
     draw(ctx, xPos = this.x, yPos = this.y, offsetX = 0, offsetY = 0) {
-        this.x = xPos + offsetX;
-        this.y = yPos + offsetY;
         this.refreshCanvas();
         ctx.drawImage(this.canvas, xPos + offsetX, yPos + offsetY);
     }
@@ -725,7 +740,7 @@ class GuiTextBox {
                         default:
                             {
                                 let letter = e.code.substring(e.code.length - 1);
-                                if (!e.keyboardHandler.keysHeld["ShiftRight"] && !e.keyboardHandler.keysHeld["ShiftLeft"])
+                                if (!e.keysHeld["ShiftRight"] && !e.keysHeld["ShiftLeft"])
                                     letter = letter.toLowerCase();
                                 if (GuiTextBox.textLookup[e.code] || GuiTextBox.numbers[e.code]) {
                                     this.text = this.text.substring(0, this.cursor) + letter + this.text.substring(this.cursor, this.text.length);
@@ -962,9 +977,9 @@ class GenericTool extends Tool {
 }
 ;
 class SingleCheckBoxTool extends GenericTool {
-    constructor(keyboardHandler, touchListener, label, name, imagePath, callback = () => null) {
+    constructor(label, name, imagePath, callback = () => null) {
         super(name, imagePath);
-        this.optionPanel = new SimpleGridLayoutManager(keyboardHandler, touchListener, [6, 12], [200, 400]);
+        this.optionPanel = new SimpleGridLayoutManager([6, 12], [200, 400]);
         this.checkBox = new GuiCheckBox(callback, 40, 40);
         this.optionPanel.addElement(new GuiLabel(label, 200, 16, GuiTextBox.center, 40));
         this.optionPanel.addElement(this.checkBox);
@@ -978,7 +993,10 @@ class SingleCheckBoxTool extends GenericTool {
         return [this.optionPanel.width(), this.optionPanel.height()];
     }
     drawOptionPanel(ctx, x, y) {
-        this.optionPanel.draw(ctx, x, y);
+        const optionPanel = this.getOptionPanel();
+        optionPanel.x = x;
+        optionPanel.y = y;
+        optionPanel.draw(ctx, x, y);
     }
 }
 ;
@@ -988,14 +1006,14 @@ this.layoutManager.addElement(new GuiLabel("Blend Alpha: ", 150, 16));
 this.layoutManager.addElement(this.chbxBlendAlpha);
 */
 class DragTool extends SingleCheckBoxTool {
-    constructor(keyboardHandler, touchListener, name, imagePath) {
-        super(keyboardHandler, touchListener, "Only drag one color", name, imagePath);
+    constructor(name, imagePath) {
+        super("Only drag one color", name, imagePath);
     }
 }
 ;
 class UndoRedoTool extends SingleCheckBoxTool {
     constructor(toolSelector, name, imagePath, callback) {
-        super(toolSelector.keyboardHandler, toolSelector.touchListener, "Slow mode", name, imagePath, callback);
+        super("Slow mode", name, imagePath, callback);
     }
 }
 ;
@@ -1013,13 +1031,57 @@ class ViewLayoutTool extends Tool {
         return [this.layoutManager.canvas.width, this.layoutManager.canvas.height];
     }
     drawOptionPanel(ctx, x, y) {
-        this.layoutManager.draw(ctx, x, y);
+        const optionPanel = this.getOptionPanel();
+        optionPanel.x = x;
+        optionPanel.y = y;
+        optionPanel.draw(ctx, x, y);
     }
 }
 ;
 class ExtendedTool extends ViewLayoutTool {
     constructor(toolSelector, name, path, optionPanes, dim) {
-        super(new SimpleGridLayoutManager(toolSelector.keyboardHandler, toolSelector.touchListener, [24, 24], dim), name, path);
+        super(new SimpleGridLayoutManager([24, 24], dim), name, path);
+        this.localLayout = new SimpleGridLayoutManager([24, 24], dim);
+        const parentPanel = this.getOptionPanel();
+        parentPanel.addElement(this.localLayout);
+        this.optionPanels = [this.localLayout];
+        optionPanes.forEach(pane => {
+            parentPanel.addElement(pane);
+            this.optionPanels.push(pane);
+        });
+        parentPanel.refreshMetaData();
+        let maxY = 0;
+        let maxX = 0;
+        parentPanel.elementsPositions.forEach(el => {
+            if (el.y + el.height > maxY) {
+                maxY = el.y + el.height;
+            }
+            if (el.x + el.width > maxY) {
+                maxX = el.x + el.width;
+            }
+        });
+        parentPanel.setWidth(dim[0] + maxX);
+        parentPanel.setHeight(dim[1] + maxY);
+        parentPanel.refreshMetaData();
+    }
+    activateOptionPanel() {
+        this.getOptionPanel().activate();
+        this.optionPanels.forEach(element => {
+            element.activate();
+        });
+    }
+    deactivateOptionPanel() {
+        this.getOptionPanel().deactivate();
+        this.optionPanels.forEach(element => {
+            element.deactivate();
+        });
+    }
+}
+;
+class FillTool extends ExtendedTool {
+    constructor(toolSelector, name, path, optionPanes) {
+        super(toolSelector, name, path, optionPanes, [200, 50]);
+        this.localLayout.addElement(new GuiLabel("Hello!", 85));
     }
 }
 ;
@@ -1031,10 +1093,10 @@ class PenViewTool extends ViewLayoutTool {
 }
 ;
 class PenTool extends Tool {
-    constructor(keyListener, touchHandler, strokeWith, toolName = "pen", pathToImage = "images/penSprite.png") {
+    constructor(strokeWith, toolName = "pen", pathToImage = "images/penSprite.png") {
         super(toolName, pathToImage);
         this.lineWidth = strokeWith;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 6], [200, 200]);
+        this.layoutManager = new SimpleGridLayoutManager([2, 6], [200, 200]);
         this.tbSize = new GuiTextBox(true, 100);
         this.tbSize.promptText = "Enter line width:";
         this.tbSize.setText(String(this.lineWidth));
@@ -1062,7 +1124,10 @@ class PenTool extends Tool {
         return [this.layoutManager.width(), this.layoutManager.height()];
     }
     drawOptionPanel(ctx, x, y) {
-        this.layoutManager.draw(ctx, x, y);
+        const optionPanel = this.getOptionPanel();
+        optionPanel.x = x;
+        optionPanel.y = y;
+        optionPanel.draw(ctx, x, y);
     }
     penSize() {
         return this.lineWidth;
@@ -1070,10 +1135,10 @@ class PenTool extends Tool {
 }
 ;
 class ColorPickerTool extends Tool {
-    constructor(keyListener, touchHandler, field, toolName = "colorPicker", pathToImage = "images/colorPickerSprite.png") {
+    constructor(field, toolName = "colorPicker", pathToImage = "images/colorPickerSprite.png") {
         super(toolName, pathToImage);
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [2, 6], [200, 200]);
+        this.layoutManager = new SimpleGridLayoutManager([2, 6], [200, 200]);
         this.tbColor = new GuiTextBox(true, 200, null, 15);
         this.tbColor.promptText = "Enter RGBA color here (RGB 0-255 A 0-1):";
         this.setColorText();
@@ -1104,16 +1169,19 @@ class ColorPickerTool extends Tool {
         return [this.layoutManager.width(), this.layoutManager.height()];
     }
     drawOptionPanel(ctx, x, y) {
-        this.layoutManager.draw(ctx, x, y);
+        const optionPanel = this.getOptionPanel();
+        optionPanel.x = x;
+        optionPanel.y = y;
+        optionPanel.draw(ctx, x, y);
     }
 }
 ;
 class DrawingScreenSettingsTool extends Tool {
-    constructor(keyListener, touchHandler, dim = [524, 524], field, toolName = "pen", pathToImage = "images/penSprite.png") {
+    constructor(dim = [524, 524], field, toolName = "pen", pathToImage = "images/penSprite.png") {
         super(toolName, pathToImage);
         this.dim = dim;
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager(keyListener, touchHandler, [4, 6], [200, 200]);
+        this.layoutManager = new SimpleGridLayoutManager([4, 6], [200, 200]);
         this.tbX = new GuiTextBox(true, 70);
         this.tbX.promptText = "Enter width:";
         this.tbX.setText(String(this.dim[0]));
@@ -1150,7 +1218,10 @@ class DrawingScreenSettingsTool extends Tool {
         return [this.layoutManager.width(), this.layoutManager.height()];
     }
     drawOptionPanel(ctx, x, y) {
-        this.layoutManager.draw(ctx, x, y);
+        const optionPanel = this.getOptionPanel();
+        optionPanel.x = x;
+        optionPanel.y = y;
+        optionPanel.draw(ctx, x, y);
     }
 }
 ;
@@ -1163,6 +1234,8 @@ class ToolSelector {
         this.toolPixelDim = [imgWidth, imgHeight * 10];
         this.canvas = document.getElementById("tool_selector_screen");
         this.keyboardHandler = keyboardHandler;
+        this.keyboardHandler.registerCallBack("keydown", e => true, e => this.tool().getOptionPanel().handleKeyBoardEvents("keydown", e));
+        this.keyboardHandler.registerCallBack("keyup", e => true, e => this.tool().getOptionPanel().handleKeyBoardEvents("keyup", e));
         this.keyboardHandler.registerCallBack("keydown", e => { if (e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "ArrowLeft" || e.code === "ArrowRight")
             return true; }, e => {
             const imgPerColumn = (this.canvas.height / this.imgHeight);
@@ -1196,6 +1269,9 @@ class ToolSelector {
             }
         });
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
+        this.touchListener.registerCallBack("touchstart", e => true, e => this.tool().getOptionPanel().handleTouchEvents("touchstart", e));
+        this.touchListener.registerCallBack("touchmove", e => true, e => this.tool().getOptionPanel().handleTouchEvents("touchmove", e));
+        this.touchListener.registerCallBack("touchend", e => true, e => this.tool().getOptionPanel().handleTouchEvents("touchend", e));
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             document.activeElement.blur();
             const imgPerColumn = (this.canvas.height / this.imgHeight);
@@ -1217,16 +1293,17 @@ class ToolSelector {
                 field.redoLast();
             }
         });
-        this.penTool = new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth(), "pen", "images/penSprite.png");
+        this.penTool = new PenTool(field.suggestedLineWidth(), "pen", "images/penSprite.png");
         this.penTool.activateOptionPanel();
-        this.eraserTool = new PenTool(keyboardHandler, this.touchListener, field.suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png");
-        this.settingsTool = new DrawingScreenSettingsTool(keyboardHandler, this.touchListener, [524, 524], field, "ScreenSettings", "images/settingsSprite.png");
-        this.colorPickerTool = new ColorPickerTool(keyboardHandler, this.touchListener, field, "colorPicker", "images/colorPickerSprite.png");
-        this.dragTool = new DragTool(keyboardHandler, this.touchListener, "drag", "images/dragSprite.png");
+        this.eraserTool = new PenTool(field.suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png");
+        this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings", "images/settingsSprite.png");
+        this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png");
+        this.dragTool = new DragTool("drag", "images/dragSprite.png");
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.slow = !field.slow);
+        this.fillTool = new FillTool(this, "fill", "images/fillSprite.png", [this.undoTool.getOptionPanel()]);
         this.toolArray = [];
         this.toolArray.push(this.penTool);
-        this.toolArray.push(new GenericTool("fill", "images/fillSprite.png"));
+        this.toolArray.push(this.fillTool);
         this.toolArray.push(new PenViewTool(this.penTool, "line", "images/LineDrawSprite.png"));
         this.toolArray.push(new PenViewTool(this.penTool, "rect", "images/rectSprite.png"));
         this.toolArray.push(new PenViewTool(this.penTool, "oval", "images/ovalSprite.png"));
@@ -1350,8 +1427,8 @@ class ClipBoard {
         const ctx = this.offscreenCanvas.getContext("2d");
         ctx.fillStyle = "rgba(255,255,255,1)";
         ctx.fillRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
-        const start_x = this.dim[0] / 2 - this.currentDim[0] / 2; //(this.centerX / this.canvas.width * this.pixelCountX) - ((width * this.pixelWidth/4)/2);
-        const start_y = this.dim[1] / 2 - this.currentDim[1] / 2; //(this.centerY / this.canvas.height * this.pixelCountY) - ((height * this.pixelHeight/4)/2);
+        const start_x = this.dim[0] / 2 - this.currentDim[0] / 2;
+        const start_y = this.dim[1] / 2 - this.currentDim[1] / 2;
         ctx.scale(this.canvas.width / this.offscreenCanvas.width, this.canvas.height / this.offscreenCanvas.height);
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
