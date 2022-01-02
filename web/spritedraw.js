@@ -1062,6 +1062,7 @@ class ExtendedTool extends ViewLayoutTool {
         });
         parentPanel.setWidth(dim[0] + maxX);
         parentPanel.setHeight(dim[1] + maxY);
+        console.log(parentPanel.width(), parentPanel.height());
         parentPanel.refreshMetaData();
     }
     activateOptionPanel() {
@@ -1080,8 +1081,8 @@ class ExtendedTool extends ViewLayoutTool {
 ;
 class FillTool extends ExtendedTool {
     constructor(toolSelector, name, path, optionPanes) {
-        super(toolSelector, name, path, optionPanes, [200, 50]);
-        this.localLayout.addElement(new GuiLabel("Hello!", 85));
+        super(toolSelector, name, path, optionPanes, [200, 100]);
+        this.localLayout.addElement(new GuiLabel("Hello!", 85, 16, GuiTextBox.bottom, 35));
     }
 }
 ;
@@ -1234,8 +1235,8 @@ class ToolSelector {
         this.toolPixelDim = [imgWidth, imgHeight * 10];
         this.canvas = document.getElementById("tool_selector_screen");
         this.keyboardHandler = keyboardHandler;
-        this.keyboardHandler.registerCallBack("keydown", e => true, e => this.tool().getOptionPanel().handleKeyBoardEvents("keydown", e));
-        this.keyboardHandler.registerCallBack("keyup", e => true, e => this.tool().getOptionPanel().handleKeyBoardEvents("keyup", e));
+        this.keyboardHandler.registerCallBack("keydown", e => this.tool().getOptionPanel(), e => this.tool().getOptionPanel().handleKeyBoardEvents("keydown", e));
+        this.keyboardHandler.registerCallBack("keyup", e => this.tool().getOptionPanel(), e => this.tool().getOptionPanel().handleKeyBoardEvents("keyup", e));
         this.keyboardHandler.registerCallBack("keydown", e => { if (e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "ArrowLeft" || e.code === "ArrowRight")
             return true; }, e => {
             const imgPerColumn = (this.canvas.height / this.imgHeight);
@@ -1269,9 +1270,9 @@ class ToolSelector {
             }
         });
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
-        this.touchListener.registerCallBack("touchstart", e => true, e => this.tool().getOptionPanel().handleTouchEvents("touchstart", e));
-        this.touchListener.registerCallBack("touchmove", e => true, e => this.tool().getOptionPanel().handleTouchEvents("touchmove", e));
-        this.touchListener.registerCallBack("touchend", e => true, e => this.tool().getOptionPanel().handleTouchEvents("touchend", e));
+        this.touchListener.registerCallBack("touchstart", e => this.tool().getOptionPanel(), e => this.tool().getOptionPanel().handleTouchEvents("touchstart", e));
+        this.touchListener.registerCallBack("touchmove", e => this.tool().getOptionPanel(), e => this.tool().getOptionPanel().handleTouchEvents("touchmove", e));
+        this.touchListener.registerCallBack("touchend", e => this.tool().getOptionPanel(), e => this.tool().getOptionPanel().handleTouchEvents("touchend", e));
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             document.activeElement.blur();
             const imgPerColumn = (this.canvas.height / this.imgHeight);
