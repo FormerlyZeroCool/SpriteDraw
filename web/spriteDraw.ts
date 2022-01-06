@@ -296,23 +296,20 @@ class Pair<T,U = T> {
 class ImageContainer {
     image:HTMLImageElement;
     name:string;
-    callback:() => void;
-    constructor(imageName:string, imagePath:string, callback:() => void = () => console.log(imageName, "loaded."))
+    constructor(imageName:string, imagePath:string)
     {
         this.image = null;
-        this.callback = callback;
         fetchImage(imagePath).then(img => { 
             this.image = img;
-            this.callback();
         });
         this.name = imageName;
     }
 };
 abstract class Tool {
     toolImage:ImageContainer;
-    constructor(toolName:string, toolImagePath:string, onImageLoad:() => void = () => console.log(toolName, "loaded."))
+    constructor(toolName:string, toolImagePath:string)
     {
-        this.toolImage = new ImageContainer(toolName, toolImagePath, onImageLoad);
+        this.toolImage = new ImageContainer(toolName, toolImagePath);
     }
     width():number
     {
@@ -1662,12 +1659,7 @@ class ToolSelector {
         this.toolArray.push(this.eraserTool);
         this.toolArray.push(new GenericTool("rotate", "images/rotateSprite.png"));
         this.toolArray.push(this.settingsTool);
-        for(const tool of this.toolArray)
-        {
-            tool.toolImage.callback = () => {this.repaint = true;console.log("mooo")};
-        }
         
- 
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = "#000000";

@@ -236,20 +236,18 @@ class Pair {
 }
 ;
 class ImageContainer {
-    constructor(imageName, imagePath, callback = () => console.log(imageName, "loaded.")) {
+    constructor(imageName, imagePath) {
         this.image = null;
-        this.callback = callback;
         fetchImage(imagePath).then(img => {
             this.image = img;
-            this.callback();
         });
         this.name = imageName;
     }
 }
 ;
 class Tool {
-    constructor(toolName, toolImagePath, onImageLoad = () => console.log(toolName, "loaded.")) {
-        this.toolImage = new ImageContainer(toolName, toolImagePath, onImageLoad);
+    constructor(toolName, toolImagePath) {
+        this.toolImage = new ImageContainer(toolName, toolImagePath);
     }
     width() {
         return this.toolImage.image.width;
@@ -1323,9 +1321,6 @@ class ToolSelector {
         this.toolArray.push(this.eraserTool);
         this.toolArray.push(new GenericTool("rotate", "images/rotateSprite.png"));
         this.toolArray.push(this.settingsTool);
-        for (const tool of this.toolArray) {
-            tool.toolImage.callback = () => { this.repaint = true; console.log("mooo"); };
-        }
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = "#000000";
