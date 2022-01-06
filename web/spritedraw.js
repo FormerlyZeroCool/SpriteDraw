@@ -1341,7 +1341,7 @@ class ToolSelector {
         }
     }
     draw() {
-        if (this.repaint || Date.now() - this.lastDrawTime > 1000) {
+        if (this.repaint || Date.now() - this.lastDrawTime > 600) {
             this.repaint = false;
             this.lastDrawTime = Date.now();
             this.resizeCanvas();
@@ -3420,7 +3420,7 @@ async function main() {
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    const fps = 27;
+    const fps = 50;
     const goalSleep = 1000 / fps;
     let counter = 0;
     while (true) {
@@ -3433,8 +3433,8 @@ async function main() {
         }
         const adjustment = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
-        if (1000 / (Date.now() - start) < fps - 2) {
-            //console.log("avgfps:",Math.floor(1000/(Date.now() - start)))
+        if (1000 / (Date.now() - start) < fps - 10) {
+            console.log("avgfps:", Math.floor(1000 / (Date.now() - start)));
             if (1000 / (Date.now() - start) === 0)
                 console.log("frame time:", 1000 / (Date.now() - start));
         }
