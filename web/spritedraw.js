@@ -1431,6 +1431,9 @@ class ClipBoard {
             rec[1].second = Math.floor((x) + (y) * this.dim[0]);
         }
         this.clipBoardBuffer.sort((a, b) => a.second - b.second);
+        const width = this.offscreenCanvas.width;
+        this.offscreenCanvas.width = this.offscreenCanvas.height;
+        this.offscreenCanvas.height = width;
         this.refreshImageFromBuffer(this.currentDim[1], this.currentDim[0]);
     }
     //copies array of rgb values to canvas offscreen, centered within the canvas
@@ -3438,7 +3441,7 @@ async function main() {
         await sleep(goalSleep - adjustment);
         if (1000 / (Date.now() - start) < fps - 10) {
             console.log("avgfps:", Math.floor(1000 / (Date.now() - start)));
-            if (1000 / (Date.now() - start) === 0)
+            if (1000 / (Date.now() - start) < 1)
                 console.log("frame time:", 1000 / (Date.now() - start));
         }
     }
