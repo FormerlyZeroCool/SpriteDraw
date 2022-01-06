@@ -3328,7 +3328,6 @@ class AnimationGroupsSelector {
                 const y = Math.floor(this.selectedAnimationGroup / this.spritesPerRow);
                 ctx.strokeStyle = "#000000";
                 ctx.strokeRect(x * this.renderWidth + 1, y * this.renderHeight + 1, this.renderWidth - 2, this.renderHeight - 2);
-                this.animationGroup().draw();
             }
         }
     }
