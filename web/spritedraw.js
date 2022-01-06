@@ -236,18 +236,20 @@ class Pair {
 }
 ;
 class ImageContainer {
-    constructor(imageName, imagePath) {
+    constructor(imageName, imagePath, callback = () => console.log(imageName, "loaded.")) {
         this.image = null;
+        this.callback = callback;
         fetchImage(imagePath).then(img => {
             this.image = img;
+            this.callback();
         });
         this.name = imageName;
     }
 }
 ;
 class Tool {
-    constructor(toolName, toolImagePath) {
-        this.toolImage = new ImageContainer(toolName, toolImagePath);
+    constructor(toolName, toolImagePath, onImageLoad = () => console.log(toolName, "loaded.")) {
+        this.toolImage = new ImageContainer(toolName, toolImagePath, onImageLoad);
     }
     width() {
         return this.toolImage.image.width;
@@ -330,11 +332,11 @@ class SimpleGridLayoutManager {
     handleTouchEvents(type, e) {
         if (e.touchPos[0] >= this.x && e.touchPos[0] < this.x + this.width() &&
             e.touchPos[1] >= this.y && e.touchPos[1] < this.y + this.height()) {
-            e.preventDefault();
             this.elementsPositions.forEach(el => {
                 el.element.deactivate();
                 if (e.touchPos[0] >= el.x + this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
                     e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height()) {
+                    e.preventDefault();
                     el.element.activate();
                     el.element.handleTouchEvents(type, e);
                 }
@@ -1230,13 +1232,14 @@ class DrawingScreenSettingsTool extends Tool {
 class ToolSelector {
     constructor(field, keyboardHandler, imgWidth = 50, imgHeight = 50) {
         this.imgWidth = imgWidth;
+        this.repaint = false;
         this.imgHeight = imgHeight;
         this.selectedTool = 0;
         this.toolPixelDim = [imgWidth, imgHeight * 10];
         this.canvas = document.getElementById("tool_selector_screen");
         this.keyboardHandler = keyboardHandler;
-        this.keyboardHandler.registerCallBack("keydown", e => this.tool().getOptionPanel(), e => this.tool().getOptionPanel().handleKeyBoardEvents("keydown", e));
-        this.keyboardHandler.registerCallBack("keyup", e => this.tool().getOptionPanel(), e => this.tool().getOptionPanel().handleKeyBoardEvents("keyup", e));
+        this.keyboardHandler.registerCallBack("keydown", e => this.tool().getOptionPanel(), e => { this.tool().getOptionPanel().handleKeyBoardEvents("keydown", e); this.repaint = true; });
+        this.keyboardHandler.registerCallBack("keyup", e => this.tool().getOptionPanel(), e => { this.tool().getOptionPanel().handleKeyBoardEvents("keyup", e); this.repaint = true; });
         this.keyboardHandler.registerCallBack("keydown", e => { if (e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "ArrowLeft" || e.code === "ArrowRight")
             return true; }, e => {
             const imgPerColumn = (this.canvas.height / this.imgHeight);
@@ -1268,11 +1271,12 @@ class ToolSelector {
                 if (this.tool())
                     this.tool().activateOptionPanel();
             }
+            this.repaint = true;
         });
         this.touchListener = new SingleTouchListener(this.canvas, true, true);
-        this.touchListener.registerCallBack("touchstart", e => this.tool().getOptionPanel(), e => this.tool().getOptionPanel().handleTouchEvents("touchstart", e));
-        this.touchListener.registerCallBack("touchmove", e => this.tool().getOptionPanel(), e => this.tool().getOptionPanel().handleTouchEvents("touchmove", e));
-        this.touchListener.registerCallBack("touchend", e => this.tool().getOptionPanel(), e => this.tool().getOptionPanel().handleTouchEvents("touchend", e));
+        this.touchListener.registerCallBack("touchstart", e => this.tool().getOptionPanel(), e => { this.tool().getOptionPanel().handleTouchEvents("touchstart", e); this.repaint = true; });
+        this.touchListener.registerCallBack("touchmove", e => this.tool().getOptionPanel(), e => { this.tool().getOptionPanel().handleTouchEvents("touchmove", e); this.repaint = true; });
+        this.touchListener.registerCallBack("touchend", e => this.tool().getOptionPanel(), e => { this.tool().getOptionPanel().handleTouchEvents("touchend", e); this.repaint = true; });
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             document.activeElement.blur();
             const imgPerColumn = (this.canvas.height / this.imgHeight);
@@ -1293,6 +1297,7 @@ class ToolSelector {
             else if (this.selectedToolName() === "redo") {
                 field.redoLast();
             }
+            this.repaint = true;
         });
         this.penTool = new PenTool(field.suggestedLineWidth(), "pen", "images/penSprite.png");
         this.penTool.activateOptionPanel();
@@ -1317,6 +1322,10 @@ class ToolSelector {
         this.toolArray.push(this.eraserTool);
         this.toolArray.push(new GenericTool("rotate", "images/rotateSprite.png"));
         this.toolArray.push(this.settingsTool);
+        for (const tool of this.toolArray) {
+            tool.toolImage.callback = () => this.repaint = true;
+        }
+        this.repaint = true;
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = "#000000";
@@ -1335,17 +1344,20 @@ class ToolSelector {
         }
     }
     draw() {
-        this.resizeCanvas();
-        const imgPerColumn = (this.toolPixelDim[1] / this.imgHeight);
-        const imgPerRow = (this.toolPixelDim[0] / this.imgWidth);
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        for (let i = 0; i < this.toolArray.length; i++) {
-            if (this.toolArray[i].image())
-                this.toolArray[i].drawImage(this.ctx, Math.floor(i / imgPerColumn) * this.imgWidth, i * this.toolArray[i].image().height % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
-        }
-        this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
-        if (this.tool()) {
-            this.tool().drawOptionPanel(this.ctx, this.imgWidth * imgPerRow, 0);
+        if (this.repaint) {
+            this.repaint = false;
+            this.resizeCanvas();
+            const imgPerColumn = (this.toolPixelDim[1] / this.imgHeight);
+            const imgPerRow = (this.toolPixelDim[0] / this.imgWidth);
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            for (let i = 0; i < this.toolArray.length; i++) {
+                if (this.toolArray[i].image())
+                    this.toolArray[i].drawImage(this.ctx, Math.floor(i / imgPerColumn) * this.imgWidth, i * this.toolArray[i].image().height % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
+            }
+            this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
+            if (this.tool()) {
+                this.tool().drawOptionPanel(this.ctx, this.imgWidth * imgPerRow, 0);
+            }
         }
     }
     selectedToolName() {
@@ -1363,6 +1375,7 @@ class ToolSelector {
 ;
 class ClipBoard {
     constructor(canvas, keyboardHandler, pixelCountX, pixelCountY) {
+        this.repaint = true;
         this.canvas = canvas;
         this.dim = [pixelCountX, pixelCountY];
         this.offscreenCanvas = document.createElement("canvas");
@@ -1378,6 +1391,7 @@ class ClipBoard {
                     this.rotate(Math.PI / 2);
                     this.angle = 0;
                 }
+                this.repaint = true;
             }
         });
     }
@@ -1387,6 +1401,7 @@ class ClipBoard {
             this.dim[1] = dim[1];
             this.offscreenCanvas.width = dim[0];
             this.offscreenCanvas.height = dim[1];
+            this.repaint = true;
         }
     }
     //only really works for rotation by pi/2
@@ -1440,18 +1455,23 @@ class ClipBoard {
             }
         }
         ctx.scale(this.offscreenCanvas.width / this.canvas.width, this.offscreenCanvas.height / this.canvas.height);
+        this.repaint = true;
     }
     draw(canvas = this.canvas) {
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "rgba(255,255,255,1)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(this.offscreenCanvas, 0, 0);
+        if (this.repaint) {
+            this.repaint = false;
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "rgba(255,255,255,1)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(this.offscreenCanvas, 0, 0);
+        }
     }
 }
 class DrawingScreen {
     constructor(canvas, keyboardHandler, palette, offset, dimensions, newColorTextBox) {
         const bounds = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
+        this.repaint = true;
         this.slow = false;
         this.dimensions = new Pair(dimensions[0], dimensions[1]);
         this.offset = new Pair(offset[0], offset[1]);
@@ -1617,6 +1637,7 @@ class DrawingScreen {
                     this.toolSelector.colorPickerTool.setColorText(); // for Gui lib
                     break;
             }
+            this.repaint = true;
         });
         this.listeners.registerCallBack("touchend", e => true, async (e) => {
             switch (this.toolSelector.selectedToolName()) {
@@ -1665,6 +1686,7 @@ class DrawingScreen {
                     this.selectionRect = [0, 0, 0, 0];
                     break;
             }
+            this.repaint = true;
         });
         this.color = new RGB(0, 0, 0, 255);
     }
@@ -1744,6 +1766,7 @@ class DrawingScreen {
                     }
                 }
             }
+            this.repaint = true;
         }
     }
     fillArea(startCoordinate) {
@@ -1779,6 +1802,7 @@ class DrawingScreen {
                     stack.push(cur + 1);
             }
         }
+        this.repaint = true;
     }
     //Pair<offset point>, Map of colors encoded as numbers by location>
     getSelectedPixelGroup(startCoordinate, countColor) {
@@ -1941,6 +1965,7 @@ class DrawingScreen {
                 }
             }
         }
+        this.repaint = true;
     }
     handleEllipse(event) {
         const start_x = Math.min(event.touchPos[0] - event.deltaX, event.touchPos[0]);
@@ -1974,9 +1999,11 @@ class DrawingScreen {
                 el.second.color = color;
                 if (intervalCounter % interval === 0 && (this.slow || this.keyboardHandler.keysHeld["KeyS"])) {
                     await sleep(1);
+                    this.repaint = true;
                 }
             }
             this.undoneUpdatesStack.push(backedUpFrame);
+            this.repaint = true;
         }
         else {
             console.log("Error, nothing to undo");
@@ -1998,8 +2025,10 @@ class DrawingScreen {
                 el.second.color = color;
                 if (intervalCounter % interval === 0 && (this.slow || this.keyboardHandler.keysHeld["KeyS"])) {
                     await sleep(1);
+                    this.repaint = true;
                 }
             }
+            this.repaint = true;
             this.updatesStack.push(backedUpFrame);
         }
         else {
@@ -2064,6 +2093,7 @@ class DrawingScreen {
                 else
                     this.screenBuffer[key].color = color.color;
             }
+            this.repaint = true;
             //this.updatesStack.get(this.updatesStack.length()-1).sort((a, b) => a.first - b.first);
         }
     }
@@ -2120,129 +2150,133 @@ class DrawingScreen {
                 }
             }
             ;
+            this.repaint = true;
         }
     }
     draw() {
-        this.clipBoard.draw();
-        const ctx = this.ctx;
-        const cellHeight = (this.bounds.second / this.dimensions.second);
-        const cellWidth = (this.bounds.first / this.dimensions.first);
-        const white = new RGB(255, 255, 255);
-        const spriteScreenBuf = this.spriteScreenBuf;
-        const source = new RGB(0, 0, 0, 0);
-        const toCopy = new RGB(0, 0, 0, 0);
-        spriteScreenBuf.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
-        if (this.dimensions.first === this.canvas.width && this.dimensions.second === this.canvas.height) { //if drawing screen dimensions, and canvas dimensions are the same just update per pixel
-            for (let y = 0; y < this.dimensions.second; y++) {
-                for (let x = 0; x < this.dimensions.first; x++) {
-                    const index = (x + y * this.dimensions.first);
-                    spriteScreenBuf.pixels[(index << 2)] = this.screenBuffer[index].red();
-                    spriteScreenBuf.pixels[(index << 2) + 1] = this.screenBuffer[index].green();
-                    spriteScreenBuf.pixels[(index << 2) + 2] = this.screenBuffer[index].blue();
-                    spriteScreenBuf.pixels[(index << 2) + 3] = this.screenBuffer[index].alpha();
-                }
-            }
-        }
-        else //use fill rect method to fill rectangle the size of pixels(more branch mispredicts, but more general)
-            for (let y = 0; y < this.dimensions.second; y++) {
-                for (let x = 0; x < this.dimensions.first; x++) {
-                    spriteScreenBuf.fillRect(this.screenBuffer[x + y * this.dimensions.first], x * cellWidth, y * cellHeight, cellWidth, cellHeight);
-                }
-            }
-        if (this.dragData) {
-            const dragDataColors = this.dragData.second;
-            for (let i = 0; i < this.dragData.second.length; i += 9) {
-                const bx = Math.floor(dragDataColors[i] + this.dragData.first.first);
-                const by = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
-                let key = this.reboundKey(bx + by * this.dimensions.first);
-                toCopy.color = dragDataColors[i + 8];
-                source.color = this.screenBuffer[key].color;
-                source.blendAlphaCopy(toCopy);
-                const sy = Math.floor(Math.floor(key / this.dimensions.first) * cellHeight);
-                const sx = Math.floor((key % this.dimensions.first) * cellWidth);
-                spriteScreenBuf.fillRect(source, sx, sy, cellWidth, cellHeight);
-            }
-            ;
-        }
-        if (this.pasteRect[3] !== 0 && this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "paste") {
-            const dest_x = Math.floor((this.pasteRect[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
-            const dest_y = Math.floor((this.pasteRect[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
-            const width = this.clipBoard.currentDim[0];
-            const height = this.clipBoard.currentDim[1];
-            const initialIndex = dest_x + dest_y * this.dimensions.first;
-            for (let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++) {
-                const copyAreaX = i % width;
-                const copyAreaY = Math.floor(i / width);
-                const destIndex = initialIndex + copyAreaX + copyAreaY * this.dimensions.first;
-                const x = destIndex % this.dimensions.first;
-                const y = Math.floor(destIndex / this.dimensions.first);
-                source.color = this.clipBoard.clipBoardBuffer[i].first.color;
-                if (this.screenBuffer[destIndex]) {
-                    toCopy.color = this.screenBuffer[destIndex].color;
-                    spriteScreenBuf.fillRectAlphaBlend(toCopy, source, x * cellWidth, y * cellHeight, cellWidth, cellHeight);
-                }
-            }
-        }
-        spriteScreenBuf.putPixels(ctx);
-        if (this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line") {
-            let touchStart = [this.listeners.touchStart["offsetX"], this.listeners.touchStart["offsetY"]];
-            if (!touchStart[0]) {
-                touchStart = [this.listeners.touchStart["clientX"] - this.canvas.getBoundingClientRect().left, this.listeners.touchStart["clientY"] - this.canvas.getBoundingClientRect().top];
-            }
-            ctx.lineWidth = 6;
-            ctx.beginPath();
-            ctx.strokeStyle = this.color.htmlRBGA();
-            ctx.moveTo(touchStart[0], touchStart[1]);
-            ctx.lineTo(this.listeners.touchPos[0], this.listeners.touchPos[1]);
-            ctx.stroke();
-        }
         this.toolSelector.draw();
-        if (this.pasteRect[3] !== 0) {
-            ctx.lineWidth = 6;
-            ctx.strokeStyle = "#FFFFFF";
-            ctx.strokeRect(this.pasteRect[0] + 2, this.pasteRect[1] + 2, this.pasteRect[2] - 4, this.pasteRect[3] - 4);
-            ctx.strokeStyle = "#0000FF";
-            ctx.strokeRect(this.pasteRect[0], this.pasteRect[1], this.pasteRect[2], this.pasteRect[3]);
-        }
-        if (this.selectionRect[3] !== 0) {
-            ctx.lineWidth = 6;
-            const xr = Math.abs(this.selectionRect[2] / 2);
-            const yr = Math.abs(this.selectionRect[3] / 2);
-            if (this.toolSelector.selectedToolName() === "copy") {
+        this.clipBoard.draw();
+        if (this.repaint) {
+            this.repaint = false;
+            const ctx = this.ctx;
+            const cellHeight = (this.bounds.second / this.dimensions.second);
+            const cellWidth = (this.bounds.first / this.dimensions.first);
+            const white = new RGB(255, 255, 255);
+            const spriteScreenBuf = this.spriteScreenBuf;
+            const source = new RGB(0, 0, 0, 0);
+            const toCopy = new RGB(0, 0, 0, 0);
+            spriteScreenBuf.fillRect(white, 0, 0, this.canvas.width, this.canvas.height);
+            if (this.dimensions.first === this.canvas.width && this.dimensions.second === this.canvas.height) { //if drawing screen dimensions, and canvas dimensions are the same just update per pixel
+                for (let y = 0; y < this.dimensions.second; y++) {
+                    for (let x = 0; x < this.dimensions.first; x++) {
+                        const index = (x + y * this.dimensions.first);
+                        spriteScreenBuf.pixels[(index << 2)] = this.screenBuffer[index].red();
+                        spriteScreenBuf.pixels[(index << 2) + 1] = this.screenBuffer[index].green();
+                        spriteScreenBuf.pixels[(index << 2) + 2] = this.screenBuffer[index].blue();
+                        spriteScreenBuf.pixels[(index << 2) + 3] = this.screenBuffer[index].alpha();
+                    }
+                }
+            }
+            else //use fill rect method to fill rectangle the size of pixels(more branch mispredicts, but more general)
+                for (let y = 0; y < this.dimensions.second; y++) {
+                    for (let x = 0; x < this.dimensions.first; x++) {
+                        spriteScreenBuf.fillRect(this.screenBuffer[x + y * this.dimensions.first], x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+                    }
+                }
+            if (this.dragData) {
+                const dragDataColors = this.dragData.second;
+                for (let i = 0; i < this.dragData.second.length; i += 9) {
+                    const bx = Math.floor(dragDataColors[i] + this.dragData.first.first);
+                    const by = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
+                    let key = this.reboundKey(bx + by * this.dimensions.first);
+                    toCopy.color = dragDataColors[i + 8];
+                    source.color = this.screenBuffer[key].color;
+                    source.blendAlphaCopy(toCopy);
+                    const sy = Math.floor(Math.floor(key / this.dimensions.first) * cellHeight);
+                    const sx = Math.floor((key % this.dimensions.first) * cellWidth);
+                    spriteScreenBuf.fillRect(source, sx, sy, cellWidth, cellHeight);
+                }
+                ;
+            }
+            if (this.pasteRect[3] !== 0 && this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "paste") {
+                const dest_x = Math.floor((this.pasteRect[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
+                const dest_y = Math.floor((this.pasteRect[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
+                const width = this.clipBoard.currentDim[0];
+                const height = this.clipBoard.currentDim[1];
+                const initialIndex = dest_x + dest_y * this.dimensions.first;
+                for (let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++) {
+                    const copyAreaX = i % width;
+                    const copyAreaY = Math.floor(i / width);
+                    const destIndex = initialIndex + copyAreaX + copyAreaY * this.dimensions.first;
+                    const x = destIndex % this.dimensions.first;
+                    const y = Math.floor(destIndex / this.dimensions.first);
+                    source.color = this.clipBoard.clipBoardBuffer[i].first.color;
+                    if (this.screenBuffer[destIndex]) {
+                        toCopy.color = this.screenBuffer[destIndex].color;
+                        spriteScreenBuf.fillRectAlphaBlend(toCopy, source, x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+                    }
+                }
+            }
+            spriteScreenBuf.putPixels(ctx);
+            if (this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line") {
+                let touchStart = [this.listeners.touchStart["offsetX"], this.listeners.touchStart["offsetY"]];
+                if (!touchStart[0]) {
+                    touchStart = [this.listeners.touchStart["clientX"] - this.canvas.getBoundingClientRect().left, this.listeners.touchStart["clientY"] - this.canvas.getBoundingClientRect().top];
+                }
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.strokeStyle = this.color.htmlRBGA();
+                ctx.moveTo(touchStart[0], touchStart[1]);
+                ctx.lineTo(this.listeners.touchPos[0], this.listeners.touchPos[1]);
+                ctx.stroke();
+            }
+            if (this.pasteRect[3] !== 0) {
+                ctx.lineWidth = 6;
                 ctx.strokeStyle = "#FFFFFF";
-                ctx.strokeRect(this.selectionRect[0] + 2, this.selectionRect[1] + 2, this.selectionRect[2] - 4, this.selectionRect[3] - 4);
-                ctx.strokeStyle = "#FF0000";
-                ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
+                ctx.strokeRect(this.pasteRect[0] + 2, this.pasteRect[1] + 2, this.pasteRect[2] - 4, this.pasteRect[3] - 4);
+                ctx.strokeStyle = "#0000FF";
+                ctx.strokeRect(this.pasteRect[0], this.pasteRect[1], this.pasteRect[2], this.pasteRect[3]);
             }
-            else if (this.toolSelector.selectedToolName() !== "oval") {
-                ctx.strokeStyle = "#FFFFFF";
-                ctx.strokeRect(this.selectionRect[0] + 2, this.selectionRect[1] + 2, this.selectionRect[2] - 4, this.selectionRect[3] - 4);
-                ctx.strokeStyle = this.color.htmlRBG();
-                ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
-            }
-            else if (this.selectionRect[2] / 2 > 0 && this.selectionRect[3] / 2 > 0) {
-                ctx.beginPath();
-                ctx.strokeStyle = this.color.htmlRBG();
-                ctx.ellipse(this.selectionRect[0] + xr, this.selectionRect[1] + yr, xr, yr, 0, 0, 2 * Math.PI);
-                ctx.stroke();
-            }
-            else if (this.selectionRect[2] < 0 && this.selectionRect[3] >= 0) {
-                ctx.beginPath();
-                ctx.strokeStyle = this.color.htmlRBG();
-                ctx.ellipse(this.selectionRect[0] - xr, this.selectionRect[1] + yr, xr, yr, 0, 0, 2 * Math.PI);
-                ctx.stroke();
-            }
-            else if (this.selectionRect[2] < 0 && this.selectionRect[3] < 0) {
-                ctx.beginPath();
-                ctx.strokeStyle = this.color.htmlRBG();
-                ctx.ellipse(this.selectionRect[0] - xr, this.selectionRect[1] - yr, xr, yr, 0, 0, 2 * Math.PI);
-                ctx.stroke();
-            }
-            else if (this.selectionRect[2] != 0 && this.selectionRect[3] != 0) {
-                ctx.beginPath();
-                ctx.strokeStyle = this.color.htmlRBG();
-                ctx.ellipse(this.selectionRect[0] + xr, this.selectionRect[1] - yr, xr, yr, 0, 0, 2 * Math.PI);
-                ctx.stroke();
+            if (this.selectionRect[3] !== 0) {
+                ctx.lineWidth = 6;
+                const xr = Math.abs(this.selectionRect[2] / 2);
+                const yr = Math.abs(this.selectionRect[3] / 2);
+                if (this.toolSelector.selectedToolName() === "copy") {
+                    ctx.strokeStyle = "#FFFFFF";
+                    ctx.strokeRect(this.selectionRect[0] + 2, this.selectionRect[1] + 2, this.selectionRect[2] - 4, this.selectionRect[3] - 4);
+                    ctx.strokeStyle = "#FF0000";
+                    ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
+                }
+                else if (this.toolSelector.selectedToolName() !== "oval") {
+                    ctx.strokeStyle = "#FFFFFF";
+                    ctx.strokeRect(this.selectionRect[0] + 2, this.selectionRect[1] + 2, this.selectionRect[2] - 4, this.selectionRect[3] - 4);
+                    ctx.strokeStyle = this.color.htmlRBG();
+                    ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
+                }
+                else if (this.selectionRect[2] / 2 > 0 && this.selectionRect[3] / 2 > 0) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = this.color.htmlRBG();
+                    ctx.ellipse(this.selectionRect[0] + xr, this.selectionRect[1] + yr, xr, yr, 0, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
+                else if (this.selectionRect[2] < 0 && this.selectionRect[3] >= 0) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = this.color.htmlRBG();
+                    ctx.ellipse(this.selectionRect[0] - xr, this.selectionRect[1] + yr, xr, yr, 0, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
+                else if (this.selectionRect[2] < 0 && this.selectionRect[3] < 0) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = this.color.htmlRBG();
+                    ctx.ellipse(this.selectionRect[0] - xr, this.selectionRect[1] - yr, xr, yr, 0, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
+                else if (this.selectionRect[2] != 0 && this.selectionRect[3] != 0) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = this.color.htmlRBG();
+                    ctx.ellipse(this.selectionRect[0] + xr, this.selectionRect[1] - yr, xr, yr, 0, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
             }
         }
     }
@@ -2490,6 +2524,7 @@ SingleTouchListener.mouseDown = new MouseDownTracker();
 ;
 class Pallette {
     constructor(canvas, keyboardHandler, textBoxColor, colorCount = 10, colors = null) {
+        this.repaint = true;
         this.canvas = canvas;
         this.keyboardHandler = keyboardHandler;
         this.ctx = canvas.getContext("2d");
@@ -2526,7 +2561,10 @@ class Pallette {
         this.listeners.registerCallBack("touchstart", e => true, e => {
             document.activeElement.blur();
             this.handleClick(e);
+            this.repaint = true;
         });
+        this.keyboardHandler.registerCallBack("keydown", e => true, e => this.repaint = true);
+        this.keyboardHandler.registerCallBack("keyup", e => true, e => this.repaint = true);
     }
     calcColor(i = this.highLightedCell) {
         const color = new RGB(this.colors[i].red(), this.colors[i].green(), this.colors[i].blue(), this.colors[i].alpha());
@@ -2552,31 +2590,32 @@ class Pallette {
     }
     draw() {
         const ctx = this.ctx;
-        for (let i = 0; i < this.colors.length; i++) {
-            const width = (this.canvas.width / this.colors.length);
-            const height = this.canvas.height;
-            this.ctx.strokeStyle = "#000000";
-            ctx.fillStyle = "#FFFFFF";
-            ctx.fillRect(i * width, 0, width, height);
-            ctx.fillStyle = this.calcColor(i).htmlRBGA();
-            ctx.fillRect(i * width, 0, width, height);
-            ctx.strokeRect(i * width, 0, width, height);
-            this.ctx.font = '16px Calibri';
-            const visibleColor = (this.calcColor(i));
-            ctx.strokeStyle = "#000000";
-            this.ctx.strokeText((i + 1) % 10, i * width + width * 0.5, height / 3);
-            visibleColor.setBlue(Math.floor(visibleColor.blue() / 2));
-            visibleColor.setRed(Math.floor(visibleColor.red() / 2));
-            visibleColor.setGreen(Math.floor(visibleColor.green() / 2));
-            visibleColor.setAlpha(255);
-            this.ctx.fillStyle = visibleColor.htmlRBGA();
-            this.ctx.fillText((i + 1) % 10, i * width + width * 0.5, height / 3);
-            if (i === this.highLightedCell) {
+        if (this.repaint)
+            for (let i = 0; i < this.colors.length; i++) {
+                const width = (this.canvas.width / this.colors.length);
+                const height = this.canvas.height;
                 this.ctx.strokeStyle = "#000000";
-                for (let j = 0; j < height; j += 5)
-                    ctx.strokeRect(i * width + j, j, width - j * 2, height - j * 2);
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(i * width, 0, width, height);
+                ctx.fillStyle = this.calcColor(i).htmlRBGA();
+                ctx.fillRect(i * width, 0, width, height);
+                ctx.strokeRect(i * width, 0, width, height);
+                this.ctx.font = '16px Calibri';
+                const visibleColor = (this.calcColor(i));
+                ctx.strokeStyle = "#000000";
+                this.ctx.strokeText((i + 1) % 10, i * width + width * 0.5, height / 3);
+                visibleColor.setBlue(Math.floor(visibleColor.blue() / 2));
+                visibleColor.setRed(Math.floor(visibleColor.red() / 2));
+                visibleColor.setGreen(Math.floor(visibleColor.green() / 2));
+                visibleColor.setAlpha(255);
+                this.ctx.fillStyle = visibleColor.htmlRBGA();
+                this.ctx.fillText((i + 1) % 10, i * width + width * 0.5, height / 3);
+                if (i === this.highLightedCell) {
+                    this.ctx.strokeStyle = "#000000";
+                    for (let j = 0; j < height; j += 5)
+                        ctx.strokeRect(i * width + j, j, width - j * 2, height - j * 2);
+                }
             }
-        }
     }
 }
 ;
@@ -2836,24 +2875,28 @@ class SpriteSelector {
     }
     draw() {
         if (this.sprites()) {
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            const touchX = Math.floor(this.listener.touchPos[0] / this.canvas.width * this.spritesPerRow);
-            const touchY = Math.floor(this.listener.touchPos[1] / this.canvas.height * Math.floor(this.canvas.height / this.spriteHeight));
-            let setOffForDragSprite = 0;
-            for (let i = 0; i < this.sprites().length; i++) {
-                if (this.dragSprite && i === touchX + touchY * this.spritesPerRow)
+            const position = this.canvas.getBoundingClientRect();
+            if (position.top < window.innerHeight && position.bottom >= 0) {
+                console.log('Element is partially visible in screen');
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                const touchX = Math.floor(this.listener.touchPos[0] / this.canvas.width * this.spritesPerRow);
+                const touchY = Math.floor(this.listener.touchPos[1] / this.canvas.height * Math.floor(this.canvas.height / this.spriteHeight));
+                let setOffForDragSprite = 0;
+                for (let i = 0; i < this.sprites().length; i++) {
+                    if (this.dragSprite && i === touchX + touchY * this.spritesPerRow)
+                        setOffForDragSprite++;
+                    const x = (setOffForDragSprite % this.spritesPerRow) * this.spriteWidth;
+                    const y = Math.floor(setOffForDragSprite / this.spritesPerRow) * this.spriteHeight;
+                    this.sprites()[i].draw(this.ctx, x, y, this.spriteHeight, this.spriteWidth);
                     setOffForDragSprite++;
-                const x = (setOffForDragSprite % this.spritesPerRow) * this.spriteWidth;
-                const y = Math.floor(setOffForDragSprite / this.spritesPerRow) * this.spriteHeight;
-                this.sprites()[i].draw(this.ctx, x, y, this.spriteHeight, this.spriteWidth);
-                setOffForDragSprite++;
+                }
+                if (this.dragSprite) {
+                    this.dragSprite.draw(this.ctx, this.dragSpriteLocation[0] - this.spriteWidth * 0.5, this.dragSpriteLocation[1] - this.spriteHeight * 0.5, this.spriteWidth, this.spriteHeight);
+                    this.ctx.strokeRect(this.dragSpriteLocation[0] - this.spriteWidth * 0.5 + 2, this.dragSpriteLocation[1] - this.spriteHeight * 0.5 + 2, this.spriteWidth - 4, this.spriteHeight - 4);
+                }
+                else
+                    this.ctx.strokeRect(this.selectedSprite % this.spritesPerRow * this.spriteWidth + 2, Math.floor(this.selectedSprite / this.spritesPerRow) * this.spriteHeight + 2, this.spriteWidth - 4, this.spriteHeight - 4);
             }
-            if (this.dragSprite) {
-                this.dragSprite.draw(this.ctx, this.dragSpriteLocation[0] - this.spriteWidth * 0.5, this.dragSpriteLocation[1] - this.spriteHeight * 0.5, this.spriteWidth, this.spriteHeight);
-                this.ctx.strokeRect(this.dragSpriteLocation[0] - this.spriteWidth * 0.5 + 2, this.dragSpriteLocation[1] - this.spriteHeight * 0.5 + 2, this.spriteWidth - 4, this.spriteHeight - 4);
-            }
-            else
-                this.ctx.strokeRect(this.selectedSprite % this.spritesPerRow * this.spriteWidth + 2, Math.floor(this.selectedSprite / this.spritesPerRow) * this.spriteHeight + 2, this.spriteWidth - 4, this.spriteHeight - 4);
         }
     }
     deleteSelectedSprite() {
@@ -3078,35 +3121,38 @@ class AnimationGroup {
         }
     }
     draw() {
-        const ctx = this.animationCanvas.getContext("2d");
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, this.animationCanvas.width, this.animationCanvas.height);
-        let dragSpriteAdjustment = 0;
-        const touchX = Math.floor(this.listener.touchPos[0] / this.animationCanvas.width * this.animationsPerRow);
-        const touchY = Math.floor((this.listener.touchPos[1]) / this.animationCanvas.height * Math.floor(this.animationCanvas.height / this.animationHeight));
-        let x = (dragSpriteAdjustment) % this.animationsPerRow;
-        let y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
-        for (let i = 0; i < this.animations.length; i++) {
-            x = (dragSpriteAdjustment) % this.animationsPerRow;
-            y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
-            if (this.dragSprite && x === touchX && y === touchY) {
-                dragSpriteAdjustment++;
+        const position = this.animationCanvas.getBoundingClientRect();
+        if (position.top < window.innerHeight && position.bottom >= 0) {
+            const ctx = this.animationCanvas.getContext("2d");
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, this.animationCanvas.width, this.animationCanvas.height);
+            let dragSpriteAdjustment = 0;
+            const touchX = Math.floor(this.listener.touchPos[0] / this.animationCanvas.width * this.animationsPerRow);
+            const touchY = Math.floor((this.listener.touchPos[1]) / this.animationCanvas.height * Math.floor(this.animationCanvas.height / this.animationHeight));
+            let x = (dragSpriteAdjustment) % this.animationsPerRow;
+            let y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
+            for (let i = 0; i < this.animations.length; i++) {
                 x = (dragSpriteAdjustment) % this.animationsPerRow;
                 y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
+                if (this.dragSprite && x === touchX && y === touchY) {
+                    dragSpriteAdjustment++;
+                    x = (dragSpriteAdjustment) % this.animationsPerRow;
+                    y = Math.floor((dragSpriteAdjustment) / this.animationsPerRow);
+                }
+                if (this.animations[i])
+                    this.animations[i].draw(ctx, x * this.animationWidth, y * this.animationHeight, this.animationWidth, this.animationHeight);
+                dragSpriteAdjustment++;
             }
-            if (this.animations[i])
-                this.animations[i].draw(ctx, x * this.animationWidth, y * this.animationHeight, this.animationWidth, this.animationHeight);
-            dragSpriteAdjustment++;
+            if (this.animations.length) {
+                this.spriteSelector.update();
+                this.spriteSelector.draw();
+                ctx.strokeStyle = "#000000";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(1 + this.selectedAnimationX(), 1 + this.selectedAnimationY(), this.animationWidth - 2, this.animationHeight - 2);
+            }
+            if (this.dragSprite)
+                this.dragSprite.draw(ctx, this.dragSpritePos[0], this.dragSpritePos[1], this.animationWidth, this.animationHeight);
         }
-        if (this.animations.length) {
-            this.spriteSelector.update();
-            this.spriteSelector.draw();
-            ctx.strokeStyle = "#000000";
-            ctx.lineWidth = 3;
-            ctx.strokeRect(1 + this.selectedAnimationX(), 1 + this.selectedAnimationY(), this.animationWidth - 2, this.animationHeight - 2);
-        }
-        if (this.dragSprite)
-            this.dragSprite.draw(ctx, this.dragSpritePos[0], this.dragSpritePos[1], this.animationWidth, this.animationHeight);
     }
 }
 ;
@@ -3248,37 +3294,40 @@ class AnimationGroupsSelector {
         }
     }
     draw() {
-        const ctx = this.ctx;
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        const clickedIndex = Math.floor(this.listener.touchPos[0] / this.renderWidth) + Math.floor(this.listener.touchPos[1] / this.renderHeight);
-        let offSetI = 0;
-        for (let i = 0; i < this.animationGroups.length; i++, offSetI++) {
-            if (i === clickedIndex && this.dragAnimationGroup)
-                offSetI++;
-            if (this.animationGroup())
-                this.drawIndex(ctx, i, offSetI);
-        }
-        if (this.dragAnimationGroup) {
-            let spriteIndex = this.dragAnimationGroup.second.second++;
-            let animationIndex = this.dragAnimationGroup.second.first;
-            const group = this.dragAnimationGroup.first;
-            if (group.animations[animationIndex].sprites.length === spriteIndex) {
-                animationIndex++;
-                spriteIndex = 0;
+        const position = this.canvas.getBoundingClientRect();
+        if (position.top < window.innerHeight && position.bottom >= 0) {
+            const ctx = this.ctx;
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            const clickedIndex = Math.floor(this.listener.touchPos[0] / this.renderWidth) + Math.floor(this.listener.touchPos[1] / this.renderHeight);
+            let offSetI = 0;
+            for (let i = 0; i < this.animationGroups.length; i++, offSetI++) {
+                if (i === clickedIndex && this.dragAnimationGroup)
+                    offSetI++;
+                if (this.animationGroup())
+                    this.drawIndex(ctx, i, offSetI);
             }
-            if (group.animations.length === animationIndex)
-                animationIndex = 0;
-            this.dragAnimationGroup.second.first = animationIndex;
-            this.dragAnimationGroup.second.second = spriteIndex;
-            this.dragAnimationGroup.first.drawAnimation(ctx, animationIndex, spriteIndex, this.listener.touchPos[0] - this.renderWidth / 2, this.listener.touchPos[1] - this.renderHeight / 2, this.renderWidth, this.renderHeight);
-        }
-        if (this.animationGroup()) {
-            const x = this.selectedAnimationGroup % this.spritesPerRow;
-            const y = Math.floor(this.selectedAnimationGroup / this.spritesPerRow);
-            ctx.strokeStyle = "#000000";
-            ctx.strokeRect(x * this.renderWidth + 1, y * this.renderHeight + 1, this.renderWidth - 2, this.renderHeight - 2);
-            this.animationGroup().draw();
+            if (this.dragAnimationGroup) {
+                let spriteIndex = this.dragAnimationGroup.second.second++;
+                let animationIndex = this.dragAnimationGroup.second.first;
+                const group = this.dragAnimationGroup.first;
+                if (group.animations[animationIndex].sprites.length === spriteIndex) {
+                    animationIndex++;
+                    spriteIndex = 0;
+                }
+                if (group.animations.length === animationIndex)
+                    animationIndex = 0;
+                this.dragAnimationGroup.second.first = animationIndex;
+                this.dragAnimationGroup.second.second = spriteIndex;
+                this.dragAnimationGroup.first.drawAnimation(ctx, animationIndex, spriteIndex, this.listener.touchPos[0] - this.renderWidth / 2, this.listener.touchPos[1] - this.renderHeight / 2, this.renderWidth, this.renderHeight);
+            }
+            if (this.animationGroup()) {
+                const x = this.selectedAnimationGroup % this.spritesPerRow;
+                const y = Math.floor(this.selectedAnimationGroup / this.spritesPerRow);
+                ctx.strokeStyle = "#000000";
+                ctx.strokeRect(x * this.renderWidth + 1, y * this.renderHeight + 1, this.renderWidth - 2, this.renderHeight - 2);
+                this.animationGroup().draw();
+            }
         }
     }
 }
