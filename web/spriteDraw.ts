@@ -1560,9 +1560,11 @@ class ToolSelector {
     undoTool:UndoRedoTool;
     fillTool:FillTool;
     repaint:boolean;
+    lastDrawTime:number;
     constructor(field:DrawingScreen, keyboardHandler:KeyboardHandler, imgWidth:number = 50, imgHeight:number = 50)
     {
         this.imgWidth = imgWidth;
+        this.lastDrawTime = Date.now();
         this.repaint = false;
         this.imgHeight = imgHeight;
         this.selectedTool = 0;
@@ -1662,15 +1664,16 @@ class ToolSelector {
         this.toolArray.push(this.settingsTool);
         for(const tool of this.toolArray)
         {
-            tool.toolImage.callback = () => this.repaint = true;
+            tool.toolImage.callback = () => {this.repaint = true;console.log("mooo")};
         }
-        this.repaint = true;
         
  
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = "#000000";
         this.ctx.fillStyle = "#FFFFFF";
+        this.repaint = true;
+        this.lastDrawTime = Date.now();
     }
     resizeCanvas():void
     {
@@ -1688,9 +1691,10 @@ class ToolSelector {
     }
     draw()
     {
-        if(this.repaint)
+        if(this.repaint || Date.now() - this.lastDrawTime > 1000)
         {
             this.repaint = false;
+            this.lastDrawTime = Date.now();
             this.resizeCanvas();
             const imgPerColumn:number = (this.toolPixelDim[1] / this.imgHeight);
             const imgPerRow:number = (this.toolPixelDim[0] / this.imgWidth);
