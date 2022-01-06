@@ -2875,7 +2875,6 @@ class SpriteSelector {
         if (this.sprites()) {
             const position = this.canvas.getBoundingClientRect();
             if (position.top < window.innerHeight && position.bottom >= 0) {
-                console.log('Element is partially visible in screen');
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 const touchX = Math.floor(this.listener.touchPos[0] / this.canvas.width * this.spritesPerRow);
                 const touchY = Math.floor(this.listener.touchPos[1] / this.canvas.height * Math.floor(this.canvas.height / this.spriteHeight));
@@ -3120,6 +3119,10 @@ class AnimationGroup {
     }
     draw() {
         const position = this.animationCanvas.getBoundingClientRect();
+        if (this.animations.length) {
+            this.spriteSelector.update();
+            this.spriteSelector.draw();
+        }
         if (position.top < window.innerHeight && position.bottom >= 0) {
             const ctx = this.animationCanvas.getContext("2d");
             ctx.fillStyle = "#FFFFFF";
@@ -3142,8 +3145,6 @@ class AnimationGroup {
                 dragSpriteAdjustment++;
             }
             if (this.animations.length) {
-                this.spriteSelector.update();
-                this.spriteSelector.draw();
                 ctx.strokeStyle = "#000000";
                 ctx.lineWidth = 3;
                 ctx.strokeRect(1 + this.selectedAnimationX(), 1 + this.selectedAnimationY(), this.animationWidth - 2, this.animationHeight - 2);
@@ -3292,6 +3293,9 @@ class AnimationGroupsSelector {
         }
     }
     draw() {
+        if (this.animationGroup()) {
+            this.animationGroup().draw();
+        }
         const position = this.canvas.getBoundingClientRect();
         if (position.top < window.innerHeight && position.bottom >= 0) {
             const ctx = this.ctx;

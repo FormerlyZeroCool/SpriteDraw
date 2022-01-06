@@ -3569,7 +3569,6 @@ class SpriteSelector {
             const position = this.canvas.getBoundingClientRect();
 	        if(position.top < window.innerHeight && position.bottom >= 0) 
             {
-	        	console.log('Element is partially visible in screen');
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 const touchX:number = Math.floor(this.listener.touchPos[0] / this.canvas.width * this.spritesPerRow);
                 const touchY:number = Math.floor(this.listener.touchPos[1] / this.canvas.height * Math.floor(this.canvas.height / this.spriteHeight));
@@ -3876,6 +3875,12 @@ class AnimationGroup {
     {
 
         const position = this.animationCanvas.getBoundingClientRect();
+
+        if(this.animations.length)
+        {
+            this.spriteSelector.update();
+            this.spriteSelector.draw();
+        }
         if(position.top < window.innerHeight && position.bottom >= 0) 
         {
             const ctx:CanvasRenderingContext2D = this.animationCanvas.getContext("2d");
@@ -3902,11 +3907,9 @@ class AnimationGroup {
                 dragSpriteAdjustment++;
             }
             if(this.animations.length){
-            this.spriteSelector.update();
-            this.spriteSelector.draw();
-            ctx.strokeStyle = "#000000";
-            ctx.lineWidth = 3;
-            ctx.strokeRect(1 + this.selectedAnimationX(), 1 + this.selectedAnimationY(), this.animationWidth - 2, this.animationHeight - 2);
+                ctx.strokeStyle = "#000000";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(1 + this.selectedAnimationX(), 1 + this.selectedAnimationY(), this.animationWidth - 2, this.animationHeight - 2);
             }
             if(this.dragSprite)
                 this.dragSprite.draw(ctx, this.dragSpritePos[0], this.dragSpritePos[1], this.animationWidth, this.animationHeight);
@@ -4103,6 +4106,10 @@ class AnimationGroupsSelector {
     }
     draw():void
     {
+        if(this.animationGroup())
+        {
+            this.animationGroup().draw();
+        }
         const position = this.canvas.getBoundingClientRect();
         if(position.top < window.innerHeight && position.bottom >= 0) 
         {
