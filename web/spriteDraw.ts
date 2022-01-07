@@ -455,13 +455,13 @@ class SimpleGridLayoutManager implements GuiElement {
                     e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height())
                 {
                     element = el.element;
+                    e.translateEvent(e, -el.x, -el.y);
                 }
             });
             if(element)
             {
                 e.preventDefault();
                 element.activate();
-                e.translate(-this.x, -this.y);
                 element.handleTouchEvents(type, e);
                 element.refresh();
             }

@@ -337,12 +337,12 @@ class SimpleGridLayoutManager {
                 if (e.touchPos[0] >= el.x + this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
                     e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height()) {
                     element = el.element;
+                    e.translateEvent(e, -el.x, -el.y);
                 }
             });
             if (element) {
                 e.preventDefault();
                 element.activate();
-                e.translate(-this.x, -this.y);
                 element.handleTouchEvents(type, e);
                 element.refresh();
             }
