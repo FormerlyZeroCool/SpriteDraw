@@ -330,16 +330,21 @@ class SimpleGridLayoutManager {
     handleTouchEvents(type, e) {
         if (e.touchPos[0] >= this.x && e.touchPos[0] < this.x + this.width() &&
             e.touchPos[1] >= this.y && e.touchPos[1] < this.y + this.height()) {
+            let element = null;
             this.elementsPositions.forEach(el => {
                 el.element.deactivate();
+                el.element.refresh();
                 if (e.touchPos[0] >= el.x + this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
                     e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height()) {
-                    e.preventDefault();
-                    el.element.activate();
-                    el.element.handleTouchEvents(type, e);
+                    element = el.element;
                 }
-                el.element.refresh();
             });
+            if (element) {
+                e.preventDefault();
+                element.activate();
+                element.handleTouchEvents(type, e);
+                element.refresh();
+            }
         }
     }
     refresh() {
@@ -397,9 +402,6 @@ class SimpleGridLayoutManager {
             const y = counter.first * this.rowHeight();
             counter.second += elementWidth;
             this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
-            if (element.elementsPositions) {
-                console.log("hi");
-            }
         }
     }
     refreshCanvas(ctx = this.ctx, x = 0, y = 0) {
@@ -1045,13 +1047,19 @@ class ExtendedTool extends ViewLayoutTool {
         const parentPanel = this.getOptionPanel();
         parentPanel.addElement(this.localLayout);
         this.optionPanels = [this.localLayout];
+        let maxY = this.localLayout.height();
+        let maxX = this.localLayout.width();
         optionPanes.forEach(pane => {
             parentPanel.addElement(pane);
             this.optionPanels.push(pane);
+            maxY += pane.height();
+            maxX += pane.width();
         });
+        parentPanel.setHeight(maxY);
+        parentPanel.setWidth(maxX);
         parentPanel.refreshMetaData();
-        let maxY = 0;
-        let maxX = 0;
+        maxY = 0;
+        maxX = 0;
         parentPanel.elementsPositions.forEach(el => {
             if (el.y + el.height > maxY) {
                 maxY = el.y + el.height;

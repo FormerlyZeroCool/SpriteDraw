@@ -447,17 +447,23 @@ class SimpleGridLayoutManager implements GuiElement {
         if(e.touchPos[0] >= this.x && e.touchPos[0] < this.x + this.width() &&
             e.touchPos[1] >= this.y && e.touchPos[1] < this.y + this.height())
         {
+            let element:GuiElement = null;
             this.elementsPositions.forEach(el => {
                 el.element.deactivate();
+                el.element.refresh();
                 if(e.touchPos[0] >= el.x+this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
                     e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height())
                 {
-                    e.preventDefault();
-                    el.element.activate();
-                    el.element.handleTouchEvents(type, e);
+                    element = el.element;
                 }
-                el.element.refresh();
             });
+            if(element)
+            {
+                e.preventDefault();
+                element.activate();
+                element.handleTouchEvents(type, e);
+                element.refresh();
+            }
         }
     }
     refresh():void {
@@ -524,10 +530,6 @@ class SimpleGridLayoutManager implements GuiElement {
             const y:number = counter.first * this.rowHeight();
             counter.second += elementWidth;
             this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
-            if((<any>element).elementsPositions)
-            {
-                console.log("hi")
-            }
         }
     }
     refreshCanvas(ctx:CanvasRenderingContext2D = this.ctx, x:number = 0, y:number = 0):void
@@ -1322,13 +1324,19 @@ class ExtendedTool extends ViewLayoutTool {
         const parentPanel:SimpleGridLayoutManager = this.getOptionPanel();
         parentPanel.addElement(this.localLayout);
         this.optionPanels = [this.localLayout];
+        let maxY:number = this.localLayout.height();
+        let maxX:number = this.localLayout.width();
         optionPanes.forEach(pane => {
             parentPanel.addElement(pane);
             this.optionPanels.push(pane);
+            maxY += pane.height();
+            maxX += pane.width();
         });
+        parentPanel.setHeight(maxY);
+        parentPanel.setWidth(maxX);
         parentPanel.refreshMetaData();
-        let maxY:number = 0;
-        let maxX:number = 0;
+        maxY = 0;
+        maxX = 0;
         parentPanel.elementsPositions.forEach(el => {
             if(el.y + el.height > maxY)
             {
