@@ -444,26 +444,27 @@ class SimpleGridLayoutManager implements GuiElement {
     }
     handleTouchEvents(type:string, e:any):void
     {
-        if(e.touchPos[0] >= this.x && e.touchPos[0] < this.x + this.width() &&
-            e.touchPos[1] >= this.y && e.touchPos[1] < this.y + this.height())
+        if(e.touchPos[0] >= 0 && e.touchPos[0] < this.width() &&
+            e.touchPos[1] >= 0 && e.touchPos[1] < this.height())
         {
-            let element:GuiElement = null;
+            let record:RowRecord = null;
             this.elementsPositions.forEach(el => {
                 el.element.deactivate();
                 el.element.refresh();
-                if(e.touchPos[0] >= el.x+this.x && e.touchPos[0] < el.x + this.x + el.element.width() &&
-                    e.touchPos[1] >= el.y + this.y && e.touchPos[1] < el.y + this.y + el.element.height())
+                if(e.touchPos[0] >= el.x && e.touchPos[0] < el.x + el.element.width() &&
+                    e.touchPos[1] >= el.y && e.touchPos[1] < el.y + el.element.height())
                 {
-                    element = el.element;
-                    e.translateEvent(e, -el.x, -el.y);
+                    record = el;
                 }
             });
-            if(element)
+            if(record)
             {
                 e.preventDefault();
-                element.activate();
-                element.handleTouchEvents(type, e);
-                element.refresh();
+                record.element.activate();
+                e.translateEvent(e, -record.x , -record.y);
+                record.element.handleTouchEvents(type, e);
+                e.translateEvent(e, record.x , record.y);
+                record.element.refresh();
             }
         }
     }
@@ -549,12 +550,14 @@ class SimpleGridLayoutManager implements GuiElement {
     }
     setWidth(val:number): void {
         this.pixelDim[0] = val;
+        this.canvas.width = val;
     }
     height(): number {
         return this.pixelDim[1];
     }
     setHeight(val:number): void {
         this.pixelDim[1] = val;
+        this.canvas.height = val;
     }
     rowHeight():number
     {
@@ -769,7 +772,6 @@ class GuiCheckBox implements GuiElement {
     }
     handleTouchEvents(type:string, e:any):void
     {
-        console.log("hello!", this.active())
         if(this.active())
             switch(type)
             {
@@ -1351,7 +1353,6 @@ class ExtendedTool extends ViewLayoutTool {
         });
         parentPanel.setWidth(dim[0] + maxX);
         parentPanel.setHeight(dim[1] + maxY);
-        console.log(parentPanel.width(), parentPanel.height())
         parentPanel.refreshMetaData();
 
     }
@@ -1616,9 +1617,17 @@ class ToolSelector {
                 this.repaint = true;
             });
         this.touchListener = new SingleTouchListener(this.canvas, true, true);  
-        this.touchListener.registerCallBack("touchstart", e => this.tool().getOptionPanel(),  e => {this.tool().getOptionPanel().handleTouchEvents("touchstart", e); this.repaint = true;});
-        this.touchListener.registerCallBack("touchmove", e => this.tool().getOptionPanel(),  e => {this.tool().getOptionPanel().handleTouchEvents("touchmove", e); this.repaint = true;});
-        this.touchListener.registerCallBack("touchend", e => this.tool().getOptionPanel(),  e => {this.tool().getOptionPanel().handleTouchEvents("touchend", e); this.repaint = true;});     
+        this.touchListener.registerCallBack("touchstart", e => this.tool().getOptionPanel(),  e => {
+            e.translateEvent(e, -this.tool().getOptionPanel().x , -this.tool().getOptionPanel().y);
+            this.tool().getOptionPanel().handleTouchEvents("touchstart", e); this.repaint = true;
+            e.translateEvent(e, this.tool().getOptionPanel().x , this.tool().getOptionPanel().y);});
+
+        this.touchListener.registerCallBack("touchmove", e => this.tool().getOptionPanel(),  e => {
+            e.translateEvent(e, -this.tool().getOptionPanel().x , -this.tool().getOptionPanel().y);this.tool().getOptionPanel().handleTouchEvents("touchmove", e); this.repaint = true;
+            e.translateEvent(e, this.tool().getOptionPanel().x , this.tool().getOptionPanel().y);});
+        this.touchListener.registerCallBack("touchend", e => this.tool().getOptionPanel(),  e => {
+            e.translateEvent(e, -this.tool().getOptionPanel().x , -this.tool().getOptionPanel().y);this.tool().getOptionPanel().handleTouchEvents("touchend", e); this.repaint = true;
+            e.translateEvent(e, this.tool().getOptionPanel().x , this.tool().getOptionPanel().y);});     
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             (<any>document.activeElement).blur();
             const imgPerColumn:number = (this.canvas.height / this.imgHeight);
