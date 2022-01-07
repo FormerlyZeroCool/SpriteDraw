@@ -342,6 +342,7 @@ class SimpleGridLayoutManager {
             if (element) {
                 e.preventDefault();
                 element.activate();
+                e.translate(-this.x, -this.y);
                 element.handleTouchEvents(type, e);
                 element.refresh();
             }
@@ -589,6 +590,7 @@ class GuiCheckBox {
         }
     }
     handleTouchEvents(type, e) {
+        console.log("hello!", this.active());
         if (this.active())
             switch (type) {
                 case ("touchstart"):
@@ -2374,6 +2376,7 @@ class SingleTouchListener {
     constructor(component, preventDefault, mouseEmulation) {
         this.lastTouchTime = Date.now();
         this.offset = [];
+        this.translateEvent = (e, dx, dy) => e.touchPos = [e.touchPos[0] + dx, e.touchPos[1] + dy];
         this.startTouchPos = [0, 0];
         this.component = component;
         this.preventDefault = preventDefault;
@@ -2422,6 +2425,7 @@ class SingleTouchListener {
         }
         this.startTouchPos = [this.touchPos[0], this.touchPos[1]];
         event.touchPos = this.touchPos;
+        event.translateEvent = this.translateEvent;
         this.touchMoveEvents = [];
         this.touchVelocity = 0;
         this.touchMoveCount = 0;
@@ -2471,6 +2475,7 @@ class SingleTouchListener {
             event.startTouchTime = this.lastTouchTime;
             event.eventTime = Date.now();
             event.moveCount = this.moveCount;
+            event.translateEvent = this.translateEvent;
             this.touchMoveEvents.push(event);
             this.callHandler("touchmove", event);
         }
@@ -2511,8 +2516,10 @@ class SingleTouchListener {
                 event.startTouchTime = this.lastTouchTime;
                 event.eventTime = Date.now();
                 event.moveCount = this.moveCount;
+                event.translateEvent = this.translateEvent;
                 this.callHandler("touchend", event);
             }
+            this.touchMoveEvents = [];
             this.registeredTouch = false;
         }
     }
