@@ -1069,8 +1069,8 @@ class ViewLayoutTool extends Tool {
 }
 ;
 class ExtendedTool extends ViewLayoutTool {
-    constructor(name, path, optionPanes, matrixDim, dim) {
-        super(new SimpleGridLayoutManager([matrixDim[0], matrixDim[1]], [dim[0], dim[1]]), name, path);
+    constructor(name, path, optionPanes, dim, matrixDim = [24, 24], parentMatrixDim = [24, 24]) {
+        super(new SimpleGridLayoutManager([parentMatrixDim[0], parentMatrixDim[1]], [dim[0], dim[1]]), name, path);
         this.localLayout = new SimpleGridLayoutManager([matrixDim[0], matrixDim[1]], [dim[0], dim[1]]);
         const parentPanel = this.getOptionPanel();
         parentPanel.addElement(this.localLayout);
@@ -1111,7 +1111,7 @@ class ExtendedTool extends ViewLayoutTool {
 ;
 class FillTool extends ExtendedTool {
     constructor(toolSelector, name, path, optionPanes) {
-        super(name, path, optionPanes, [2, 4], [200, 80]);
+        super(name, path, optionPanes, [200, 80], [1, 4]);
         this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
     }
 }
@@ -1125,7 +1125,7 @@ class PenViewTool extends ViewLayoutTool {
 ;
 class PenTool extends ExtendedTool {
     constructor(strokeWith, toolName = "pen", pathToImage = "images/penSprite.png", optionPanes) {
-        super(toolName, pathToImage, optionPanes, [1, 3], [200, 100]);
+        super(toolName, pathToImage, optionPanes, [200, 100], [1, 3]);
         this.lineWidth = strokeWith;
         this.tbSize = new GuiTextBox(true, 100);
         this.tbSize.promptText = "Enter line width:";
