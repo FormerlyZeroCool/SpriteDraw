@@ -972,6 +972,10 @@ class GuiTextBox implements GuiElement {
                     this.text = this.text.substring(0, this.cursor) + "." + this.text.substring(this.cursor, this.text.length);
                     this.cursor++;
                     break;
+                    case("Comma"):
+                    this.text = this.text.substring(0, this.cursor) + "," + this.text.substring(this.cursor, this.text.length);
+                    this.cursor++;
+                    break;
                     default:
                     {
                         let letter:string = e.code.substring(e.code.length - 1);
@@ -986,6 +990,7 @@ class GuiTextBox implements GuiElement {
                         {
                             //todo
                         }
+                        console.log(e.code)
 
                     }
                 }
@@ -1322,7 +1327,7 @@ class ViewLayoutTool extends Tool {
 class ExtendedTool extends ViewLayoutTool {
     localLayout:SimpleGridLayoutManager;
     optionPanels:SimpleGridLayoutManager[];
-    constructor(toolSelector:ToolSelector, name:string, path:string, optionPanes:SimpleGridLayoutManager[], dim:number[])
+    constructor(name:string, path:string, optionPanes:SimpleGridLayoutManager[], dim:number[])
     {
         super(new SimpleGridLayoutManager([24,24], [dim[0], dim[1]]), name, path);
         this.localLayout = new SimpleGridLayoutManager([24,24], [dim[0], dim[1]]);
@@ -1376,7 +1381,7 @@ class ExtendedTool extends ViewLayoutTool {
 class FillTool extends ExtendedTool {
     constructor(toolSelector:ToolSelector, name:string, path:string, optionPanes:SimpleGridLayoutManager[])
     {
-        super(toolSelector, name, path, optionPanes, [200, 40]);
+        super(name, path, optionPanes, [200, 40]);
         this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
         
     }
@@ -1391,16 +1396,16 @@ class PenViewTool extends ViewLayoutTool {
     //activateOptionPanel():void { this.layoutManager.activate(); this.pen.tbSize.activate(); this.pen.tbSize.refresh(); }
     //deactivateOptionPanel():void { this.layoutManager.deactivate(); this.pen.tbSize.refresh();}
 };
-class PenTool extends Tool {
+class PenTool extends ExtendedTool {
     lineWidth:number;
     layoutManager:SimpleGridLayoutManager;
     tbSize:GuiTextBox;
     btUpdate:GuiButton;
-    constructor(strokeWith:number, toolName:string = "pen", pathToImage:string = "images/penSprite.png")
+    constructor(strokeWith:number, toolName:string = "pen", pathToImage:string = "images/penSprite.png", optionPanes:SimpleGridLayoutManager[])
     {
-        super(toolName, pathToImage);
+        super(toolName, pathToImage, optionPanes, [200, 100]);
         this.lineWidth = strokeWith;
-        this.layoutManager = new SimpleGridLayoutManager([1,3],[200,100]);
+        this.localLayout.matrixDim = [1,3];
         this.tbSize = new GuiTextBox(true, 100);
         this.tbSize.promptText = "Enter line width:";
         this.tbSize.setText(String(this.lineWidth));
@@ -1409,9 +1414,9 @@ class PenTool extends Tool {
             this.tbSize.setText(String(this.lineWidth))},
             "Update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
-        this.layoutManager.addElement(new GuiLabel("Line width:", 150, 16));
-        this.layoutManager.addElement(this.tbSize);
-        this.layoutManager.addElement(this.btUpdate);
+        this.localLayout.addElement(new GuiLabel("Line width:", 150, 16));
+        this.localLayout.addElement(this.tbSize);
+        this.localLayout.addElement(this.btUpdate);
     }
     activateOptionPanel():void 
     { 
@@ -1658,14 +1663,14 @@ class ToolSelector {
             }
             this.repaint = true;
         });
-
-        this.penTool = new PenTool(field.suggestedLineWidth(), "pen","images/penSprite.png");
-        this.penTool.activateOptionPanel();
-        this.eraserTool = new PenTool(field.suggestedLineWidth() * 3, "eraser","images/eraserSprite.png");
         this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings","images/settingsSprite.png");
         this.colorPickerTool = new ColorPickerTool(field,"colorPicker", "images/colorPickerSprite.png");
         this.dragTool = new DragTool("drag", "images/dragSprite.png");
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.slow = !field.slow);
+
+        this.penTool = new PenTool(field.suggestedLineWidth(), "pen","images/penSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()]);
+        this.penTool.activateOptionPanel();
+        this.eraserTool = new PenTool(field.suggestedLineWidth() * 3, "eraser","images/eraserSprite.png", [this.undoTool.getOptionPanel()]);
         this.fillTool = new FillTool(this, "fill", "images/fillSprite.png", [this.undoTool.getOptionPanel()])
         this.toolArray = [];
         this.toolArray.push(this.penTool);

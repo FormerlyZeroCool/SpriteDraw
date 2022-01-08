@@ -744,6 +744,10 @@ class GuiTextBox {
                             this.text = this.text.substring(0, this.cursor) + "." + this.text.substring(this.cursor, this.text.length);
                             this.cursor++;
                             break;
+                        case ("Comma"):
+                            this.text = this.text.substring(0, this.cursor) + "," + this.text.substring(this.cursor, this.text.length);
+                            this.cursor++;
+                            break;
                         default:
                             {
                                 let letter = e.code.substring(e.code.length - 1);
@@ -756,6 +760,7 @@ class GuiTextBox {
                                 else if (GuiTextBox.specialChars[e.code]) {
                                     //todo
                                 }
+                                console.log(e.code);
                             }
                     }
                     if (!isNaN(Number(this.text))) {
@@ -1046,7 +1051,7 @@ class ViewLayoutTool extends Tool {
 }
 ;
 class ExtendedTool extends ViewLayoutTool {
-    constructor(toolSelector, name, path, optionPanes, dim) {
+    constructor(name, path, optionPanes, dim) {
         super(new SimpleGridLayoutManager([24, 24], [dim[0], dim[1]]), name, path);
         this.localLayout = new SimpleGridLayoutManager([24, 24], [dim[0], dim[1]]);
         const parentPanel = this.getOptionPanel();
@@ -1096,7 +1101,7 @@ class ExtendedTool extends ViewLayoutTool {
 ;
 class FillTool extends ExtendedTool {
     constructor(toolSelector, name, path, optionPanes) {
-        super(toolSelector, name, path, optionPanes, [200, 40]);
+        super(name, path, optionPanes, [200, 40]);
         this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
     }
 }
@@ -1108,11 +1113,11 @@ class PenViewTool extends ViewLayoutTool {
     }
 }
 ;
-class PenTool extends Tool {
-    constructor(strokeWith, toolName = "pen", pathToImage = "images/penSprite.png") {
-        super(toolName, pathToImage);
+class PenTool extends ExtendedTool {
+    constructor(strokeWith, toolName = "pen", pathToImage = "images/penSprite.png", optionPanes) {
+        super(toolName, pathToImage, optionPanes, [200, 100]);
         this.lineWidth = strokeWith;
-        this.layoutManager = new SimpleGridLayoutManager([1, 3], [200, 100]);
+        this.localLayout.matrixDim = [1, 3];
         this.tbSize = new GuiTextBox(true, 100);
         this.tbSize.promptText = "Enter line width:";
         this.tbSize.setText(String(this.lineWidth));
@@ -1121,9 +1126,9 @@ class PenTool extends Tool {
             this.tbSize.setText(String(this.lineWidth));
         }, "Update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
-        this.layoutManager.addElement(new GuiLabel("Line width:", 150, 16));
-        this.layoutManager.addElement(this.tbSize);
-        this.layoutManager.addElement(this.btUpdate);
+        this.localLayout.addElement(new GuiLabel("Line width:", 150, 16));
+        this.localLayout.addElement(this.tbSize);
+        this.localLayout.addElement(this.btUpdate);
     }
     activateOptionPanel() {
         this.layoutManager.activate();
@@ -1328,13 +1333,13 @@ class ToolSelector {
             }
             this.repaint = true;
         });
-        this.penTool = new PenTool(field.suggestedLineWidth(), "pen", "images/penSprite.png");
-        this.penTool.activateOptionPanel();
-        this.eraserTool = new PenTool(field.suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png");
         this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings", "images/settingsSprite.png");
         this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png");
         this.dragTool = new DragTool("drag", "images/dragSprite.png");
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.slow = !field.slow);
+        this.penTool = new PenTool(field.suggestedLineWidth(), "pen", "images/penSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()]);
+        this.penTool.activateOptionPanel();
+        this.eraserTool = new PenTool(field.suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png", [this.undoTool.getOptionPanel()]);
         this.fillTool = new FillTool(this, "fill", "images/fillSprite.png", [this.undoTool.getOptionPanel()]);
         this.toolArray = [];
         this.toolArray.push(this.penTool);
