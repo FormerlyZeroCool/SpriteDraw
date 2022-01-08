@@ -1081,22 +1081,17 @@ class ExtendedTool extends ViewLayoutTool {
             parentPanel.addElement(pane);
             this.optionPanels.push(pane);
             maxY += pane.height();
-            maxX += pane.width();
         });
         parentPanel.setHeight(maxY);
         parentPanel.setWidth(maxX);
         parentPanel.refreshMetaData();
         maxY = 0;
-        maxX = 0;
         parentPanel.elementsPositions.forEach(el => {
             if (el.y + el.height > maxY) {
                 maxY = el.y + el.height;
             }
-            if (el.x + el.width > maxY) {
-                maxX = el.x + el.width;
-            }
         });
-        parentPanel.setWidth(dim[0] + maxX);
+        parentPanel.setWidth(maxX);
         parentPanel.setHeight(dim[1] + maxY);
         parentPanel.refreshMetaData();
     }
