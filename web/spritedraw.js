@@ -324,6 +324,9 @@ class SimpleGridLayoutManager {
             touchHandler.registerCallBack("touchend", e => this.active(), e => this.handleTouchEvents("touchend", e));
         }
     }
+    isLayoutManager() {
+        return true;
+    }
     handleKeyBoardEvents(type, e) {
         this.elements.forEach(el => el.handleKeyBoardEvents(type, e));
     }
@@ -355,7 +358,10 @@ class SimpleGridLayoutManager {
     }
     deactivate() {
         this.focused = false;
-        this.elements.forEach(el => el.deactivate());
+        console.log("deactivating layout");
+        this.elements.forEach(el => {
+            el.deactivate();
+        });
     }
     activate() {
         this.focused = true;
@@ -519,6 +525,9 @@ class GuiButton {
                     break;
             }
     }
+    isLayoutManager() {
+        return false;
+    }
     active() {
         return this.focused;
     }
@@ -592,6 +601,9 @@ class GuiCheckBox {
                 }
             }
         }
+    }
+    isLayoutManager() {
+        return false;
     }
     handleTouchEvents(type, e) {
         if (this.active())
@@ -698,6 +710,9 @@ class GuiTextBox {
     }
     //take scaled pos calc delta from cursor pos
     //
+    isLayoutManager() {
+        return false;
+    }
     center() {
         return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) === GuiTextBox.center;
     }
@@ -825,9 +840,11 @@ class GuiTextBox {
     }
     deactivate() {
         this.focused = false;
+        this.refresh();
     }
     activate() {
         this.focused = true;
+        this.refresh();
     }
     textWidth() {
         return this.ctx.measureText(this.text).width;

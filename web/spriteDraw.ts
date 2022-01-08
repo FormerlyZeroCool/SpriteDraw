@@ -351,6 +351,7 @@ interface GuiElement {
     draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number, offsetY:number);
     handleKeyBoardEvents(type:string, e:any):void;
     handleTouchEvents(type:string, e:any):void;
+    isLayoutManager():boolean;
 };
 class LexicoGraphicNumericPair extends Pair<number, number> {
     rollOver:number;
@@ -437,7 +438,10 @@ class SimpleGridLayoutManager implements GuiElement {
             touchHandler.registerCallBack("touchend", e => this.active(), 
             e => this.handleTouchEvents("touchend", e));
         }
-    }   
+    }  
+    isLayoutManager():boolean {
+        return true;
+    } 
     handleKeyBoardEvents(type:string, e:any):void
     {
         this.elements.forEach(el => el.handleKeyBoardEvents(type, e));
@@ -475,7 +479,10 @@ class SimpleGridLayoutManager implements GuiElement {
     deactivate():void
     {
         this.focused = false;
-        this.elements.forEach(el => el.deactivate());
+        console.log("deactivating layout")
+        this.elements.forEach(el => {
+            el.deactivate();
+        });
     }
     activate():void
     {
@@ -678,6 +685,9 @@ class GuiButton implements GuiElement {
             }
             
     }
+    isLayoutManager():boolean {
+        return false;
+    } 
     active():boolean
     {
         return this.focused;
@@ -771,6 +781,9 @@ class GuiCheckBox implements GuiElement {
             }
         }
     }
+    isLayoutManager():boolean {
+        return false;
+    } 
     handleTouchEvents(type:string, e:any):void
     {
         if(this.active())
@@ -918,6 +931,9 @@ class GuiTextBox implements GuiElement {
     }
     //take scaled pos calc delta from cursor pos
     //
+    isLayoutManager():boolean {
+        return false;
+    } 
     center():boolean
     {
         return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) === GuiTextBox.center;
@@ -1068,10 +1084,12 @@ class GuiTextBox implements GuiElement {
     deactivate():void
     {
         this.focused = false;
+        this.refresh();
     }
     activate():void
     {
         this.focused = true;
+        this.refresh();
     }
     textWidth():number
     {
