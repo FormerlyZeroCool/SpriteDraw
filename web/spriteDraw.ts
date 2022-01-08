@@ -1345,10 +1345,10 @@ class ViewLayoutTool extends Tool {
 class ExtendedTool extends ViewLayoutTool {
     localLayout:SimpleGridLayoutManager;
     optionPanels:SimpleGridLayoutManager[];
-    constructor(name:string, path:string, optionPanes:SimpleGridLayoutManager[], dim:number[])
+    constructor(name:string, path:string, optionPanes:SimpleGridLayoutManager[], matrixDim:number[], dim:number[])
     {
-        super(new SimpleGridLayoutManager([24,24], [dim[0], dim[1]]), name, path);
-        this.localLayout = new SimpleGridLayoutManager([24,24], [dim[0], dim[1]]);
+        super(new SimpleGridLayoutManager([matrixDim[0],matrixDim[1]], [dim[0], dim[1]]), name, path);
+        this.localLayout = new SimpleGridLayoutManager([matrixDim[0],matrixDim[1]], [dim[0], dim[1]]);
         const parentPanel:SimpleGridLayoutManager = this.getOptionPanel();
         parentPanel.addElement(this.localLayout);
         this.optionPanels = [this.localLayout];
@@ -1390,7 +1390,7 @@ class ExtendedTool extends ViewLayoutTool {
 class FillTool extends ExtendedTool {
     constructor(toolSelector:ToolSelector, name:string, path:string, optionPanes:SimpleGridLayoutManager[])
     {
-        super(name, path, optionPanes, [200, 40]);
+        super(name, path, optionPanes, [2, 4], [200, 80]);
         this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
         
     }
@@ -1412,9 +1412,8 @@ class PenTool extends ExtendedTool {
     btUpdate:GuiButton;
     constructor(strokeWith:number, toolName:string = "pen", pathToImage:string = "images/penSprite.png", optionPanes:SimpleGridLayoutManager[])
     {
-        super(toolName, pathToImage, optionPanes, [200, 100]);
+        super(toolName, pathToImage, optionPanes, [1,3], [200, 100]);
         this.lineWidth = strokeWith;
-        this.localLayout.matrixDim = [1,3];
         this.tbSize = new GuiTextBox(true, 100);
         this.tbSize.promptText = "Enter line width:";
         this.tbSize.setText(String(this.lineWidth));
