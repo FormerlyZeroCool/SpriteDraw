@@ -1391,7 +1391,7 @@ class FillTool extends ExtendedTool {
     checkIgnoreAlpha:GuiCheckBox;
     constructor(name:string, path:string, optionPanes:SimpleGridLayoutManager[], updateIgnoreSameColorBoundaries:() => void)
     {
-        super(name, path, optionPanes, [200, 80], [1, 5]);
+        super(name, path, optionPanes, [200, 90], [1, 5]);
         this.checkIgnoreAlpha = new GuiCheckBox(updateIgnoreSameColorBoundaries);
         this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
         //this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
@@ -3599,6 +3599,7 @@ class SpriteSelector {
                 }
                 sprite.copyToBuffer(this.drawingField.screenBuffer);
                 sprite.copyToBuffer(this.drawingField.screenBuffer);
+                this.drawingField.repaint = true;
             }
             else if(this.sprites() && this.sprites().length > 1)
                 this.selectedSprite = this.sprites().length - 1;
