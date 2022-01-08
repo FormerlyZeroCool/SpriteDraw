@@ -1110,9 +1110,12 @@ class ExtendedTool extends ViewLayoutTool {
 }
 ;
 class FillTool extends ExtendedTool {
-    constructor(toolSelector, name, path, optionPanes) {
-        super(name, path, optionPanes, [200, 80], [1, 4]);
+    constructor(name, path, optionPanes, updateIgnoreSameColorBoundaries) {
+        super(name, path, optionPanes, [200, 80], [1, 5]);
+        this.checkIgnoreAlpha = new GuiCheckBox(updateIgnoreSameColorBoundaries);
         this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
+        //this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
+        this.localLayout.addElement(this.checkIgnoreAlpha);
     }
 }
 ;
@@ -1352,7 +1355,10 @@ class ToolSelector {
         this.penTool = new PenTool(field.suggestedLineWidth(), "pen", "images/penSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()]);
         this.penTool.activateOptionPanel();
         this.eraserTool = new PenTool(field.suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png", [this.undoTool.getOptionPanel()]);
-        this.fillTool = new FillTool(this, "fill", "images/fillSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()]);
+        this.fillTool = new FillTool("fill", "images/fillSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()], () => {
+            field.ignoreAlphaInFill = this.fillTool.checkIgnoreAlpha.checked;
+            console.log("hi boo!");
+        });
         this.toolArray = [];
         this.toolArray.push(this.penTool);
         this.toolArray.push(this.fillTool);
@@ -1519,6 +1525,7 @@ class DrawingScreen {
     constructor(canvas, keyboardHandler, palette, offset, dimensions, newColorTextBox) {
         const bounds = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
+        this.ignoreAlphaInFill = false;
         this.repaint = true;
         this.slow = false;
         this.dimensions = new Pair(dimensions[0], dimensions[1]);
@@ -1824,7 +1831,6 @@ class DrawingScreen {
         }
     }
     fillArea(startCoordinate) {
-        const altHeld = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
         let stack;
         if (this.slow || this.keyboardHandler.keysHeld["KeyS"]) //possibly more visiually appealling algo (bfs), 
             //but slower because it makes much worse use of the cache with very high random access
@@ -1840,7 +1846,7 @@ class DrawingScreen {
             const cur = stack.pop();
             const pixelColor = this.screenBuffer[cur];
             if (cur >= 0 && cur < this.dimensions.first * this.dimensions.second &&
-                (pixelColor.compare(spc) || (altHeld && pixelColor.alpha() === 0)) && !checkedMap[cur]) {
+                (pixelColor.compare(spc) || (this.ignoreAlphaInFill && pixelColor.alpha() === 0)) && !checkedMap[cur]) {
                 checkedMap[cur] = true;
                 if (!pixelColor.compare(this.color)) {
                     this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
