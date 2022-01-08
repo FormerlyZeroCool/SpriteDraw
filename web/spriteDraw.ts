@@ -1256,7 +1256,7 @@ class SingleCheckBoxTool extends GenericTool {
     constructor(label:string, name:string, imagePath:string, callback:() => void = () => null)
     {
         super(name, imagePath);
-        this.optionPanel = new SimpleGridLayoutManager([6,12], [200, 400]);
+        this.optionPanel = new SimpleGridLayoutManager([1,4], [200, 90]);
         this.checkBox = new GuiCheckBox(callback, 40, 40);
         this.optionPanel.addElement(new GuiLabel(label, 200, 16, GuiTextBox.center, 40));
         this.optionPanel.addElement(this.checkBox);
