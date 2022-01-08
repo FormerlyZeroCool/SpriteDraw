@@ -1400,7 +1400,7 @@ class PenTool extends Tool {
     {
         super(toolName, pathToImage);
         this.lineWidth = strokeWith;
-        this.layoutManager = new SimpleGridLayoutManager([2,6],[200,200]);
+        this.layoutManager = new SimpleGridLayoutManager([1,3],[200,100]);
         this.tbSize = new GuiTextBox(true, 100);
         this.tbSize.promptText = "Enter line width:";
         this.tbSize.setText(String(this.lineWidth));
@@ -1451,7 +1451,7 @@ class ColorPickerTool extends Tool {
     {
         super(toolName, pathToImage);
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager([2,6],[200,200]);
+        this.layoutManager = new SimpleGridLayoutManager([1,3],[200,100]);
         this.tbColor = new GuiTextBox(true, 200, null, 15);
         this.tbColor.promptText = "Enter RGBA color here (RGB 0-255 A 0-1):";
         this.setColorText();
@@ -1506,7 +1506,7 @@ class DrawingScreenSettingsTool extends Tool {
         super(toolName, pathToImage);
         this.dim = dim;
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager([4,6],[200,200]);
+        this.layoutManager = new SimpleGridLayoutManager([2,4],[200,130]);
         this.tbX = new GuiTextBox(true, 70);
         this.tbX.promptText = "Enter width:";
         this.tbX.setText(String(this.dim[0]));
