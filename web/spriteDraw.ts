@@ -1608,7 +1608,7 @@ class ToolSelector {
         this.keyboardHandler.registerCallBack("keydown", e => {if(e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "ArrowLeft" || e.code === "ArrowRight") return true;},
             e => {
                 const imgPerColumn:number = (this.canvas.height / this.imgHeight);
-                if(document.activeElement.id === "body" || field.canvas === document.activeElement || this.canvas === document.activeElement)
+                if((this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"]) && (document.activeElement.id === "body" || field.canvas === document.activeElement || this.canvas === document.activeElement))
                 {
                     e.preventDefault();
                     let newToolIndex:number = this.selectedTool;
