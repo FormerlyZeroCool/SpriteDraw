@@ -367,8 +367,8 @@ class SimpleGridLayoutManager {
         if (pixelX < this.pixelDim[0] && pixelY < this.pixelDim[1])
             for (let i = 0; free && i < this.elementsPositions.length; i++) {
                 const elPos = this.elementsPositions[i];
-                if (elPos.x >= pixelX && elPos.x + elPos.width <= pixelX &&
-                    elPos.y >= pixelY && elPos.y + elPos.height <= pixelY)
+                if (elPos.x <= pixelX && elPos.x + elPos.width >= pixelX &&
+                    elPos.y <= pixelY && elPos.y + elPos.height >= pixelY)
                     free = false;
             }
         else
@@ -399,11 +399,12 @@ class SimpleGridLayoutManager {
                     counter.incHigher();
                     counter.second = 0;
                 }
-            } while (!clearSpace);
+            } while (!clearSpace && counter.first < this.matrixDim[1]);
             const x = counter.second * this.columnWidth();
             const y = counter.first * this.rowHeight();
             counter.second += elementWidth;
-            this.elementsPositions.push(new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element));
+            const record = new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element);
+            this.elementsPositions.push(record);
         }
     }
     refreshCanvas(ctx = this.ctx, x = 0, y = 0) {
@@ -1046,8 +1047,8 @@ class ViewLayoutTool extends Tool {
 ;
 class ExtendedTool extends ViewLayoutTool {
     constructor(toolSelector, name, path, optionPanes, dim) {
-        super(new SimpleGridLayoutManager([24, 24], dim), name, path);
-        this.localLayout = new SimpleGridLayoutManager([24, 24], dim);
+        super(new SimpleGridLayoutManager([24, 24], [dim[0], dim[1]]), name, path);
+        this.localLayout = new SimpleGridLayoutManager([24, 24], [dim[0], dim[1]]);
         const parentPanel = this.getOptionPanel();
         parentPanel.addElement(this.localLayout);
         this.optionPanels = [this.localLayout];
@@ -1081,6 +1082,9 @@ class ExtendedTool extends ViewLayoutTool {
         this.optionPanels.forEach(element => {
             element.activate();
         });
+        this.getOptionPanel().refreshMetaData();
+        console.log(this.localLayout.width(), this.localLayout.height());
+        console.log(this.getOptionPanel().width(), this.getOptionPanel().height());
     }
     deactivateOptionPanel() {
         this.getOptionPanel().deactivate();
@@ -1092,8 +1096,8 @@ class ExtendedTool extends ViewLayoutTool {
 ;
 class FillTool extends ExtendedTool {
     constructor(toolSelector, name, path, optionPanes) {
-        super(toolSelector, name, path, optionPanes, [200, 100]);
-        this.localLayout.addElement(new GuiLabel("Hello!", 85, 16, GuiTextBox.bottom, 35));
+        super(toolSelector, name, path, optionPanes, [200, 40]);
+        this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
     }
 }
 ;
