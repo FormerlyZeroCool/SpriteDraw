@@ -1683,7 +1683,7 @@ class ToolSelector {
         this.penTool = new PenTool(field.suggestedLineWidth(), "pen","images/penSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()]);
         this.penTool.activateOptionPanel();
         this.eraserTool = new PenTool(field.suggestedLineWidth() * 3, "eraser","images/eraserSprite.png", [this.undoTool.getOptionPanel()]);
-        this.fillTool = new FillTool(this, "fill", "images/fillSprite.png", [this.undoTool.getOptionPanel()])
+        this.fillTool = new FillTool(this, "fill", "images/fillSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()])
         this.toolArray = [];
         this.toolArray.push(this.penTool);
         this.toolArray.push(this.fillTool);
