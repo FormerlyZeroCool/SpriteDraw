@@ -358,7 +358,6 @@ class SimpleGridLayoutManager {
     }
     deactivate() {
         this.focused = false;
-        console.log("deactivating layout");
         this.elements.forEach(el => {
             el.deactivate();
         });
@@ -1648,6 +1647,7 @@ class DrawingScreen {
             const y1 = e.touchPos[1] - e.deltaY;
             const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
             const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
+            let repaint = true;
             switch (this.toolSelector.selectedToolName()) {
                 case ("pen"):
                     this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
@@ -1690,11 +1690,13 @@ class DrawingScreen {
                     this.color.copy(this.screenBuffer[gx + gy * this.dimensions.first]);
                     newColorTextBox.value = this.color.htmlRBGA(); //for html instead of Gui lib
                     this.toolSelector.colorPickerTool.setColorText(); // for Gui lib
+                    repaint = false;
                     break;
             }
-            this.repaint = true;
+            this.repaint = repaint;
         });
         this.listeners.registerCallBack("touchend", e => true, async (e) => {
+            let repaint = true;
             switch (this.toolSelector.selectedToolName()) {
                 case ("oval"):
                     this.handleEllipse(e);
@@ -1740,8 +1742,11 @@ class DrawingScreen {
                     this.drawRect([this.selectionRect[0], this.selectionRect[1]], [this.selectionRect[0] + this.selectionRect[2], this.selectionRect[1] + this.selectionRect[3]]);
                     this.selectionRect = [0, 0, 0, 0];
                     break;
+                case ("colorPicker"):
+                    repaint = false;
+                    break;
             }
-            this.repaint = true;
+            this.repaint = repaint;
         });
         this.color = new RGB(0, 0, 0, 255);
     }
