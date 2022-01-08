@@ -696,6 +696,8 @@ class GuiTextBox {
         this.fontSize = fontSize;
         this.drawInternalAndClear();
     }
+    //take scaled pos calc delta from cursor pos
+    //
     center() {
         return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) === GuiTextBox.center;
     }
@@ -1087,9 +1089,6 @@ class ExtendedTool extends ViewLayoutTool {
         this.optionPanels.forEach(element => {
             element.activate();
         });
-        this.getOptionPanel().refreshMetaData();
-        console.log(this.localLayout.width(), this.localLayout.height());
-        console.log(this.getOptionPanel().width(), this.getOptionPanel().height());
     }
     deactivateOptionPanel() {
         this.getOptionPanel().deactivate();
@@ -1264,31 +1263,34 @@ class ToolSelector {
             const imgPerColumn = (this.canvas.height / this.imgHeight);
             if (document.activeElement.id === "body" || field.canvas === document.activeElement || this.canvas === document.activeElement) {
                 e.preventDefault();
-                if (this.tool())
-                    this.tool().deactivateOptionPanel();
-                if (e.code === "ArrowUp")
+                let newToolIndex = this.selectedTool;
+                if (e.code === "ArrowUp") {
                     if (this.selectedTool !== 0)
-                        this.selectedTool--;
+                        newToolIndex--;
                     else
-                        this.selectedTool = this.toolArray.length - 1;
+                        newToolIndex = this.toolArray.length - 1;
+                }
                 else if (e.code === "ArrowDown") {
-                    this.selectedTool++;
-                    this.selectedTool %= this.toolArray.length;
+                    newToolIndex++;
+                    newToolIndex %= this.toolArray.length;
                 }
                 else if (e.code === "ArrowLeft") {
-                    if (this.selectedTool >= imgPerColumn)
-                        this.selectedTool -= imgPerColumn;
+                    if (newToolIndex >= imgPerColumn)
+                        newToolIndex -= imgPerColumn;
                     else
-                        this.selectedTool = 0;
+                        newToolIndex = 0;
                 }
                 else if (e.code === "ArrowRight") {
-                    if (this.toolArray.length - this.selectedTool > imgPerColumn)
-                        this.selectedTool += imgPerColumn;
+                    if (this.toolArray.length - newToolIndex > imgPerColumn)
+                        newToolIndex += imgPerColumn;
                     else
-                        this.selectedTool = this.toolArray.length - 1;
+                        newToolIndex = this.toolArray.length - 1;
                 }
-                if (this.tool())
+                if (this.tool() && this.selectedTool !== newToolIndex) {
+                    this.tool().deactivateOptionPanel();
+                    this.selectedTool = newToolIndex;
                     this.tool().activateOptionPanel();
+                }
             }
             this.repaint = true;
         });
