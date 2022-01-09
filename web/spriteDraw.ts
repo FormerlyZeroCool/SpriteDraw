@@ -1312,9 +1312,17 @@ class DragTool extends SingleCheckBoxTool {
     }
 };
 class UndoRedoTool extends SingleCheckBoxTool {
+    stackFrameCountLabel:GuiLabel;
     constructor(toolSelector:ToolSelector, name:string, imagePath:string, callback: () => void)
     {
-        super("Slow mode", name, imagePath, callback);
+        super("Slow mode:", name, imagePath, callback);
+        this.stackFrameCountLabel = new GuiLabel(`Redoable: ${0} Undoable: ${0}`, 200), 15;
+        this.getOptionPanel().matrixDim[1] += 5;
+        this.getOptionPanel().setHeight(this.stackFrameCountLabel.height() + this.getOptionPanel().height());
+        this.getOptionPanel().addElement(this.stackFrameCountLabel);
+    }
+    updateLabel(redo:number, undo:number):void{
+        this.stackFrameCountLabel.setText(`Redoable: ${redo} Undoable: ${undo}`);
     }
 };
 class ViewLayoutTool extends Tool {
@@ -1673,10 +1681,12 @@ class ToolSelector {
             if(this.selectedToolName() === "undo")
             {
                 field.undoLast();
+                this.undoTool.updateLabel(field.undoneUpdatesStack.length(), field.updatesStack.length());
             }
             else if(this.selectedToolName() === "redo")
             {
                 field.redoLast();
+                this.undoTool.updateLabel(field.undoneUpdatesStack.length(), field.updatesStack.length());
             }
             this.repaint = true;
         });
@@ -1964,9 +1974,11 @@ class DrawingScreen {
                 break;
                 case('KeyU'):
                 this.undoLast();
+                this.toolSelector.undoTool.updateLabel(this.undoneUpdatesStack.length(), this.updatesStack.length());
                 break;
                 case('KeyR'):
                 this.redoLast();
+                this.toolSelector.undoTool.updateLabel(this.undoneUpdatesStack.length(), this.updatesStack.length());
                 break;
             }
         });
@@ -2162,6 +2174,7 @@ class DrawingScreen {
                 repaint = false;
                 break;
             }
+            this.toolSelector.undoTool.updateLabel(this.undoneUpdatesStack.length(), this.updatesStack.length());
             this.repaint = repaint;
         });
         
