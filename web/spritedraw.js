@@ -1624,7 +1624,6 @@ class DrawingScreen {
                 case ("pen"):
                     {
                         this.setLineWidthPen();
-                        //this.color = this.palette.calcColor();
                     }
                     break;
                 case ("paste"):
@@ -1704,10 +1703,12 @@ class DrawingScreen {
                     this.selectionRect = [0, 0, 0, 0];
                     break;
                 case ("pen"):
-                    this.handleTap(e);
+                    if (e.deltaX === 0 && e.deltaY === 0) {
+                        this.handleTap(e.touchPos[0], e.touchPos[1]);
+                    }
                     break;
                 case ("eraser"):
-                    this.handleTap(e);
+                    this.handleTap(e.touchPos[0], e.touchPos[1]);
                     this.color.copy(colorBackup);
                     break;
                 case ("rotate"):
@@ -1727,7 +1728,7 @@ class DrawingScreen {
                     const x1 = e.touchPos[0] - e.deltaX;
                     const y1 = e.touchPos[1] - e.deltaY;
                     if (e.deltaX === 0 && e.deltaY === 0) {
-                        this.handleTap(e);
+                        this.handleTap(e.touchPos[0], e.touchPos[1]);
                     }
                     this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                     break;
@@ -1812,16 +1813,19 @@ class DrawingScreen {
             }
         }
     }
-    handleTap(event) {
-        const gx = Math.floor((event.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
-        const gy = Math.floor((event.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
+    handleTap(px, py) {
+        const gx = Math.floor((px - this.offset.first) / this.bounds.first * this.dimensions.first);
+        const gy = Math.floor((py - this.offset.second) / this.bounds.second * this.dimensions.second);
         if (gx < this.dimensions.first && gy < this.dimensions.second) {
+            const radius = this.lineWidth / 2;
             for (let i = -0.5 * this.lineWidth; i < this.lineWidth * 0.5; i++) {
                 for (let j = -0.5 * this.lineWidth; j < this.lineWidth * 0.5; j++) {
                     const ngx = gx + Math.round(j);
                     const ngy = (gy + Math.round(i));
+                    const dx = ngx - gx;
+                    const dy = ngy - gy;
                     const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
-                    if (pixel && !pixel.compare(this.color)) {
+                    if (pixel && !pixel.compare(this.color) && Math.sqrt(dx * dx + dy * dy) <= radius) {
                         this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
                         pixel.copy(this.color);
                     }
@@ -2137,6 +2141,10 @@ class DrawingScreen {
         if(newKey < 0)
             newKey += this.dimensions.first * this.dimensions.second;*/
         return (key) % (this.screenBuffer.length) + +(key < 0) * this.screenBuffer.length;
+    }
+    loadSprite(sprite) {
+        sprite.copyToBuffer(this.screenBuffer);
+        this.repaint = true;
     }
     saveDragDataToScreen() {
         if (this.dragData) {
@@ -2917,9 +2925,7 @@ class SpriteSelector {
                 if (sprite.width !== this.drawingField.spriteScreenBuf.width || sprite.height !== this.drawingField.spriteScreenBuf.height) {
                     this.drawingField.setDim([sprite.width, sprite.height]);
                 }
-                sprite.copyToBuffer(this.drawingField.screenBuffer);
-                sprite.copyToBuffer(this.drawingField.screenBuffer);
-                this.drawingField.repaint = true;
+                this.drawingField.loadSprite(sprite);
             }
             else if (this.sprites() && this.sprites().length > 1)
                 this.selectedSprite = this.sprites().length - 1;
