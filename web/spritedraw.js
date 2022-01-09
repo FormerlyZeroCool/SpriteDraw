@@ -1111,10 +1111,10 @@ class ExtendedTool extends ViewLayoutTool {
 ;
 class FillTool extends ExtendedTool {
     constructor(name, path, optionPanes, updateIgnoreSameColorBoundaries) {
-        super(name, path, optionPanes, [200, 90], [1, 5]);
+        super(name, path, optionPanes, [200, 150], [30, 10]);
         this.checkIgnoreAlpha = new GuiCheckBox(updateIgnoreSameColorBoundaries);
         this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
-        //this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
+        this.localLayout.addElement(new GuiLabel("Ignore Alpha:", 130, 14, GuiTextBox.bottom, 35));
         this.localLayout.addElement(this.checkIgnoreAlpha);
     }
 }
@@ -1526,6 +1526,7 @@ class DrawingScreen {
         const bounds = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
         this.ignoreAlphaInFill = false;
+        this.drawCircular = true;
         this.repaint = true;
         this.slow = false;
         this.dimensions = new Pair(dimensions[0], dimensions[1]);
@@ -1818,16 +1819,33 @@ class DrawingScreen {
         const gy = Math.floor((py - this.offset.second) / this.bounds.second * this.dimensions.second);
         if (gx < this.dimensions.first && gy < this.dimensions.second) {
             const radius = this.lineWidth * 0.5;
-            for (let i = -0.5 * this.lineWidth; i < radius; i++) {
-                for (let j = -0.5 * this.lineWidth; j < radius; j++) {
-                    const ngx = gx + Math.round(j);
-                    const ngy = (gy + Math.round(i));
-                    const dx = ngx - gx;
-                    const dy = ngy - gy;
-                    const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
-                    if (pixel && !pixel.compare(this.color) && Math.sqrt(dx * dx + dy * dy) <= radius) {
-                        this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
-                        pixel.copy(this.color);
+            if (this.drawCircular) {
+                const radius = this.lineWidth * 0.5;
+                for (let i = -0.5 * this.lineWidth; i < radius; i++) {
+                    for (let j = -0.5 * this.lineWidth; j < radius; j++) {
+                        const ngx = gx + Math.round(j);
+                        const ngy = (gy + Math.round(i));
+                        const dx = ngx - gx;
+                        const dy = ngy - gy;
+                        const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
+                        if (pixel && !pixel.compare(this.color) && Math.sqrt(dx * dx + dy * dy) <= radius) {
+                            this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
+                            pixel.copy(this.color);
+                        }
+                    }
+                }
+            }
+            else {
+                const radius = this.lineWidth * 0.5;
+                for (let i = -0.5 * this.lineWidth; i < radius; i++) {
+                    for (let j = -0.5 * this.lineWidth; j < radius; j++) {
+                        const ngx = gx + Math.round(j);
+                        const ngy = (gy + Math.round(i));
+                        const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
+                        if (pixel && !pixel.compare(this.color)) {
+                            this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
+                            pixel.copy(this.color);
+                        }
                     }
                 }
             }

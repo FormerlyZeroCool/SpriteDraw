@@ -1391,10 +1391,10 @@ class FillTool extends ExtendedTool {
     checkIgnoreAlpha:GuiCheckBox;
     constructor(name:string, path:string, optionPanes:SimpleGridLayoutManager[], updateIgnoreSameColorBoundaries:() => void)
     {
-        super(name, path, optionPanes, [200, 90], [1, 5]);
+        super(name, path, optionPanes, [200, 150], [30, 10]);
         this.checkIgnoreAlpha = new GuiCheckBox(updateIgnoreSameColorBoundaries);
         this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
-        //this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
+        this.localLayout.addElement(new GuiLabel("Ignore Alpha:", 130, 14, GuiTextBox.bottom, 35));
         this.localLayout.addElement(this.checkIgnoreAlpha);
     }
 };
@@ -1413,6 +1413,7 @@ class PenTool extends ExtendedTool {
     layoutManager:SimpleGridLayoutManager;
     tbSize:GuiTextBox;
     btUpdate:GuiButton;
+    checkDrawCircular:GuiCheckBox;
     constructor(strokeWith:number, toolName:string = "pen", pathToImage:string = "images/penSprite.png", optionPanes:SimpleGridLayoutManager[])
     {
         super(toolName, pathToImage, optionPanes, [200, 100], [1,3]);
@@ -1909,12 +1910,14 @@ class DrawingScreen {
     dragDataMinPoint:number;
     lineWidth:number;
     ignoreAlphaInFill:boolean;
+    drawCircular:boolean;
 
     constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, palette:Pallette, offset:Array<number>, dimensions:Array<number>, newColorTextBox:HTMLInputElement)
     {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
         this.ignoreAlphaInFill = false;
+        this.drawCircular = true;
         this.repaint = true;
         this.slow = false;
         this.dimensions = new Pair<number>(dimensions[0], dimensions[1]);
@@ -2240,19 +2243,41 @@ class DrawingScreen {
         const gx:number = Math.floor((px-this.offset.first)/this.bounds.first*this.dimensions.first);
         const gy:number = Math.floor((py-this.offset.second)/this.bounds.second*this.dimensions.second);
         if(gx < this.dimensions.first && gy < this.dimensions.second){
+            
             const radius:number = this.lineWidth * 0.5;
-            for(let i = -0.5*this.lineWidth; i < radius; i++)
+            if(this.drawCircular)
             {
-                for(let j = -0.5*this.lineWidth;  j < radius; j++)
+                const radius:number = this.lineWidth * 0.5;
+                for(let i = -0.5*this.lineWidth; i < radius; i++)
                 {
-                    const ngx:number = gx+Math.round(j);
-                    const ngy:number = (gy+Math.round(i));
-                    const dx:number = ngx - gx;
-                    const dy:number = ngy - gy;
-                    const pixel:RGB = this.screenBuffer[ngx + ngy*this.dimensions.first];
-                    if(pixel && !pixel.compare(this.color) && Math.sqrt(dx*dx+dy*dy) <= radius){
-                        this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
-                        pixel.copy(this.color);
+                    for(let j = -0.5*this.lineWidth;  j < radius; j++)
+                    {
+                        const ngx:number = gx+Math.round(j);
+                        const ngy:number = (gy+Math.round(i));
+                        const dx:number = ngx - gx;
+                        const dy:number = ngy - gy;
+                        const pixel:RGB = this.screenBuffer[ngx + ngy*this.dimensions.first];
+                        if(pixel && !pixel.compare(this.color) && Math.sqrt(dx*dx+dy*dy) <= radius){
+                            this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
+                            pixel.copy(this.color);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                const radius:number = this.lineWidth * 0.5;
+                for(let i = -0.5*this.lineWidth; i < radius; i++)
+                {
+                    for(let j = -0.5*this.lineWidth;  j < radius; j++)
+                    {
+                        const ngx:number = gx+Math.round(j);
+                        const ngy:number = (gy+Math.round(i));
+                        const pixel:RGB = this.screenBuffer[ngx + ngy*this.dimensions.first];
+                        if(pixel && !pixel.compare(this.color)){
+                            this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(ngx + ngy*this.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
+                            pixel.copy(this.color);
+                        }
                     }
                 }
             }
