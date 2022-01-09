@@ -1514,8 +1514,8 @@ class ColorPickerTool extends Tool {
         else
             this.tbColor.setText(new RGB(0, 0, 0, 0).htmlRBGA())
     }
-    activateOptionPanel():void { this.layoutManager.activate(); this.tbColor.activate(); this.tbColor.refresh();}
-    deactivateOptionPanel():void { this.layoutManager.deactivate();}
+    activateOptionPanel():void { this.layoutManager.activate(); }
+    deactivateOptionPanel():void { this.layoutManager.deactivate(); }
     getOptionPanel():SimpleGridLayoutManager {
         return this.layoutManager;
     }
@@ -1739,6 +1739,10 @@ class ToolSelector {
         this.repaint = true;
         this.lastDrawTime = Date.now();
     }
+    updateColorPickerTextBox():void{
+        this.colorPickerTool.setColorText();
+        this.repaint = true;
+    }
     resizeCanvas():void
     {
         const imgPerColumn:number = (this.toolPixelDim[1] / this.imgHeight);
@@ -1757,6 +1761,7 @@ class ToolSelector {
     {
         if(this.repaint || Date.now() - this.lastDrawTime > 600)
         {
+            console.log("repainting tool selector")
             this.repaint = false;
             this.lastDrawTime = Date.now();
             this.resizeCanvas();
@@ -2069,7 +2074,8 @@ class DrawingScreen {
                 case("colorPicker"):
                 this.color.copy(this.screenBuffer[gx + gy*this.dimensions.first]);
                 newColorTextBox.value = this.color.htmlRBGA();//for html instead of Gui lib
-                this.toolSelector.colorPickerTool.setColorText();// for Gui lib
+                // for Gui lib
+                this.toolSelector.updateColorPickerTextBox();
                 break;
             }
         });
@@ -2123,7 +2129,7 @@ class DrawingScreen {
                 case("colorPicker"):
                 this.color.copy(this.screenBuffer[gx + gy*this.dimensions.first]);
                 newColorTextBox.value = this.color.htmlRBGA();//for html instead of Gui lib
-                this.toolSelector.colorPickerTool.setColorText();// for Gui lib
+                this.toolSelector.updateColorPickerTextBox();
                 repaint = false;
                 break;
             }
