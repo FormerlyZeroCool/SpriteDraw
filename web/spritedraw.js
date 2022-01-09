@@ -1128,9 +1128,9 @@ class PenViewTool extends ViewLayoutTool {
 ;
 class PenTool extends ExtendedTool {
     constructor(strokeWith, toolName = "pen", pathToImage = "images/penSprite.png", optionPanes) {
-        super(toolName, pathToImage, optionPanes, [200, 150], [2, 4]);
+        super(toolName, pathToImage, optionPanes, [200, 130], [2, 4]);
         this.lineWidth = strokeWith;
-        this.tbSize = new GuiTextBox(true, 100);
+        this.tbSize = new GuiTextBox(true, 80);
         this.tbSize.promptText = "Enter line width:";
         this.tbSize.setText(String(this.lineWidth));
         this.btUpdate = new GuiButton(() => {
@@ -1141,7 +1141,6 @@ class PenTool extends ExtendedTool {
         this.localLayout.addElement(new GuiLabel("Line width:", 150, 16));
         this.localLayout.addElement(this.tbSize);
         this.localLayout.addElement(this.btUpdate);
-        this.localLayout.addElement(new GuiLabel("", 100, 14, GuiTextBox.bottom, 35));
         this.localLayout.addElement(new GuiLabel("Circle:", 90, 16, GuiTextBox.bottom, 35));
         this.localLayout.addElement(PenTool.checkDrawCircular);
     }
