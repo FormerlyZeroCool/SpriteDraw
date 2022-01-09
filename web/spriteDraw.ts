@@ -1164,12 +1164,12 @@ class GuiTextBox implements GuiElement {
         {
             if(this.cursorPos[1] > this.height() - 3)
             {
-                deltaY += this.cursorPos[1] - this.height() + this.fontSize/2;
+                deltaY += this.cursorPos[1] - this.height() + this.fontSize/3;
             }
             else if(this.cursorPos[1] < this.height() - 3)
             {
 
-                deltaY += this.cursorPos[1] - this.height() + this.fontSize/2;
+                deltaY += this.cursorPos[1] - this.height() + this.fontSize/3;
             }
         }
         const newRows:TextRow[] = [];
@@ -1409,7 +1409,7 @@ class UndoRedoTool extends SingleCheckBoxTool {
     constructor(toolSelector:ToolSelector, name:string, imagePath:string, callback: () => void)
     {
         super("Slow mode:", name, imagePath, callback);
-        this.stackFrameCountLabel = new GuiLabel(`Redoable actions: ${0}\nUndoable actions: ${0}`, 200), 15;
+        this.stackFrameCountLabel = new GuiLabel(`Redoable actions: ${0}\nUndoable actions: ${0}`, 200, 16, GuiTextBox.bottom, 40), 15;
         this.getOptionPanel().matrixDim[1] += 5;
         this.getOptionPanel().setHeight(this.stackFrameCountLabel.height() + this.getOptionPanel().height());
         this.getOptionPanel().addElement(this.stackFrameCountLabel);
@@ -1458,7 +1458,7 @@ class PenTool extends ExtendedTool {
         this.localLayout.addElement(new GuiLabel("Line width:", 150, 16));
         this.localLayout.addElement(this.tbSize);
         this.localLayout.addElement(this.btUpdate);
-        this.localLayout.addElement(new GuiLabel("Round\npen tip:", 90, 16, GuiTextBox.bottom, 50));
+        this.localLayout.addElement(new GuiLabel("Round\npen tip:", 90, 16, GuiTextBox.bottom, 40));
         this.localLayout.addElement(PenTool.checkDrawCircular);
     }
     activateOptionPanel():void 
