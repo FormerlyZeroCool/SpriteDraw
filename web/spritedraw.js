@@ -1634,11 +1634,11 @@ class DrawingScreen {
         this.selectionRect = [0, 0, 0, 0];
         this.pasteRect = [0, 0, 0, 0];
         this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), keyboardHandler, dimensions[0], dimensions[1]);
+        this.noColor = new RGB(255, 255, 255, 0);
         for (let i = 0; i < dimensions[0] * dimensions[1]; i++) {
-            this.screenBuffer.push(new RGB(0, 0, 0, 0));
+            this.screenBuffer.push(new RGB(this.noColor.red(), this.noColor.green(), this.noColor.blue(), this.noColor.alpha()));
         }
-        const noColor = new RGB(0, 0, 0, 0);
-        const colorBackup = new RGB(0, 0, 0, 0);
+        const colorBackup = new RGB(this.noColor.red(), this.noColor.green(), this.noColor.blue(), this.noColor.alpha());
         this.keyboardHandler.registerCallBack("keydown", e => true, event => {
             switch (event.code) {
                 case ('KeyC'):
@@ -2880,8 +2880,8 @@ class Sprite {
             this.pixels = new Uint8ClampedArray(sprite.pixels.length);
         this.width = sprite.width;
         this.height = sprite.height;
-        const o = new RGB(0, 0, 0);
-        const t = new RGB(0, 0, 0);
+        const o = new RGB(0, 0, 0, 0);
+        const t = new RGB(0, 0, 0, 0);
         for (let i = 0; i < this.pixels.length; i += 4) {
             o.setRed(sprite.pixels[i]);
             o.setGreen(sprite.pixels[i + 1]);
