@@ -1988,22 +1988,7 @@ class DrawingScreen {
             const max = Math.max(x1, x2);
             for (let x = min; x < max; x += delta) {
                 const y = m * x + b;
-                const gx = Math.floor((x - this.offset.first) / this.bounds.first * this.dimensions.first);
-                const gy = Math.floor((y - this.offset.second) / this.bounds.second * this.dimensions.second);
-                if (gx < this.dimensions.first && gy < this.dimensions.second) {
-                    const limit = this.lineWidth * 0.5;
-                    for (let i = -0.5 * this.lineWidth; i < limit; i++) {
-                        for (let j = -0.5 * this.lineWidth; j < limit; j++) {
-                            const ngx = gx + Math.round(j);
-                            const ngy = gy + Math.round(i);
-                            const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
-                            if (pixel && !pixel.compare(this.color)) {
-                                this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
-                                pixel.copy(this.color);
-                            }
-                        }
-                    }
-                }
+                this.handleTap(x, y);
             }
         }
         else {
@@ -2011,22 +1996,7 @@ class DrawingScreen {
             const max = Math.max(y1, y2);
             for (let y = min; y < max; y += delta) {
                 const x = Math.abs(deltaX) > 0 ? (y - b) / m : x2;
-                const gx = Math.floor((x - this.offset.first) / this.bounds.first * this.dimensions.first);
-                const gy = Math.floor((y - this.offset.second) / this.bounds.second * this.dimensions.second);
-                if (gx < this.dimensions.first && gy < this.dimensions.second) {
-                    const limit = this.lineWidth * 0.5;
-                    for (let i = -0.5 * this.lineWidth; i < limit; i++) {
-                        for (let j = -0.5 * this.lineWidth; j < limit; j++) {
-                            const ngx = gx + Math.round(j);
-                            const ngy = gy + Math.round(i);
-                            const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
-                            if (pixel && !pixel.compare(this.color)) {
-                                this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
-                                pixel.copy(this.color);
-                            }
-                        }
-                    }
-                }
+                this.handleTap(x, y);
             }
         }
         this.repaint = true;
