@@ -662,7 +662,7 @@ class Optional {
 }
 ;
 class GuiTextBox {
-    constructor(keyListener, width, submit = null, fontSize = 16, height = 2 * fontSize, flags = GuiTextBox.center, selectedColor = new RGB(80, 80, 220), unSelectedColor = new RGB(100, 100, 100)) {
+    constructor(keyListener, width, submit = null, fontSize = 16, height = 2 * fontSize, flags = GuiTextBox.center | GuiTextBox.left, selectedColor = new RGB(80, 80, 220), unSelectedColor = new RGB(100, 100, 100)) {
         this.cursor = 0;
         this.flags = flags;
         this.focused = false;
@@ -688,6 +688,22 @@ class GuiTextBox {
     //
     isLayoutManager() {
         return false;
+    }
+    hflag() {
+        console.log(GuiTextBox.horizontalAlignmentFlagsMask);
+        return this.flags & GuiTextBox.horizontalAlignmentFlagsMask;
+    }
+    hcenter() {
+        return this.hflag() === GuiTextBox.hcenter;
+    }
+    left() {
+        return this.hflag() === GuiTextBox.left;
+    }
+    farleft() {
+        return this.hflag() === GuiTextBox.farleft;
+    }
+    right() {
+        return this.hflag() === GuiTextBox.right;
     }
     center() {
         return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) === GuiTextBox.center;
@@ -841,7 +857,7 @@ class GuiTextBox {
     height() {
         return this.dimensions[1];
     }
-    refreshMetaData(text = this.text, x = this.fontSize, y = this.fontSize, cursorOffset = 0) {
+    refreshMetaData(text = this.text, x = 0, y = this.fontSize, cursorOffset = 0) {
         if (text.search("\n") !== -1) {
             const rows = text.split("\n");
             let indeces = new Pair(cursorOffset, [x, y]);
@@ -894,6 +910,7 @@ class GuiTextBox {
     }
     adjustScrollToCursor() {
         let deltaY = 0;
+        let deltaX = 0;
         if (this.top()) {
             if (this.cursorPos[1] > this.height() - this.fontSize) {
                 deltaY += this.cursorPos[1] - this.fontSize;
@@ -918,10 +935,29 @@ class GuiTextBox {
                 deltaY += this.cursorPos[1] - this.height() + this.fontSize / 3;
             }
         }
+        if (this.rows.length) {
+            let freeSpace = this.width(); // - this.rows[0].width;
+            this.rows.forEach(el => {
+                const width = this.ctx.measureText(el.text).width;
+                if (freeSpace > this.width() - width) {
+                    freeSpace = this.width() - width;
+                }
+            });
+            if (this.hcenter()) {
+                deltaX -= freeSpace / 2;
+            }
+            else if (this.left()) {
+                deltaX -= this.ctx.measureText("0").width / 3;
+            }
+            else if (this.right()) {
+                console.log(freeSpace, deltaX);
+                deltaX -= freeSpace + this.ctx.measureText("0").width / 3;
+            }
+        }
         const newRows = [];
-        this.rows.forEach(row => newRows.push(new TextRow(row.text, row.x, row.y - deltaY, row.width)));
+        this.rows.forEach(row => newRows.push(new TextRow(row.text, row.x - deltaX, row.y - deltaY, row.width)));
         this.scaledCursorPos[1] = this.cursorPos[1] - deltaY;
-        this.scaledCursorPos[0] = this.cursorPos[0];
+        this.scaledCursorPos[0] = this.cursorPos[0] - deltaX;
         return newRows;
     }
     drawRows(rows) {
@@ -961,7 +997,12 @@ class GuiTextBox {
 GuiTextBox.center = 0;
 GuiTextBox.bottom = 1;
 GuiTextBox.top = 2;
-GuiTextBox.verticalAlignmentFlagsMask = 0x0011;
+GuiTextBox.verticalAlignmentFlagsMask = 0b0011;
+GuiTextBox.left = 0;
+GuiTextBox.hcenter = (1 << 2);
+GuiTextBox.right = (2 << 2);
+GuiTextBox.farleft = (3 << 2);
+GuiTextBox.horizontalAlignmentFlagsMask = 0b1100;
 GuiTextBox.textLookup = {};
 GuiTextBox.numbers = {};
 GuiTextBox.specialChars = {};
@@ -1166,7 +1207,7 @@ class PenTool extends ExtendedTool {
             this.tbSize.setText(String(this.lineWidth));
         }, "Update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
-        this.localLayout.addElement(new GuiLabel("Line width:", 150, 16));
+        this.localLayout.addElement(new GuiLabel("Line width:", 150, 16, GuiTextBox.bottom));
         this.localLayout.addElement(this.tbSize);
         this.localLayout.addElement(this.btUpdate);
         this.localLayout.addElement(new GuiLabel("Round\npen tip:", 90, 16, GuiTextBox.bottom, 40));

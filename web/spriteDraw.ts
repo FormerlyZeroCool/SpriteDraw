@@ -861,14 +861,20 @@ class GuiTextBox implements GuiElement {
     static center:number = 0;
     static bottom:number = 1;
     static top:number = 2;
-    static verticalAlignmentFlagsMask:number = 0x0011;
+    static verticalAlignmentFlagsMask:number = 0b0011;
+    static left:number = 0;
+    static hcenter:number = (1 << 2);
+    static right:number = (2 << 2);
+    static farleft:number = (3 << 2);
+    static horizontalAlignmentFlagsMask:number = 0b1100;
+
     static textLookup = {};
     static numbers = {};
     static specialChars = {};
     flags:number;
     submissionButton:GuiButton;
     promptText:string;
-    constructor(keyListener:boolean, width:number, submit:GuiButton = null, fontSize:number = 16, height:number = 2*fontSize, flags:number = GuiTextBox.center,
+    constructor(keyListener:boolean, width:number, submit:GuiButton = null, fontSize:number = 16, height:number = 2*fontSize, flags:number = GuiTextBox.center | GuiTextBox.left,
         selectedColor:RGB = new RGB(80, 80, 220), unSelectedColor:RGB = new RGB(100, 100, 100))
     {
         this.cursor = 0;
@@ -897,6 +903,22 @@ class GuiTextBox implements GuiElement {
     isLayoutManager():boolean {
         return false;
     } 
+    hflag():number {
+        console.log(GuiTextBox.horizontalAlignmentFlagsMask)
+        return this.flags & GuiTextBox.horizontalAlignmentFlagsMask;
+    }
+    hcenter():boolean {
+        return this.hflag() === GuiTextBox.hcenter;
+    }
+    left():boolean {
+        return this.hflag() === GuiTextBox.left;
+    }
+    farleft():boolean {
+        return this.hflag() === GuiTextBox.farleft;
+    }
+    right():boolean {
+        return this.hflag() === GuiTextBox.right;
+    }
     center():boolean
     {
         return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) === GuiTextBox.center;
@@ -1075,7 +1097,7 @@ class GuiTextBox implements GuiElement {
     height(): number {
         return this.dimensions[1];
     }
-    refreshMetaData(text:string = this.text, x:number = this.fontSize, y:number = this.fontSize, cursorOffset:number = 0): Pair<number, number[]>
+    refreshMetaData(text:string = this.text, x:number = 0, y:number = this.fontSize, cursorOffset:number = 0): Pair<number, number[]>
     {
         if(text.search("\n") !== -1)
         {
@@ -1138,6 +1160,7 @@ class GuiTextBox implements GuiElement {
     adjustScrollToCursor():TextRow[]
     {
         let deltaY:number = 0;
+        let deltaX:number = 0;
         if(this.top())
         {   
             if(this.cursorPos[1] > this.height() - this.fontSize)
@@ -1172,10 +1195,34 @@ class GuiTextBox implements GuiElement {
                 deltaY += this.cursorPos[1] - this.height() + this.fontSize/3;
             }
         }
+        if(this.rows.length)
+        {
+            let freeSpace:number = this.width();// - this.rows[0].width;
+            this.rows.forEach(el => {
+                const width:number = this.ctx.measureText(el.text).width;
+                if(freeSpace > this.width() - width)
+                {
+                    freeSpace = this.width() - width;
+                }
+            });
+            if(this.hcenter())
+            {
+                deltaX -= freeSpace / 2;
+            }
+            else if(this.left())
+            {
+                deltaX -= this.ctx.measureText("0").width / 3;
+            }
+            else if(this.right())
+            {
+                console.log(freeSpace,deltaX);
+                deltaX -= freeSpace + this.ctx.measureText("0").width / 3;
+            }
+        }
         const newRows:TextRow[] = [];
-        this.rows.forEach(row => newRows.push(new TextRow(row.text, row.x, row.y - deltaY, row.width)));
+        this.rows.forEach(row => newRows.push(new TextRow(row.text, row.x - deltaX, row.y - deltaY, row.width)));
         this.scaledCursorPos[1] = this.cursorPos[1] - deltaY;
-        this.scaledCursorPos[0] = this.cursorPos[0];
+        this.scaledCursorPos[0] = this.cursorPos[0] - deltaX;
         return newRows;
     }
     drawRows(rows:TextRow[]):void
@@ -1455,7 +1502,7 @@ class PenTool extends ExtendedTool {
             this.tbSize.setText(String(this.lineWidth))},
             "Update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
-        this.localLayout.addElement(new GuiLabel("Line width:", 150, 16));
+        this.localLayout.addElement(new GuiLabel("Line width:", 150, 16, GuiTextBox.bottom));
         this.localLayout.addElement(this.tbSize);
         this.localLayout.addElement(this.btUpdate);
         this.localLayout.addElement(new GuiLabel("Round\npen tip:", 90, 16, GuiTextBox.bottom, 40));
