@@ -1685,7 +1685,7 @@ class DrawingScreen {
                         const eraser = this.toolSelector.eraserTool;
                         this.lineWidth = eraser.lineWidth;
                         eraser.tbSize.setText(String(this.lineWidth));
-                        this.color.copy(noColor);
+                        this.color.copy(this.noColor);
                     }
                     break;
                 case ("fill"):
