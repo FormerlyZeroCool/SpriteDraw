@@ -1416,7 +1416,7 @@ class PenTool extends ExtendedTool {
     static checkDrawCircular:GuiCheckBox = new GuiCheckBox(null, 40, 40);
     constructor(strokeWith:number, toolName:string = "pen", pathToImage:string = "images/penSprite.png", optionPanes:SimpleGridLayoutManager[])
     {
-        super(toolName, pathToImage, optionPanes, [200, 150], [24,4]);
+        super(toolName, pathToImage, optionPanes, [200, 150], [2,4]);
         this.lineWidth = strokeWith;
         this.tbSize = new GuiTextBox(true, 100);
         this.tbSize.promptText = "Enter line width:";

@@ -1128,7 +1128,7 @@ class PenViewTool extends ViewLayoutTool {
 ;
 class PenTool extends ExtendedTool {
     constructor(strokeWith, toolName = "pen", pathToImage = "images/penSprite.png", optionPanes) {
-        super(toolName, pathToImage, optionPanes, [200, 150], [24, 4]);
+        super(toolName, pathToImage, optionPanes, [200, 150], [2, 4]);
         this.lineWidth = strokeWith;
         this.tbSize = new GuiTextBox(true, 100);
         this.tbSize.promptText = "Enter line width:";
