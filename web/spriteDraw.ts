@@ -305,42 +305,6 @@ class ImageContainer {
         this.name = imageName;
     }
 };
-abstract class Tool {
-    toolImage:ImageContainer;
-    constructor(toolName:string, toolImagePath:string)
-    {
-        this.toolImage = new ImageContainer(toolName, toolImagePath);
-    }
-    width():number
-    {
-        return this.toolImage.image.width;
-    }
-    height():number
-    {
-        return this.toolImage.image.height;
-    }
-    image():HTMLImageElement
-    {
-        return this.toolImage.image;
-    }
-    name():string
-    {
-        return this.toolImage.name;
-    }
-    drawImage(ctx:CanvasRenderingContext2D, x:number, y:number, width:number, height:number)
-    {
-        if(this.toolImage.image)
-        {
-            ctx.drawImage(this.toolImage.image, x, y, width, height);
-        }
-    }
-    abstract optionPanelSize():number[];
-    abstract activateOptionPanel():void;
-    abstract deactivateOptionPanel():void;
-    abstract getOptionPanel():SimpleGridLayoutManager;
-    abstract drawOptionPanel(ctx, x:number, y:number):void;
-
-};
 interface GuiElement {
     active():boolean;
     deactivate():void;
@@ -1270,74 +1234,41 @@ class GuiLabel extends GuiTextBox {
 GuiTextBox.initGlobalText();
 GuiTextBox.initGlobalNumbers();
 GuiTextBox.initGlobalSpecialChars();
-class GenericTool extends Tool {
-    constructor(name:string, imagePath:string)
+abstract class Tool {
+    toolImage:ImageContainer;
+    constructor(toolName:string, toolImagePath:string)
     {
-        super(name, imagePath);
+        this.toolImage = new ImageContainer(toolName, toolImagePath);
     }
-    activateOptionPanel():void {}
-    deactivateOptionPanel():void {}
-    getOptionPanel():SimpleGridLayoutManager {
-        return null;
-    }
-    optionPanelSize():number[]
+    width():number
     {
-        return [0, 0];
+        return this.toolImage.image.width;
     }
-    drawOptionPanel(ctx, x:number, y:number):void {}
-};
+    height():number
+    {
+        return this.toolImage.image.height;
+    }
+    image():HTMLImageElement
+    {
+        return this.toolImage.image;
+    }
+    name():string
+    {
+        return this.toolImage.name;
+    }
+    drawImage(ctx:CanvasRenderingContext2D, x:number, y:number, width:number, height:number)
+    {
+        if(this.toolImage.image)
+        {
+            ctx.drawImage(this.toolImage.image, x, y, width, height);
+        }
+    }
+    abstract optionPanelSize():number[];
+    abstract activateOptionPanel():void;
+    abstract deactivateOptionPanel():void;
+    abstract getOptionPanel():SimpleGridLayoutManager;
+    abstract drawOptionPanel(ctx, x:number, y:number):void;
 
-class SingleCheckBoxTool extends GenericTool {
-    optionPanel:SimpleGridLayoutManager;
-    checkBox:GuiCheckBox;
-    constructor(label:string, name:string, imagePath:string, callback:() => void = () => null)
-    {
-        super(name, imagePath);
-        this.optionPanel = new SimpleGridLayoutManager([1,4], [200, 90]);
-        this.checkBox = new GuiCheckBox(callback, 40, 40);
-        this.optionPanel.addElement(new GuiLabel(label, 200, 16, GuiTextBox.center, 40));
-        this.optionPanel.addElement(this.checkBox);
-    }
-    activateOptionPanel():void { this.optionPanel.activate(); }
-    deactivateOptionPanel():void { this.optionPanel.deactivate(); }
-    getOptionPanel():SimpleGridLayoutManager {
-        return this.optionPanel;
-    }
-    optionPanelSize():number[]
-    {
-        return [this.optionPanel.width(), this.optionPanel.height()];
-    }
-    drawOptionPanel(ctx, x:number, y:number):void {
-        const optionPanel:SimpleGridLayoutManager = this.getOptionPanel();
-        optionPanel.x = x;
-        optionPanel.y = y;
-        optionPanel.draw(ctx, x, y);
-    }
-};
-/*
-this.chbxBlendAlpha = new GuiCheckBox((event => null));
-this.layoutManager.addElement(new GuiLabel("Blend Alpha: ", 150, 16));
-this.layoutManager.addElement(this.chbxBlendAlpha);
-*/
-class DragTool extends SingleCheckBoxTool {
-    constructor(name:string, imagePath:string)
-    {
-        super("Only drag one color", name, imagePath);
-    }
-};
-class UndoRedoTool extends SingleCheckBoxTool {
-    stackFrameCountLabel:GuiLabel;
-    constructor(toolSelector:ToolSelector, name:string, imagePath:string, callback: () => void)
-    {
-        super("Slow mode:", name, imagePath, callback);
-        this.stackFrameCountLabel = new GuiLabel(`Redoable actions: ${0}\nUndoable actions: ${0}`, 200), 15;
-        this.getOptionPanel().matrixDim[1] += 5;
-        this.getOptionPanel().setHeight(this.stackFrameCountLabel.height() + this.getOptionPanel().height());
-        this.getOptionPanel().addElement(this.stackFrameCountLabel);
-    }
-    updateLabel(redo:number, undo:number):void{
-        this.stackFrameCountLabel.setText(`Redoable actions: ${redo}\nUndoable actions: ${undo}`);
-    }
 };
 class ViewLayoutTool extends Tool {
     layoutManager:SimpleGridLayoutManager;
@@ -1364,6 +1295,23 @@ class ViewLayoutTool extends Tool {
         optionPanel.draw(ctx, x, y);
     }
 };
+class GenericTool extends Tool {
+    constructor(name:string, imagePath:string)
+    {
+        super(name, imagePath);
+    }
+    activateOptionPanel():void {}
+    deactivateOptionPanel():void {}
+    getOptionPanel():SimpleGridLayoutManager {
+        return null;
+    }
+    optionPanelSize():number[]
+    {
+        return [0, 0];
+    }
+    drawOptionPanel(ctx, x:number, y:number):void {}
+};
+
 class ExtendedTool extends ViewLayoutTool {
     localLayout:SimpleGridLayoutManager;
     optionPanels:SimpleGridLayoutManager[];
@@ -1407,6 +1355,57 @@ class ExtendedTool extends ViewLayoutTool {
         this.optionPanels.forEach(element => {
             element.deactivate();
         });
+    }
+};
+class SingleCheckBoxTool extends GenericTool {
+    optionPanel:SimpleGridLayoutManager;
+    checkBox:GuiCheckBox;
+    constructor(label:string, name:string, imagePath:string, callback:() => void = () => null)
+    {
+        super(name, imagePath);
+        this.optionPanel = new SimpleGridLayoutManager([1,4], [200, 90]);
+        this.checkBox = new GuiCheckBox(callback, 40, 40);
+        this.optionPanel.addElement(new GuiLabel(label, 200, 16, GuiTextBox.center, 40));
+        this.optionPanel.addElement(this.checkBox);
+    }
+    activateOptionPanel():void { this.optionPanel.activate(); }
+    deactivateOptionPanel():void { this.optionPanel.deactivate(); }
+    getOptionPanel():SimpleGridLayoutManager {
+        return this.optionPanel;
+    }
+    optionPanelSize():number[]
+    {
+        return [this.optionPanel.width(), this.optionPanel.height()];
+    }
+    drawOptionPanel(ctx, x:number, y:number):void {
+        const optionPanel:SimpleGridLayoutManager = this.getOptionPanel();
+        optionPanel.x = x;
+        optionPanel.y = y;
+        optionPanel.draw(ctx, x, y);
+    }
+};
+class DragTool extends ExtendedTool {
+    checkBox:GuiCheckBox;
+    constructor(name:string, imagePath:string, callBack:() => void, optionPanes:SimpleGridLayoutManager[] = [])
+    {
+        super(name, imagePath, optionPanes, [200, 100]);
+        this.checkBox = new GuiCheckBox(callBack, 40, 40);
+        this.localLayout.addElement(new GuiLabel("Only drag one color", 200));
+        this.localLayout.addElement(this.checkBox);
+    }
+};
+class UndoRedoTool extends SingleCheckBoxTool {
+    stackFrameCountLabel:GuiLabel;
+    constructor(toolSelector:ToolSelector, name:string, imagePath:string, callback: () => void)
+    {
+        super("Slow mode:", name, imagePath, callback);
+        this.stackFrameCountLabel = new GuiLabel(`Redoable actions: ${0}\nUndoable actions: ${0}`, 200), 15;
+        this.getOptionPanel().matrixDim[1] += 5;
+        this.getOptionPanel().setHeight(this.stackFrameCountLabel.height() + this.getOptionPanel().height());
+        this.getOptionPanel().addElement(this.stackFrameCountLabel);
+    }
+    updateLabel(redo:number, undo:number):void{
+        this.stackFrameCountLabel.setText(`Redoable actions: ${redo}\nUndoable actions: ${undo}`);
     }
 };
 class FillTool extends ExtendedTool {
@@ -1704,7 +1703,7 @@ class ToolSelector {
         });
         this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings","images/settingsSprite.png");
         this.colorPickerTool = new ColorPickerTool(field,"colorPicker", "images/colorPickerSprite.png");
-        this.dragTool = new DragTool("drag", "images/dragSprite.png");
+        this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.dragOnlyOneColor = this.dragTool.checkBox.checked);
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.slow = !field.slow);
         PenTool.checkDrawCircular.checked = true;
         PenTool.checkDrawCircular.refresh();
@@ -1939,12 +1938,14 @@ class DrawingScreen {
     lineWidth:number;
     ignoreAlphaInFill:boolean;
     drawCircular:boolean;
+    dragOnlyOneColor:boolean;
 
     constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, palette:Pallette, offset:Array<number>, dimensions:Array<number>, newColorTextBox:HTMLInputElement)
     {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
         this.ignoreAlphaInFill = false;
+        this.dragOnlyOneColor = false;
         this.drawCircular = true;
         this.repaint = true;
         this.slow = false;
@@ -2041,7 +2042,7 @@ class DrawingScreen {
                 break;
                 case("drag"):
                 this.saveDragDataToScreen();
-                if(this.keyboardHandler.keysHeld["AltLeft"] || this.toolSelector.dragTool.checkBox.checked)
+                if(this.keyboardHandler.keysHeld["AltLeft"] || this.dragOnlyOneColor)
                     this.dragData = this.getSelectedPixelGroup(new Pair<number>(gx,gy), true);
                 else
                     this.dragData = this.getSelectedPixelGroup(new Pair<number>(gx,gy), false);
