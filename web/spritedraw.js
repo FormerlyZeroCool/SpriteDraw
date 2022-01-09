@@ -1087,7 +1087,7 @@ class SingleCheckBoxTool extends GenericTool {
         super(name, imagePath);
         this.optionPanel = new SimpleGridLayoutManager([1, 4], [200, 90]);
         this.checkBox = new GuiCheckBox(callback, 40, 40);
-        this.optionPanel.addElement(new GuiLabel(label, 200, 16, GuiTextBox.center, 40));
+        this.optionPanel.addElement(new GuiLabel(label, 200, 16, GuiTextBox.bottom, 40));
         this.optionPanel.addElement(this.checkBox);
     }
     activateOptionPanel() { this.optionPanel.activate(); }
@@ -1469,6 +1469,7 @@ class ClipBoard {
         this.repaint = true;
         this.canvas = canvas;
         this.dim = [pixelCountX, pixelCountY];
+        this.currentDim = [0, 0];
         this.offscreenCanvas = document.createElement("canvas");
         this.clipBoardBuffer = new Array();
         this.offscreenCanvas.width = pixelCountX;
@@ -2612,7 +2613,13 @@ class SingleTouchListener {
                 event.eventTime = Date.now();
                 event.moveCount = this.moveCount;
                 event.translateEvent = this.translateEvent;
-                this.callHandler("touchend", event);
+                try {
+                    this.callHandler("touchend", event);
+                }
+                catch (error) {
+                    console.log(error);
+                    this.registeredTouch = false;
+                }
             }
             this.touchMoveEvents = [];
             this.registeredTouch = false;
