@@ -1481,6 +1481,7 @@ class ClipBoard {
             this.offscreenCanvas.width = dim[0];
             this.offscreenCanvas.height = dim[1];
             this.repaint = true;
+            this.refreshImageFromBuffer(this.currentDim[0], this.currentDim[1]);
         }
     }
     //only really works for rotation by pi/2
