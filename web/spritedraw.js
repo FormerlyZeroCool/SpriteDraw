@@ -690,7 +690,6 @@ class GuiTextBox {
         return false;
     }
     hflag() {
-        console.log(GuiTextBox.horizontalAlignmentFlagsMask);
         return this.flags & GuiTextBox.horizontalAlignmentFlagsMask;
     }
     hcenter() {
@@ -1208,7 +1207,7 @@ class PenTool extends ExtendedTool {
             this.tbSize.setText(String(this.lineWidth));
         }, "Update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
-        this.localLayout.addElement(new GuiLabel("Line width:", 200, 16, GuiTextBox.bottom | GuiTextBox.hcenter));
+        this.localLayout.addElement(new GuiLabel("Line width:", 200, 16, GuiTextBox.bottom));
         this.localLayout.addElement(this.tbSize);
         this.localLayout.addElement(this.btUpdate);
         this.localLayout.addElement(new GuiLabel("Round\npen tip:", 90, 16, GuiTextBox.bottom, 40));
