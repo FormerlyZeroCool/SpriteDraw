@@ -1983,11 +1983,11 @@ class DrawingScreen {
                 break;
                 case('KeyU'):
                 this.undoLast();
-                this.toolSelector.undoTool.updateLabel(this.undoneUpdatesStack.length(), this.updatesStack.length());
+                this.updateLabelUndoRedoCount();
                 break;
                 case('KeyR'):
                 this.redoLast();
-                this.toolSelector.undoTool.updateLabel(this.undoneUpdatesStack.length(), this.updatesStack.length());
+                this.updateLabelUndoRedoCount();
                 break;
             }
         });
@@ -2183,18 +2183,23 @@ class DrawingScreen {
                 repaint = false;
                 break;
             }
-            this.toolSelector.undoTool.updateLabel(this.undoneUpdatesStack.length(), this.updatesStack.length());
+            this.updateLabelUndoRedoCount();
             this.repaint = repaint;
         });
         
         this.color = new RGB(0,0,0,255);
         
     }
+    updateLabelUndoRedoCount(): void 
+    {
+        this.toolSelector.undoTool.updateLabel(this.undoneUpdatesStack.length(), this.updatesStack.length());
+    }
     suggestedLineWidth():number
     {
         return this.dimensions.first / this.bounds.first * 4;
     }
-    setLineWidthPen():void{
+    setLineWidthPen():void
+    {
         const pen:PenTool = this.toolSelector.penTool;
         this.lineWidth = pen.penSize();
         pen.tbSize.setText(String(this.lineWidth));
@@ -2634,6 +2639,9 @@ class DrawingScreen {
     }
     loadSprite(sprite:Sprite):void{
         sprite.copyToBuffer(this.screenBuffer);
+        this.undoneUpdatesStack.empty();
+        this.updatesStack.empty();
+        this.updateLabelUndoRedoCount();
         this.repaint = true;
     }
     saveDragDataToScreen():void
