@@ -947,7 +947,9 @@ class GuiTextBox implements GuiElement {
     }
     handleKeyBoardEvents(type:string, e:any):void
     {
-        if(this.active())
+        let preventDefault:boolean = false;
+        if(this.active()) {
+            preventDefault = true;
             switch(type)
             {
                 case("keydown"):
@@ -1018,6 +1020,9 @@ class GuiTextBox implements GuiElement {
                     this.asNumber.clear();
                 this.drawInternalAndClear();
             }
+        }
+        if(preventDefault)
+            e.preventDefault();
     }
     setText(text:string):void
     {

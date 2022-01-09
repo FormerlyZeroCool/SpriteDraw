@@ -722,7 +722,9 @@ class GuiTextBox {
         return (this.flags & GuiTextBox.verticalAlignmentFlagsMask) === GuiTextBox.bottom;
     }
     handleKeyBoardEvents(type, e) {
-        if (this.active())
+        let preventDefault = false;
+        if (this.active()) {
+            preventDefault = true;
             switch (type) {
                 case ("keydown"):
                     switch (e.code) {
@@ -786,6 +788,9 @@ class GuiTextBox {
                         this.asNumber.clear();
                     this.drawInternalAndClear();
             }
+        }
+        if (preventDefault)
+            e.preventDefault();
     }
     setText(text) {
         this.text = text;
