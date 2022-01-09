@@ -1413,10 +1413,10 @@ class PenTool extends ExtendedTool {
     layoutManager:SimpleGridLayoutManager;
     tbSize:GuiTextBox;
     btUpdate:GuiButton;
-    checkDrawCircular:GuiCheckBox;
+    static checkDrawCircular:GuiCheckBox = new GuiCheckBox(null, 40, 40);
     constructor(strokeWith:number, toolName:string = "pen", pathToImage:string = "images/penSprite.png", optionPanes:SimpleGridLayoutManager[])
     {
-        super(toolName, pathToImage, optionPanes, [200, 100], [1,3]);
+        super(toolName, pathToImage, optionPanes, [200, 150], [24,4]);
         this.lineWidth = strokeWith;
         this.tbSize = new GuiTextBox(true, 100);
         this.tbSize.promptText = "Enter line width:";
@@ -1429,6 +1429,9 @@ class PenTool extends ExtendedTool {
         this.localLayout.addElement(new GuiLabel("Line width:", 150, 16));
         this.localLayout.addElement(this.tbSize);
         this.localLayout.addElement(this.btUpdate);
+        this.localLayout.addElement(new GuiLabel("", 100, 14, GuiTextBox.bottom, 35));
+        this.localLayout.addElement(new GuiLabel("Circle:", 90, 16, GuiTextBox.bottom, 35));
+        this.localLayout.addElement(PenTool.checkDrawCircular);
     }
     activateOptionPanel():void 
     { 
@@ -1682,14 +1685,17 @@ class ToolSelector {
         this.colorPickerTool = new ColorPickerTool(field,"colorPicker", "images/colorPickerSprite.png");
         this.dragTool = new DragTool("drag", "images/dragSprite.png");
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.slow = !field.slow);
-
+        PenTool.checkDrawCircular.checked = true;
+        PenTool.checkDrawCircular.refresh();
         this.penTool = new PenTool(field.suggestedLineWidth(), "pen","images/penSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()]);
         this.penTool.activateOptionPanel();
         this.eraserTool = new PenTool(field.suggestedLineWidth() * 3, "eraser","images/eraserSprite.png", [this.undoTool.getOptionPanel()]);
+
+        PenTool.checkDrawCircular.callback = () => field.drawCircular = PenTool.checkDrawCircular.checked;
         this.fillTool = new FillTool("fill", "images/fillSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()],
             () => {
                 field.ignoreAlphaInFill = this.fillTool.checkIgnoreAlpha.checked;
-                console.log("hi boo!");});
+            });
         this.toolArray = [];
         this.toolArray.push(this.penTool);
         this.toolArray.push(this.fillTool);
