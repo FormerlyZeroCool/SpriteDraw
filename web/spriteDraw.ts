@@ -1422,8 +1422,6 @@ class PenViewTool extends ViewLayoutTool {
         super(pen.getOptionPanel(), name, path);
         this.pen = pen;
     }
-    //activateOptionPanel():void { this.layoutManager.activate(); this.pen.tbSize.activate(); this.pen.tbSize.refresh(); }
-    //deactivateOptionPanel():void { this.layoutManager.deactivate(); this.pen.tbSize.refresh();}
 };
 class PenTool extends ExtendedTool {
     lineWidth:number;
@@ -1446,7 +1444,7 @@ class PenTool extends ExtendedTool {
         this.localLayout.addElement(new GuiLabel("Line width:", 150, 16));
         this.localLayout.addElement(this.tbSize);
         this.localLayout.addElement(this.btUpdate);
-        this.localLayout.addElement(new GuiLabel("Circle:", 90, 16, GuiTextBox.bottom, 35));
+        this.localLayout.addElement(new GuiLabel("Round:", 90, 16, GuiTextBox.bottom, 35));
         this.localLayout.addElement(PenTool.checkDrawCircular);
     }
     activateOptionPanel():void 
@@ -2664,7 +2662,6 @@ class DrawingScreen {
                 
             }
             this.repaint = true;
-            //this.updatesStack.get(this.updatesStack.length()-1).sort((a, b) => a.first - b.first);
         }
     }
     saveDragDataToScreenAntiAliased():void

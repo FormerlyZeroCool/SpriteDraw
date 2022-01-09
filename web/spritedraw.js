@@ -1157,7 +1157,7 @@ class PenTool extends ExtendedTool {
         this.localLayout.addElement(new GuiLabel("Line width:", 150, 16));
         this.localLayout.addElement(this.tbSize);
         this.localLayout.addElement(this.btUpdate);
-        this.localLayout.addElement(new GuiLabel("Circle:", 90, 16, GuiTextBox.bottom, 35));
+        this.localLayout.addElement(new GuiLabel("Round:", 90, 16, GuiTextBox.bottom, 35));
         this.localLayout.addElement(PenTool.checkDrawCircular);
     }
     activateOptionPanel() {
@@ -2182,7 +2182,6 @@ class DrawingScreen {
                     this.screenBuffer[key].color = color.color;
             }
             this.repaint = true;
-            //this.updatesStack.get(this.updatesStack.length()-1).sort((a, b) => a.first - b.first);
         }
     }
     saveDragDataToScreenAntiAliased() {
