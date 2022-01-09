@@ -1330,13 +1330,13 @@ class UndoRedoTool extends SingleCheckBoxTool {
     constructor(toolSelector:ToolSelector, name:string, imagePath:string, callback: () => void)
     {
         super("Slow mode:", name, imagePath, callback);
-        this.stackFrameCountLabel = new GuiLabel(`Redoable: ${0}\nUndoable: ${0}`, 200), 15;
+        this.stackFrameCountLabel = new GuiLabel(`Redoable actions: ${0}\nUndoable actions: ${0}`, 200), 15;
         this.getOptionPanel().matrixDim[1] += 5;
         this.getOptionPanel().setHeight(this.stackFrameCountLabel.height() + this.getOptionPanel().height());
         this.getOptionPanel().addElement(this.stackFrameCountLabel);
     }
     updateLabel(redo:number, undo:number):void{
-        this.stackFrameCountLabel.setText(`Redoable: ${redo}\nUndoable: ${undo}`);
+        this.stackFrameCountLabel.setText(`Redoable actions: ${redo}\nUndoable actions: ${undo}`);
     }
 };
 class ViewLayoutTool extends Tool {
@@ -2333,11 +2333,12 @@ class DrawingScreen {
         const spc:RGB = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
 
         stack.push(startIndex);
+        const length:number = this.screenBuffer.length;
         while(stack.length > 0)
         {
             const cur:number = stack.pop();
             const pixelColor:RGB = this.screenBuffer[cur];
-            if(cur >= 0 && cur < this.dimensions.first * this.dimensions.second && 
+            if(cur >= 0 && cur < length && 
                 (pixelColor.compare(spc) || (this.ignoreAlphaInFill && pixelColor.alpha() === 0)) && !checkedMap[cur])
             {
                 checkedMap[cur] = true;
@@ -2345,14 +2346,10 @@ class DrawingScreen {
                     this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
                     pixelColor.copy(this.color);
                 }
-                if(!checkedMap[cur + this.dimensions.first])
-                    stack.push(cur + this.dimensions.first);
-                if(!checkedMap[cur - this.dimensions.first])
-                    stack.push(cur - this.dimensions.first);
-                if(!checkedMap[cur-1])
-                    stack.push(cur-1);
-                if(!checkedMap[cur+1])
-                    stack.push(cur+1);
+                stack.push(cur + this.dimensions.first);
+                stack.push(cur - this.dimensions.first);
+                stack.push(cur-1);
+                stack.push(cur+1);
             }
         }
         this.repaint = true;
