@@ -1198,16 +1198,18 @@ class GuiTextBox implements GuiElement {
         if(this.rows.length)
         {
             let freeSpace:number = this.width();// - this.rows[0].width;
+            let maxWidth:number = 0;
             this.rows.forEach(el => {
                 const width:number = this.ctx.measureText(el.text).width;
                 if(freeSpace > this.width() - width)
                 {
                     freeSpace = this.width() - width;
+                    maxWidth = width;
                 }
             });
             if(this.hcenter())
             {
-                deltaX -= freeSpace / 2;
+                deltaX -= freeSpace / 2 - maxWidth / 2;
             }
             else if(this.left())
             {
@@ -1215,7 +1217,6 @@ class GuiTextBox implements GuiElement {
             }
             else if(this.right())
             {
-                console.log(freeSpace,deltaX);
                 deltaX -= freeSpace + this.ctx.measureText("0").width / 3;
             }
         }
@@ -1502,7 +1503,7 @@ class PenTool extends ExtendedTool {
             this.tbSize.setText(String(this.lineWidth))},
             "Update", 50, this.tbSize.height(), 12);
         this.tbSize.submissionButton = this.btUpdate;
-        this.localLayout.addElement(new GuiLabel("Line width:", 150, 16, GuiTextBox.bottom));
+        this.localLayout.addElement(new GuiLabel("Line width:", 200, 16, GuiTextBox.bottom | GuiTextBox.hcenter));
         this.localLayout.addElement(this.tbSize);
         this.localLayout.addElement(this.btUpdate);
         this.localLayout.addElement(new GuiLabel("Round\npen tip:", 90, 16, GuiTextBox.bottom, 40));
