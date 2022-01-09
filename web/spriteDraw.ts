@@ -2240,10 +2240,10 @@ class DrawingScreen {
         const gx:number = Math.floor((px-this.offset.first)/this.bounds.first*this.dimensions.first);
         const gy:number = Math.floor((py-this.offset.second)/this.bounds.second*this.dimensions.second);
         if(gx < this.dimensions.first && gy < this.dimensions.second){
-            const radius:number = this.lineWidth / 2
-            for(let i = -0.5*this.lineWidth; i < this.lineWidth*0.5; i++)
+            const radius:number = this.lineWidth * 0.5;
+            for(let i = -0.5*this.lineWidth; i < radius; i++)
             {
-                for(let j = -0.5*this.lineWidth;  j < this.lineWidth*0.5; j++)
+                for(let j = -0.5*this.lineWidth;  j < radius; j++)
                 {
                     const ngx:number = gx+Math.round(j);
                     const ngy:number = (gy+Math.round(i));
