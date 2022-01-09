@@ -1164,12 +1164,12 @@ class GuiTextBox implements GuiElement {
         {
             if(this.cursorPos[1] > this.height() - 3)
             {
-                deltaY += this.cursorPos[1] - this.height() + 3;
+                deltaY += this.cursorPos[1] - this.height() + this.fontSize/2;
             }
             else if(this.cursorPos[1] < this.height() - 3)
             {
 
-                deltaY += this.cursorPos[1] - this.height() + 10;
+                deltaY += this.cursorPos[1] - this.height() + this.fontSize/2;
             }
         }
         const newRows:TextRow[] = [];
@@ -1458,7 +1458,7 @@ class PenTool extends ExtendedTool {
         this.localLayout.addElement(new GuiLabel("Line width:", 150, 16));
         this.localLayout.addElement(this.tbSize);
         this.localLayout.addElement(this.btUpdate);
-        this.localLayout.addElement(new GuiLabel("Round\npen tip:", 90, 16, GuiTextBox.center, 50));
+        this.localLayout.addElement(new GuiLabel("Round\npen tip:", 90, 16, GuiTextBox.bottom, 50));
         this.localLayout.addElement(PenTool.checkDrawCircular);
     }
     activateOptionPanel():void 
