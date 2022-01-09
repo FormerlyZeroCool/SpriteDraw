@@ -1425,7 +1425,6 @@ class ToolSelector {
     }
     draw() {
         if (this.repaint || Date.now() - this.lastDrawTime > 600) {
-            console.log("repainting tool selector");
             this.repaint = false;
             this.lastDrawTime = Date.now();
             this.resizeCanvas();
