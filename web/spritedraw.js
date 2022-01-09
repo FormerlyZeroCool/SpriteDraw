@@ -1115,6 +1115,15 @@ class DragTool extends ExtendedTool {
     }
 }
 ;
+class RotateTool extends ExtendedTool {
+    constructor(name, imagePath, callBack, optionPanes = []) {
+        super(name, imagePath, optionPanes, [200, 100]);
+        this.checkBox = new GuiCheckBox(callBack, 40, 40);
+        this.localLayout.addElement(new GuiLabel("Only rotate adjacent pixels of same color:", 200, 16, GuiTextBox.bottom, 50));
+        this.localLayout.addElement(this.checkBox);
+    }
+}
+;
 class UndoRedoTool extends SingleCheckBoxTool {
     constructor(toolSelector, name, imagePath, callback) {
         super("Slow mode:", name, imagePath, callback);
@@ -1372,10 +1381,11 @@ class ToolSelector {
             }
             this.repaint = true;
         });
-        this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings", "images/settingsSprite.png");
         this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png");
-        this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.dragOnlyOneColor = this.dragTool.checkBox.checked);
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.slow = !field.slow);
+        this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.rotateOnlyOneColor = this.rotateTool.checkBox.checked, [this.undoTool.getOptionPanel()]);
+        this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.dragOnlyOneColor = this.dragTool.checkBox.checked, [this.undoTool.getOptionPanel()]);
+        this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings", "images/settingsSprite.png");
         PenTool.checkDrawCircular.checked = true;
         PenTool.checkDrawCircular.refresh();
         this.penTool = new PenTool(field.suggestedLineWidth(), "pen", "images/penSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()]);
@@ -1398,7 +1408,7 @@ class ToolSelector {
         this.toolArray.push(this.undoTool);
         this.toolArray.push(this.colorPickerTool);
         this.toolArray.push(this.eraserTool);
-        this.toolArray.push(new GenericTool("rotate", "images/rotateSprite.png"));
+        this.toolArray.push(this.rotateTool);
         this.toolArray.push(this.settingsTool);
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
@@ -1558,6 +1568,7 @@ class DrawingScreen {
         this.palette = palette;
         this.ignoreAlphaInFill = false;
         this.dragOnlyOneColor = false;
+        this.rotateOnlyOneColor = false;
         this.drawCircular = true;
         this.repaint = true;
         this.slow = false;
@@ -1639,14 +1650,14 @@ class DrawingScreen {
                     break;
                 case ("rotate"):
                     this.saveDragDataToScreenAntiAliased();
-                    if (this.keyboardHandler.keysHeld["AltLeft"])
+                    if (this.rotateOnlyOneColor || this.keyboardHandler.keysHeld["AltLeft"])
                         this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), true);
                     else
                         this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), false);
                     break;
                 case ("drag"):
                     this.saveDragDataToScreen();
-                    if (this.keyboardHandler.keysHeld["AltLeft"] || this.dragOnlyOneColor)
+                    if (this.dragOnlyOneColor || this.keyboardHandler.keysHeld["AltLeft"])
                         this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), true);
                     else
                         this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), false);
