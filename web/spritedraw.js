@@ -2149,6 +2149,7 @@ class DrawingScreen {
             }
             this.dimensions = new Pair(newDim[0], newDim[1]);
             this.clipBoard.resize(newDim);
+            this.repaint = true;
         }
     }
     lowerPixelPercentage(a) {
