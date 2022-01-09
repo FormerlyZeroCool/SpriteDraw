@@ -1106,8 +1106,17 @@ class GuiTextBox implements GuiElement {
     height(): number {
         return this.dimensions[1];
     }
-    refreshMetaData(text:string = this.text, x:number = this.fontSize, y:number = this.fontSize, cursorOffset:number = 0):void
+    refreshMetaData(text:string = this.text, x:number = this.fontSize, y:number = this.fontSize, cursorOffset:number = 0): Pair<number, number[]>
     {
+        if(text.search("\n") !== -1)
+        {
+            const rows:string[] = text.split("\n");
+           let indeces:Pair<number, number[]> = new Pair(cursorOffset, [x, y]);
+            rows.forEach(row => {
+                indeces = this.refreshMetaData(row, indeces.second[0], indeces.second[1] + this.fontSize, indeces.first);
+            });
+            return indeces;
+        }
         const textWidth:number = this.ctx.measureText(text).width;
         const canvasWidth:number = this.canvas.width;
         const rows:number = Math.ceil(textWidth / (canvasWidth - (20+x)));
@@ -1144,7 +1153,7 @@ class GuiTextBox implements GuiElement {
             }
             this.rows.push(new TextRow(substring, x, yPos, this.width() - x));
         }
-        
+        return new Pair(cursorOffset + charIndex, [x, i * this.fontSize + y]);
     }
     cursorRowIndex():number
     {
@@ -1316,13 +1325,13 @@ class UndoRedoTool extends SingleCheckBoxTool {
     constructor(toolSelector:ToolSelector, name:string, imagePath:string, callback: () => void)
     {
         super("Slow mode:", name, imagePath, callback);
-        this.stackFrameCountLabel = new GuiLabel(`Redoable: ${0} Undoable: ${0}`, 200), 15;
+        this.stackFrameCountLabel = new GuiLabel(`Redoable: ${0}\nUndoable: ${0}`, 200), 15;
         this.getOptionPanel().matrixDim[1] += 5;
         this.getOptionPanel().setHeight(this.stackFrameCountLabel.height() + this.getOptionPanel().height());
         this.getOptionPanel().addElement(this.stackFrameCountLabel);
     }
     updateLabel(redo:number, undo:number):void{
-        this.stackFrameCountLabel.setText(`Redoable: ${redo} Undoable: ${undo}`);
+        this.stackFrameCountLabel.setText(`Redoable: ${redo}\nUndoable: ${undo}`);
     }
 };
 class ViewLayoutTool extends Tool {

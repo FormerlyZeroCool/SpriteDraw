@@ -860,6 +860,14 @@ class GuiTextBox {
         return this.dimensions[1];
     }
     refreshMetaData(text = this.text, x = this.fontSize, y = this.fontSize, cursorOffset = 0) {
+        if (text.search("\n") !== -1) {
+            const rows = text.split("\n");
+            let indeces = new Pair(cursorOffset, [x, y]);
+            rows.forEach(row => {
+                indeces = this.refreshMetaData(row, indeces.second[0], indeces.second[1] + this.fontSize, indeces.first);
+            });
+            return indeces;
+        }
         const textWidth = this.ctx.measureText(text).width;
         const canvasWidth = this.canvas.width;
         const rows = Math.ceil(textWidth / (canvasWidth - (20 + x)));
@@ -891,6 +899,7 @@ class GuiTextBox {
             }
             this.rows.push(new TextRow(substring, x, yPos, this.width() - x));
         }
+        return new Pair(cursorOffset + charIndex, [x, i * this.fontSize + y]);
     }
     cursorRowIndex() {
         let index = 0;
@@ -1044,13 +1053,13 @@ class DragTool extends SingleCheckBoxTool {
 class UndoRedoTool extends SingleCheckBoxTool {
     constructor(toolSelector, name, imagePath, callback) {
         super("Slow mode:", name, imagePath, callback);
-        this.stackFrameCountLabel = new GuiLabel(`Redoable: ${0} Undoable: ${0}`, 200), 15;
+        this.stackFrameCountLabel = new GuiLabel(`Redoable: ${0}\nUndoable: ${0}`, 200), 15;
         this.getOptionPanel().matrixDim[1] += 5;
         this.getOptionPanel().setHeight(this.stackFrameCountLabel.height() + this.getOptionPanel().height());
         this.getOptionPanel().addElement(this.stackFrameCountLabel);
     }
     updateLabel(redo, undo) {
-        this.stackFrameCountLabel.setText(`Redoable: ${redo} Undoable: ${undo}`);
+        this.stackFrameCountLabel.setText(`Redoable: ${redo}\nUndoable: ${undo}`);
     }
 }
 ;
