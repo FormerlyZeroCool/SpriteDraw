@@ -1702,15 +1702,11 @@ class ClipBoard {
 
     }
     handleTouchEvents(type:string, e:any):void{
-        if(this.active() && type === "touchmove")
+        if(this.active() && type === "touchstart")
         {
             if(this.clipBoardBuffer.length)
             {
-                this.angle += 0.05;
-                if(this.angle >= 1){
-                    this.rotate(Math.PI / 2);
-                    this.angle = 0;
-                }
+                this.rotate(Math.PI / 2);
                 this.repaint = true;
             }
         }
