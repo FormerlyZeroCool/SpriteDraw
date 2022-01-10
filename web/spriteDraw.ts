@@ -412,6 +412,10 @@ class SimpleGridLayoutManager implements GuiElement {
     handleKeyBoardEvents(type:string, e:any):void
     {
         this.elements.forEach(el => el.handleKeyBoardEvents(type, e));
+        if(e.repaint)
+        {
+            this.refreshCanvas();
+        }
     }
     handleTouchEvents(type:string, e:any):void
     {
@@ -436,6 +440,10 @@ class SimpleGridLayoutManager implements GuiElement {
                 record.element.handleTouchEvents(type, e);
                 e.translateEvent(e, record.x , record.y);
                 record.element.refresh();
+                if(e.repaint)
+                {
+                    this.refreshCanvas();
+                }
             }
         }
     }

@@ -307,6 +307,9 @@ class SimpleGridLayoutManager {
     }
     handleKeyBoardEvents(type, e) {
         this.elements.forEach(el => el.handleKeyBoardEvents(type, e));
+        if (e.repaint) {
+            this.refreshCanvas();
+        }
     }
     handleTouchEvents(type, e) {
         if (e.touchPos[0] >= 0 && e.touchPos[0] < this.width() &&
@@ -327,6 +330,9 @@ class SimpleGridLayoutManager {
                 record.element.handleTouchEvents(type, e);
                 e.translateEvent(e, record.x, record.y);
                 record.element.refresh();
+                if (e.repaint) {
+                    this.refreshCanvas();
+                }
             }
         }
     }
