@@ -2346,7 +2346,6 @@ class DrawingScreen {
     }
     draw() {
         this.toolSelector.draw();
-        this.clipBoard.draw();
         if (this.repaint) {
             this.repaint = false;
             const ctx = this.ctx;

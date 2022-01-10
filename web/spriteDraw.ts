@@ -2856,7 +2856,6 @@ class DrawingScreen {
     draw():void
     {
         this.toolSelector.draw();
-        this.clipBoard.draw();
         if(this.repaint)
         {
             this.repaint = false;
