@@ -1809,10 +1809,16 @@ class ClipBoard {
 };
 
 class CopyPasteTool extends ExtendedTool {
-    constructor(name:string, path:string, optionPanes:SimpleGridLayoutManager[], clipBoard:ClipBoard) {
-        super(name, path, optionPanes, [200, clipBoard.height() + 100], [1, 5]);
+    blendAlpha:GuiCheckBox;
+    constructor(name:string, path:string, optionPanes:SimpleGridLayoutManager[], clipBoard:ClipBoard, updateBlendAlpha: () => void) {
+        super(name, path, optionPanes, [200, clipBoard.height() + 200], [2, 8]);
+        this.blendAlpha = new GuiCheckBox(updateBlendAlpha, 40, 40);
+        this.blendAlpha.checked = true;
         this.localLayout.addElement(new GuiLabel("Clipboard:", 90));
         this.localLayout.addElement(clipBoard);
+        this.localLayout.addElement(new GuiLabel("Preserve transparency:", 200));
+        this.localLayout.addElement(this.blendAlpha);
+
     }
 };
 // To do refactor tools to make sure they load in the same order every time
@@ -1935,7 +1941,7 @@ class ToolSelector {
         this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.rotateOnlyOneColor = this.rotateTool.checkBox.checked, [this.undoTool.getOptionPanel()]);
         this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.dragOnlyOneColor = this.dragTool.checkBox.checked, [this.undoTool.getOptionPanel()]);
         this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings","images/settingsSprite.png");
-        this.copyTool = new CopyPasteTool("copy", "images/copySprite.png", [this.undoTool.getOptionPanel()], field.clipBoard);
+        this.copyTool = new CopyPasteTool("copy", "images/copySprite.png", [this.undoTool.getOptionPanel()], field.clipBoard, () => field.blendAlphaOnPaste = this.copyTool.blendAlpha.checked);
         PenTool.checkDrawCircular.checked = true;
         PenTool.checkDrawCircular.refresh();
         this.penTool = new PenTool(field.suggestedLineWidth(), "pen","images/penSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()]);
@@ -2055,6 +2061,7 @@ class DrawingScreen {
     drawCircular:boolean;
     dragOnlyOneColor:boolean;
     rotateOnlyOneColor:boolean;
+    blendAlphaOnPaste:boolean;
 
     constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, palette:Pallette, offset:Array<number>, dimensions:Array<number>, newColorTextBox:HTMLInputElement)
     {
@@ -2066,6 +2073,7 @@ class DrawingScreen {
         this.drawCircular = true;
         this.repaint = true;
         this.slow = false;
+        this.blendAlphaOnPaste = true;
         this.dimensions = new Pair<number>(dimensions[0], dimensions[1]);
         this.offset = new Pair<number>(offset[0], offset[1]);
         this.bounds = new Pair<number>(bounds[0], bounds[1]);
@@ -2367,7 +2375,7 @@ class DrawingScreen {
         const width:number = this.clipBoard.currentDim[0];
         const height:number = this.clipBoard.currentDim[1];
         const initialIndex:number = dest_x + dest_y*this.dimensions.first;
-        const altHeld:boolean = this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
+        const blendAlpha:boolean = this.blendAlphaOnPaste || this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
         for(let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++)
         {
             const copyAreaX:number = i%width;
@@ -2378,10 +2386,10 @@ class DrawingScreen {
             if(this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && (!dest.compare(source) || source.alpha() != 255))
             {
                 const oldColor:number = dest.color;
-                if(altHeld)
-                    dest.copy(source);
-                else
+                if(blendAlpha)
                     dest.blendAlphaCopy(source);
+                else
+                    dest.copy(source);
                 
                 if(oldColor !== dest.color)
                 {
@@ -2925,7 +2933,11 @@ class DrawingScreen {
                     if(this.screenBuffer[destIndex])
                     {
                         toCopy.color = this.screenBuffer[destIndex].color;
-                        spriteScreenBuf.fillRectAlphaBlend(toCopy, source, x*cellWidth, y*cellHeight, cellWidth, cellHeight);
+                        if(this.blendAlphaOnPaste)
+                            spriteScreenBuf.fillRectAlphaBlend(toCopy, source, x*cellWidth, y*cellHeight, cellWidth, cellHeight);
+                        else
+                            spriteScreenBuf.fillRect(source, x*cellWidth, y*cellHeight, cellWidth, cellHeight);
+                    
                     }
                 }
             }
