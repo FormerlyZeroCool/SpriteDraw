@@ -317,6 +317,9 @@ interface GuiElement {
     handleTouchEvents(type:string, e:any):void;
     isLayoutManager():boolean;
 };
+interface drawable {
+
+};
 class LexicoGraphicNumericPair extends Pair<number, number> {
     rollOver:number;
     constructor(rollOver:number)
@@ -1733,6 +1736,7 @@ class ToolSelector {
             e.translateEvent(e, this.tool().getOptionPanel().x , this.tool().getOptionPanel().y);});     
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             (<any>document.activeElement).blur();
+            const previousTool:number = this.selectedTool;
             const imgPerColumn:number = (this.canvas.height / this.imgHeight);
             const y:number = Math.floor(e.touchPos[1] / this.imgHeight);
             const x:number = Math.floor(e.touchPos[0] / this.imgWidth);
@@ -1751,11 +1755,13 @@ class ToolSelector {
             {
                 field.undoLast();
                 this.undoTool.updateLabel(field.undoneUpdatesStack.length(), field.updatesStack.length());
+                this.selectedTool = previousTool;
             }
             else if(this.selectedToolName() === "redo")
             {
                 field.redoLast();
                 this.undoTool.updateLabel(field.undoneUpdatesStack.length(), field.updatesStack.length());
+                this.selectedTool = previousTool;
             }
             this.repaint = true;
         });
@@ -1856,6 +1862,7 @@ class ToolSelector {
 };
 class ClipBoard {
     canvas:HTMLCanvasElement;
+    ctx:CanvasRenderingContext2D;
     offscreenCanvas:HTMLCanvasElement;
     clipBoardBuffer:Pair<RGB, number>[];
     currentDim:number[];
@@ -1867,6 +1874,7 @@ class ClipBoard {
     {
         this.repaint = true;
         this.canvas = canvas;
+        this.ctx = canvas.getContext("2d");
         this.dim = [pixelCountX,pixelCountY];
         this.currentDim = [0, 0];
         this.offscreenCanvas = document.createElement("canvas");
@@ -1931,9 +1939,9 @@ class ClipBoard {
             rec[1].second = Math.floor((x) + (y) * this.dim[0]);
         }
         this.clipBoardBuffer.sort((a, b) => a.second - b.second);
-        const width:number = this.offscreenCanvas.width;
+        /*const width:number = this.offscreenCanvas.width;
         this.offscreenCanvas.width = this.offscreenCanvas.height;
-        this.offscreenCanvas.height = width;
+        this.offscreenCanvas.height = width;*/
         this.refreshImageFromBuffer(this.currentDim[1], this.currentDim[0]);
     }
     
@@ -1942,7 +1950,6 @@ class ClipBoard {
     {
         width = Math.floor(width + 0.5);
         height = Math.floor(height + 0.5);
-        this.currentDim = [width, height];
         const ctx = this.offscreenCanvas.getContext("2d");
         ctx.fillStyle = "rgba(255,255,255,1)";
         ctx.fillRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
@@ -1964,15 +1971,14 @@ class ClipBoard {
         this.repaint = true;
     }
 
-    draw(canvas:HTMLCanvasElement = this.canvas)
+    draw(ctx:CanvasRenderingContext2D = this.ctx, x:number = 0, y:number = 0)
     {
         if(this.repaint)
         {
             this.repaint = false;
-            const ctx = canvas.getContext("2d");
             ctx.fillStyle = "rgba(255,255,255,1)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(this.offscreenCanvas, 0, 0);
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            ctx.drawImage(this.offscreenCanvas, x, y);
         }
     }
 }
@@ -2036,7 +2042,7 @@ class DrawingScreen {
         this.selectionRect = [0,0,0,0];
         this.pasteRect = [0,0,0,0];
         this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), keyboardHandler, dimensions[0], dimensions[1]);
-        this.noColor = new RGB(255, 255, 255, 0);
+        this.noColor = new RGB(0, 255, 255, 0);
         for(let i = 0; i < dimensions[0] * dimensions[1]; i++)
         {
             this.screenBuffer.push(new RGB(this.noColor.red(), this.noColor.green(), this.noColor.blue(), this.noColor.alpha()));
@@ -4424,7 +4430,7 @@ async function main()
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    const fps = 50;
+    const fps = 60;
     const goalSleep = 1000/fps;
     let counter = 0;
     while(true)

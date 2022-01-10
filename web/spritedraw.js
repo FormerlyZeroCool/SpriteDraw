@@ -246,6 +246,7 @@ class ImageContainer {
 }
 ;
 ;
+;
 class LexicoGraphicNumericPair extends Pair {
     constructor(rollOver) {
         super(0, 0);
@@ -1400,6 +1401,7 @@ class ToolSelector {
         });
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             document.activeElement.blur();
+            const previousTool = this.selectedTool;
             const imgPerColumn = (this.canvas.height / this.imgHeight);
             const y = Math.floor(e.touchPos[1] / this.imgHeight);
             const x = Math.floor(e.touchPos[0] / this.imgWidth);
@@ -1415,10 +1417,12 @@ class ToolSelector {
             if (this.selectedToolName() === "undo") {
                 field.undoLast();
                 this.undoTool.updateLabel(field.undoneUpdatesStack.length(), field.updatesStack.length());
+                this.selectedTool = previousTool;
             }
             else if (this.selectedToolName() === "redo") {
                 field.redoLast();
                 this.undoTool.updateLabel(field.undoneUpdatesStack.length(), field.updatesStack.length());
+                this.selectedTool = previousTool;
             }
             this.repaint = true;
         });
@@ -1509,6 +1513,7 @@ class ClipBoard {
     constructor(canvas, keyboardHandler, pixelCountX, pixelCountY) {
         this.repaint = true;
         this.canvas = canvas;
+        this.ctx = canvas.getContext("2d");
         this.dim = [pixelCountX, pixelCountY];
         this.currentDim = [0, 0];
         this.offscreenCanvas = document.createElement("canvas");
@@ -1567,16 +1572,15 @@ class ClipBoard {
             rec[1].second = Math.floor((x) + (y) * this.dim[0]);
         }
         this.clipBoardBuffer.sort((a, b) => a.second - b.second);
-        const width = this.offscreenCanvas.width;
+        /*const width:number = this.offscreenCanvas.width;
         this.offscreenCanvas.width = this.offscreenCanvas.height;
-        this.offscreenCanvas.height = width;
+        this.offscreenCanvas.height = width;*/
         this.refreshImageFromBuffer(this.currentDim[1], this.currentDim[0]);
     }
     //copies array of rgb values to canvas offscreen, centered within the canvas
     refreshImageFromBuffer(width, height) {
         width = Math.floor(width + 0.5);
         height = Math.floor(height + 0.5);
-        this.currentDim = [width, height];
         const ctx = this.offscreenCanvas.getContext("2d");
         ctx.fillStyle = "rgba(255,255,255,1)";
         ctx.fillRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
@@ -1594,13 +1598,12 @@ class ClipBoard {
         ctx.scale(this.offscreenCanvas.width / this.canvas.width, this.offscreenCanvas.height / this.canvas.height);
         this.repaint = true;
     }
-    draw(canvas = this.canvas) {
+    draw(ctx = this.ctx, x = 0, y = 0) {
         if (this.repaint) {
             this.repaint = false;
-            const ctx = canvas.getContext("2d");
             ctx.fillStyle = "rgba(255,255,255,1)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(this.offscreenCanvas, 0, 0);
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            ctx.drawImage(this.offscreenCanvas, x, y);
         }
     }
 }
@@ -1634,7 +1637,7 @@ class DrawingScreen {
         this.selectionRect = [0, 0, 0, 0];
         this.pasteRect = [0, 0, 0, 0];
         this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), keyboardHandler, dimensions[0], dimensions[1]);
-        this.noColor = new RGB(255, 255, 255, 0);
+        this.noColor = new RGB(0, 255, 255, 0);
         for (let i = 0; i < dimensions[0] * dimensions[1]; i++) {
             this.screenBuffer.push(new RGB(this.noColor.red(), this.noColor.green(), this.noColor.blue(), this.noColor.alpha()));
         }
@@ -3583,7 +3586,7 @@ async function main() {
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    const fps = 50;
+    const fps = 60;
     const goalSleep = 1000 / fps;
     let counter = 0;
     while (true) {
