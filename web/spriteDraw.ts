@@ -1703,7 +1703,7 @@ class ClipBoard {
         return this.canvas.height;
     }
     refresh():void {
-        this.refreshImageFromBuffer();
+        //this.refreshImageFromBuffer();
         this.repaint = true;
     }
     handleKeyBoardEvents(type:string, e:any):void{
