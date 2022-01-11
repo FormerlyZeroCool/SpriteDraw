@@ -2118,12 +2118,12 @@ class DrawingScreen {
                 this.paste();
                 break;
                 case('KeyU'):
-                this.undoLast();
-                this.updateLabelUndoRedoCount();
+                this.undoLast().then(() =>
+                this.updateLabelUndoRedoCount());
                 break;
                 case('KeyR'):
-                this.redoLast();
-                this.updateLabelUndoRedoCount();
+                this.redoLast().then(() =>
+                this.updateLabelUndoRedoCount());
                 break;
             }
         });
