@@ -2061,7 +2061,7 @@ class DrawingScreen {
     dragDataMaxPoint:number;
     dragDataMinPoint:number;
     lineWidth:number;
-    stacksUnlocked:boolean;
+    screenBufUnlocked:boolean;
     ignoreAlphaInFill:boolean;
     drawCircular:boolean;
     dragOnlyOneColor:boolean;
@@ -2072,7 +2072,7 @@ class DrawingScreen {
     {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
-        this.stacksUnlocked = true;
+        this.screenBufUnlocked = true;
         this.ignoreAlphaInFill = false;
         this.dragOnlyOneColor = false;
         this.rotateOnlyOneColor = false;
@@ -2370,34 +2370,39 @@ class DrawingScreen {
     }
     paste():void
     {
-        const dest_x:number = Math.floor((this.pasteRect[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
-        const dest_y:number = Math.floor((this.pasteRect[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
-        const width:number = this.clipBoard.currentDim[0];
-        const height:number = this.clipBoard.currentDim[1];
-        const initialIndex:number = dest_x + dest_y*this.dimensions.first;
-        const blendAlpha:boolean = this.blendAlphaOnPaste || this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
-        for(let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++)
+        if(this.screenBufUnlocked)
         {
-            const copyAreaX:number = i%width;
-            const copyAreaY:number = Math.floor(i/width);
-            const destIndex:number = initialIndex + copyAreaX + copyAreaY*this.dimensions.first;
-            const dest:RGB = this.screenBuffer[destIndex];
-            const source:RGB = this.clipBoard.clipBoardBuffer[i].first;
-            if(this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && (!dest.compare(source) || source.alpha() != 255))
+            this.screenBufUnlocked = false;
+            const dest_x:number = Math.floor((this.pasteRect[0]-this.offset.first)/this.bounds.first*this.dimensions.first);
+            const dest_y:number = Math.floor((this.pasteRect[1]-this.offset.second)/this.bounds.second*this.dimensions.second);
+            const width:number = this.clipBoard.currentDim[0];
+            const height:number = this.clipBoard.currentDim[1];
+            const initialIndex:number = dest_x + dest_y*this.dimensions.first;
+            const blendAlpha:boolean = this.blendAlphaOnPaste || this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"];
+            for(let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++)
             {
-                const oldColor:number = dest.color;
-                if(blendAlpha)
-                    dest.blendAlphaCopy(source);
-                else
-                    dest.copy(source);
-                
-                if(oldColor !== dest.color)
+                const copyAreaX:number = i%width;
+                const copyAreaY:number = Math.floor(i/width);
+                const destIndex:number = initialIndex + copyAreaX + copyAreaY*this.dimensions.first;
+                const dest:RGB = this.screenBuffer[destIndex];
+                const source:RGB = this.clipBoard.clipBoardBuffer[i].first;
+                if(this.inBufferBounds(dest_x + copyAreaX, dest_y + copyAreaY) && (!dest.compare(source) || source.alpha() != 255))
                 {
-                    const color:RGB = new RGB(0, 0, 0, 0);
-                    color.color = oldColor
-                    this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(destIndex, color)); 
+                    const oldColor:number = dest.color;
+                    if(blendAlpha)
+                        dest.blendAlphaCopy(source);
+                    else
+                        dest.copy(source);
+
+                    if(oldColor !== dest.color)
+                    {
+                        const color:RGB = new RGB(0, 0, 0, 0);
+                        color.color = oldColor
+                        this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(destIndex, color)); 
+                    }
                 }
             }
+            this.screenBufUnlocked = true;
         }
     }
 
@@ -2405,8 +2410,8 @@ class DrawingScreen {
     {
         const gx:number = Math.floor((px-this.offset.first)/this.bounds.first*this.dimensions.first);
         const gy:number = Math.floor((py-this.offset.second)/this.bounds.second*this.dimensions.second);
-        if(gx < this.dimensions.first && gy < this.dimensions.second){
-            
+        if(gx < this.dimensions.first && gy < this.dimensions.second && this.screenBufUnlocked){
+            this.screenBufUnlocked = false;
             const radius:number = this.lineWidth * 0.5;
             if(this.drawCircular)
             {
@@ -2445,105 +2450,116 @@ class DrawingScreen {
                 }
             }
             this.repaint = true;
+            this.screenBufUnlocked = true;
         }
     }
     fillArea(startCoordinate:Pair<number>):void
     {
-        let stack:any;
-        if(this.slow || this.keyboardHandler.keysHeld["KeyS"])//possibly more visiually appealling algo (bfs), 
-        //but slower because it makes much worse use of the cache with very high random access
-            stack = new Queue<number>(this.screenBuffer.length >> 4);
-        else
-            stack = new Array<number>(this.screenBuffer.length >> 4);
-        const checkedMap:Array<boolean> = new Array<boolean>(this.dimensions.first * this.dimensions.second).fill(false);
-        const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
-        const startPixel:RGB = this.screenBuffer[startIndex];
-        const spc:RGB = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
-
-        stack.push(startIndex);
-        const length:number = this.screenBuffer.length;
-        while(stack.length > 0)
+        if(this.screenBufUnlocked)
         {
-            const cur:number = stack.pop();
-            const pixelColor:RGB = this.screenBuffer[cur];
-            if(cur >= 0 && cur < length && 
-                (pixelColor.compare(spc) || (this.ignoreAlphaInFill && pixelColor.alpha() === 0)) && !checkedMap[cur])
+            this.screenBufUnlocked = false;
+        
+            let stack:any;
+            if(this.slow || this.keyboardHandler.keysHeld["KeyS"])//possibly more visiually appealling algo (bfs), 
+            //but slower because it makes much worse use of the cache with very high random access
+                stack = new Queue<number>();
+            else
+                stack = [];
+            const checkedMap:Array<boolean> = new Array<boolean>(this.dimensions.first * this.dimensions.second).fill(false);
+            const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
+            const startPixel:RGB = this.screenBuffer[startIndex];
+            const spc:RGB = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
+
+            stack.push(startIndex);
+            const length:number = this.screenBuffer.length;
+            while(stack.length > 0)
             {
-                checkedMap[cur] = true;
-                if(!pixelColor.compare(this.color)){
-                    this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
-                    pixelColor.copy(this.color);
+                const cur:number = stack.pop();
+                const pixelColor:RGB = this.screenBuffer[cur];
+                if(cur >= 0 && cur < length && 
+                    (pixelColor.compare(spc) || (this.ignoreAlphaInFill && pixelColor.alpha() === 0)) && !checkedMap[cur])
+                {
+                    checkedMap[cur] = true;
+                    if(!pixelColor.compare(this.color)){
+                        this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
+                        pixelColor.copy(this.color);
+                    }
+                    stack.push(cur + this.dimensions.first);
+                    stack.push(cur - this.dimensions.first);
+                    stack.push(cur-1);
+                    stack.push(cur+1);
                 }
-                stack.push(cur + this.dimensions.first);
-                stack.push(cur - this.dimensions.first);
-                stack.push(cur-1);
-                stack.push(cur+1);
             }
+            this.screenBufUnlocked = true;
+            this.repaint = true;
         }
-        this.repaint = true;
     }
     //Pair<offset point>, Map of colors encoded as numbers by location>
     getSelectedPixelGroup(startCoordinate:Pair<number>, countColor:boolean):Pair<Pair<number>, number[] >
     {
-        const stack:number[] = [];
         const data:number[] = [];
-        const defaultColor = this.noColor;
-        const checkedMap:Array<boolean> = new Array<boolean>(this.dimensions.first * this.dimensions.second).fill(false);
-        
-        const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
-        const startPixel:RGB = this.screenBuffer[startIndex];
-        const spc:RGB = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
-        stack.push(startIndex);
-        this.dragDataMaxPoint = 0;
-        this.dragDataMinPoint = this.dimensions.first*this.dimensions.second;
-        while(stack.length > 0)
+        if(this.screenBufUnlocked)
         {
-            const cur:number = stack.pop();
-            const pixelColor:RGB = this.screenBuffer[cur];
-            if(cur >= 0 && cur < this.dimensions.first * this.dimensions.second && 
-                (pixelColor.alpha() !== 0 && (!countColor || pixelColor.color === spc.color)) && !checkedMap[cur])
+            this.screenBufUnlocked = false;
+            const stack:number[] = [];
+            const defaultColor = this.noColor;
+            const checkedMap:Array<boolean> = new Array<boolean>(this.dimensions.first * this.dimensions.second).fill(false);
+            
+            const startIndex:number = startCoordinate.first + startCoordinate.second*this.dimensions.first;
+            const startPixel:RGB = this.screenBuffer[startIndex];
+            const spc:RGB = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
+            stack.push(startIndex);
+            this.dragDataMaxPoint = 0;
+            this.dragDataMinPoint = this.dimensions.first*this.dimensions.second;
+            while(stack.length > 0)
             {
-                checkedMap[cur] = true;
-                this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
-                //top left
-                data.push(cur % this.dimensions.first);
-                data.push(Math.floor(cur / this.dimensions.first));
-                //top right
-                data.push(cur % this.dimensions.first + 1);
-                data.push(Math.floor(cur / this.dimensions.first));
-                //bottom left
-                data.push(cur % this.dimensions.first);
-                data.push(Math.floor(cur / this.dimensions.first) + 1);
-                //bottom right
-                data.push(cur % this.dimensions.first + 1);
-                data.push(Math.floor(cur / this.dimensions.first) + 1);
+                const cur:number = stack.pop();
+                const pixelColor:RGB = this.screenBuffer[cur];
+                if(cur >= 0 && cur < this.dimensions.first * this.dimensions.second && 
+                    (pixelColor.alpha() !== 0 && (!countColor || pixelColor.color === spc.color)) && !checkedMap[cur])
+                {
+                    checkedMap[cur] = true;
+                    this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
+                    //top left
+                    data.push(cur % this.dimensions.first);
+                    data.push(Math.floor(cur / this.dimensions.first));
+                    //top right
+                    data.push(cur % this.dimensions.first + 1);
+                    data.push(Math.floor(cur / this.dimensions.first));
+                    //bottom left
+                    data.push(cur % this.dimensions.first);
+                    data.push(Math.floor(cur / this.dimensions.first) + 1);
+                    //bottom right
+                    data.push(cur % this.dimensions.first + 1);
+                    data.push(Math.floor(cur / this.dimensions.first) + 1);
 
-                data.push(pixelColor.color);
-                pixelColor.color = defaultColor.color;
-                if(cur > this.dragDataMaxPoint)
-                    this.dragDataMaxPoint = cur;
-                if(cur < this.dragDataMinPoint)
-                    this.dragDataMinPoint = cur;
-                if(!checkedMap[cur+1])
-                    stack.push(cur+1);
-                if(!checkedMap[cur-1])
-                    stack.push(cur-1);
-                if(!checkedMap[cur + this.dimensions.first])
-                    stack.push(cur + this.dimensions.first);
-                if(!checkedMap[cur - this.dimensions.first])
-                    stack.push(cur - this.dimensions.first);
-                if(!checkedMap[cur + this.dimensions.first - 1])
-                    stack.push(cur + this.dimensions.first - 1);
-                if(!checkedMap[cur + this.dimensions.first + 1])
-                    stack.push(cur + this.dimensions.first + 1);
-                if(!checkedMap[cur - this.dimensions.first - 1])
-                    stack.push(cur - this.dimensions.first - 1);
-                if(!checkedMap[cur - this.dimensions.first + 1])
-                    stack.push(cur - this.dimensions.first + 1);
+                    data.push(pixelColor.color);
+                    pixelColor.color = defaultColor.color;
+                    if(cur > this.dragDataMaxPoint)
+                        this.dragDataMaxPoint = cur;
+                    if(cur < this.dragDataMinPoint)
+                        this.dragDataMinPoint = cur;
+                    if(!checkedMap[cur+1])
+                        stack.push(cur+1);
+                    if(!checkedMap[cur-1])
+                        stack.push(cur-1);
+                    if(!checkedMap[cur + this.dimensions.first])
+                        stack.push(cur + this.dimensions.first);
+                    if(!checkedMap[cur - this.dimensions.first])
+                        stack.push(cur - this.dimensions.first);
+                    if(!checkedMap[cur + this.dimensions.first - 1])
+                        stack.push(cur + this.dimensions.first - 1);
+                    if(!checkedMap[cur + this.dimensions.first + 1])
+                        stack.push(cur + this.dimensions.first + 1);
+                    if(!checkedMap[cur - this.dimensions.first - 1])
+                        stack.push(cur - this.dimensions.first - 1);
+                    if(!checkedMap[cur - this.dimensions.first + 1])
+                        stack.push(cur - this.dimensions.first + 1);
+                }
             }
+            this.updatesStack.push([]);
+            this.screenBufUnlocked = true;
         }
-        //this.updatesStack.get(this.updatesStack.length()-1).sort((a, b) => a.first - b.first);
-        this.updatesStack.push([]);
         return new Pair(new Pair(0,0), data);
     }
     rotateSelectedPixelGroup(theta:number, centerPoint:number[]):void
@@ -2652,9 +2668,9 @@ class DrawingScreen {
     }
     async undoLast()
     {
-        if(this.updatesStack.length() && this.stacksUnlocked)
+        if(this.updatesStack.length() && this.screenBufUnlocked)
         {
-            this.stacksUnlocked = false;
+            this.screenBufUnlocked = false;
             const data:Pair<number, RGB>[] = this.updatesStack.pop();
             const backedUpFrame = [];
             const divisor:number =  60*10;
@@ -2676,7 +2692,7 @@ class DrawingScreen {
             }
             this.undoneUpdatesStack.push(backedUpFrame);
             this.repaint = true;
-            this.stacksUnlocked = true;
+            this.screenBufUnlocked = true;
         }
         else{
             console.log("Error, nothing to undo");
@@ -2685,9 +2701,9 @@ class DrawingScreen {
     }
     async redoLast()
     {
-        if(this.undoneUpdatesStack.length() && this.stacksUnlocked)
+        if(this.undoneUpdatesStack.length() && this.screenBufUnlocked)
         {
-            this.stacksUnlocked = false;
+            this.screenBufUnlocked = false;
             const data = this.undoneUpdatesStack.pop();
             const backedUpFrame = [];
             const divisor:number =  60*10;
@@ -2709,7 +2725,7 @@ class DrawingScreen {
             }
             this.repaint = true;
             this.updatesStack.push(backedUpFrame);
-            this.stacksUnlocked = true;
+            this.screenBufUnlocked = true;
         }
         else{
             console.log("Error, nothing to redo");
