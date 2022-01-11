@@ -1471,7 +1471,7 @@ class DragTool extends ExtendedTool {
         this.checkBox_blendAlpha = new GuiCheckBox(callBackBlendAlphaState, 40, 40);
         this.checkBox_blendAlpha.checked = true;
         this.checkBox_blendAlpha.refresh();
-        this.localLayout.addElement(new GuiLabel("Only drag one color", 200));
+        this.localLayout.addElement(new GuiLabel("Only drag\none color:", 200, 16, GuiTextBox.bottom | GuiTextBox.left, 50));
         this.localLayout.addElement(this.checkBox);
         this.localLayout.addElement(new GuiLabel("Blend alpha\nwhen dropping:", 200, 16, GuiTextBox.bottom | GuiTextBox.left, 50));
         this.localLayout.addElement(this.checkBox_blendAlpha);
