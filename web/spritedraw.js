@@ -1555,13 +1555,11 @@ class ToolSelector {
                 this.selectedTool = clicked;
             }
             if (this.selectedToolName() === "undo") {
-                field.undoLast();
-                this.undoTool.updateLabel(field.undoneUpdatesStack.length(), field.updatesStack.length());
+                field.undoLast().then(() => this.undoTool.updateLabel(field.undoneUpdatesStack.length(), field.updatesStack.length()));
                 this.selectedTool = previousTool;
             }
             else if (this.selectedToolName() === "redo") {
-                field.redoLast();
-                this.undoTool.updateLabel(field.undoneUpdatesStack.length(), field.updatesStack.length());
+                field.redoLast().then(() => this.undoTool.updateLabel(field.undoneUpdatesStack.length(), field.updatesStack.length()));
                 this.selectedTool = previousTool;
             }
             if (this.tool()) {
