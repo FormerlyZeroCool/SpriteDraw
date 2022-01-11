@@ -1476,7 +1476,7 @@ class RotateTool extends ExtendedTool {
     {
         super(name, imagePath, optionPanes, [200, 100]);
         this.checkBox = new GuiCheckBox(callBack, 40, 40);
-        this.localLayout.addElement(new GuiLabel("Only rotate adjacent pixels of same color:", 200, 16, GuiTextBox.bottom, 50));
+        this.localLayout.addElement(new GuiLabel("Only rotate adjacent\npixels of same color:", 200, 14, GuiTextBox.bottom, 50));
         this.localLayout.addElement(this.checkBox);
     }
 };
