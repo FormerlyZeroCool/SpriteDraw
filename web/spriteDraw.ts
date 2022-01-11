@@ -1703,7 +1703,6 @@ class ClipBoard {
         return this.canvas.height;
     }
     refresh():void {
-        //this.refreshImageFromBuffer();
         this.repaint = true;
     }
     handleKeyBoardEvents(type:string, e:any):void{
@@ -1818,6 +1817,7 @@ class CopyPasteTool extends ExtendedTool {
         super(name, path, optionPanes, [200, clipBoard.height() + 200], [2, 8]);
         this.blendAlpha = new GuiCheckBox(updateBlendAlpha, 40, 40);
         this.blendAlpha.checked = true;
+        this.blendAlpha.refresh();
         this.localLayout.addElement(new GuiLabel("Clipboard:", 90));
         this.localLayout.addElement(clipBoard);
         this.localLayout.addElement(new GuiLabel("Preserve transparency:", 200));
@@ -4489,7 +4489,7 @@ async function main()
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    const fps = 50;
+    const fps = 40;
     const goalSleep = 1000/fps;
     let counter = 0;
     while(true)
