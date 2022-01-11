@@ -884,6 +884,7 @@ class GuiTextBox implements GuiElement {
     static right:number = (2 << 2);
     static farleft:number = (3 << 2);
     static horizontalAlignmentFlagsMask:number = 0b1100;
+    static default:number =  GuiTextBox.center | GuiTextBox.left;
 
     static textLookup = {};
     static numbers = {};
@@ -894,7 +895,7 @@ class GuiTextBox implements GuiElement {
     submissionButton:GuiButton;
     promptText:string;
     font:FontFace;
-    constructor(keyListener:boolean, width:number, submit:GuiButton = null, fontSize:number = 16, height:number = 2*fontSize, flags:number = GuiTextBox.center | GuiTextBox.left,
+    constructor(keyListener:boolean, width:number, submit:GuiButton = null, fontSize:number = 16, height:number = 2*fontSize, flags:number = GuiTextBox.default,
         selectedColor:RGB = new RGB(80, 80, 220), unSelectedColor:RGB = new RGB(100, 100, 100), customFontFace:FontFace = null)
     {
         GuiTextBox.textBoxRunningNumber++;
@@ -1462,12 +1463,18 @@ class SingleCheckBoxTool extends GenericTool {
 };
 class DragTool extends ExtendedTool {
     checkBox:GuiCheckBox;
-    constructor(name:string, imagePath:string, callBack:() => void, optionPanes:SimpleGridLayoutManager[] = [])
+    checkBox_blendAlpha:GuiCheckBox;
+    constructor(name:string, imagePath:string, callBack:() => void, callBackBlendAlphaState:()=>void, optionPanes:SimpleGridLayoutManager[] = [])
     {
-        super(name, imagePath, optionPanes, [200, 100]);
+        super(name, imagePath, optionPanes, [200, 200]);
         this.checkBox = new GuiCheckBox(callBack, 40, 40);
+        this.checkBox_blendAlpha = new GuiCheckBox(callBackBlendAlphaState, 40, 40);
+        this.checkBox_blendAlpha.checked = true;
+        this.checkBox_blendAlpha.refresh();
         this.localLayout.addElement(new GuiLabel("Only drag one color", 200));
         this.localLayout.addElement(this.checkBox);
+        this.localLayout.addElement(new GuiLabel("Blend alpha\nwhen dropping:", 200, 16, GuiTextBox.bottom | GuiTextBox.left, 50));
+        this.localLayout.addElement(this.checkBox_blendAlpha);
     }
 };
 class RotateTool extends ExtendedTool {
@@ -1961,7 +1968,8 @@ class ToolSelector {
         this.colorPickerTool = new ColorPickerTool(field,"colorPicker", "images/colorPickerSprite.png");
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.slow = !field.slow);
         this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.rotateOnlyOneColor = this.rotateTool.checkBox.checked, [this.undoTool.getOptionPanel()]);
-        this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.dragOnlyOneColor = this.dragTool.checkBox.checked, [this.undoTool.getOptionPanel()]);
+        this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.dragOnlyOneColor = this.dragTool.checkBox.checked,
+        () => field.blendAlphaOnPutSelectedPixels = this.dragTool.checkBox_blendAlpha.checked, [this.undoTool.getOptionPanel()]);
         this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings","images/settingsSprite.png");
         this.copyTool = new CopyPasteTool("copy", "images/copySprite.png", [this.undoTool.getOptionPanel()], field.clipBoard, () => field.blendAlphaOnPaste = this.copyTool.blendAlpha.checked);
         PenTool.checkDrawCircular.checked = true;
@@ -2085,12 +2093,14 @@ class DrawingScreen {
     dragOnlyOneColor:boolean;
     rotateOnlyOneColor:boolean;
     blendAlphaOnPaste:boolean;
+    blendAlphaOnPutSelectedPixels:boolean;
 
     constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, palette:Pallette, offset:Array<number>, dimensions:Array<number>, newColorTextBox:HTMLInputElement)
     {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
         this.screenBufUnlocked = true;
+        this.blendAlphaOnPutSelectedPixels = true;
         this.ignoreAlphaInFill = false;
         this.dragOnlyOneColor = false;
         this.rotateOnlyOneColor = false;
@@ -2824,7 +2834,7 @@ class DrawingScreen {
                 let key:number = this.reboundKey(x + y * this.dimensions.first);
                 color.color = dragDataColors[i + 8];
                 this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
-                if(color.alpha() != 255)
+                if(color.alpha() != 255 && this.blendAlphaOnPutSelectedPixels)
                     this.screenBuffer[key].blendAlphaCopy(color);
                 else
                     this.screenBuffer[key].color = color.color;
