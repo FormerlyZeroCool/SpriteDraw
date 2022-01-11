@@ -19,9 +19,9 @@ function matByVec(mat, vec) {
         mat[6] * vec[0] + mat[7] * vec[1] + mat[8] * vec[2]];
 }
 class Queue {
-    constructor(size) {
+    constructor() {
         this.data = [];
-        this.data.length = size;
+        this.data.length = 64;
         this.start = 0;
         this.end = 0;
         this.length = 0;
@@ -41,7 +41,7 @@ class Queue {
         }
         else {
             this.data[this.end++] = val;
-            this.end %= this.data.length;
+            this.end &= this.data.length - 1;
             this.length++;
         }
     }
@@ -49,7 +49,7 @@ class Queue {
         if (this.length) {
             const val = this.data[this.start];
             this.start++;
-            this.start %= this.data.length;
+            this.start &= this.data.length - 1;
             this.length--;
             return val;
         }
@@ -57,13 +57,13 @@ class Queue {
     }
     get(index) {
         if (index < this.length) {
-            return this.data[(index + this.start) % this.data.length];
+            return this.data[(index + this.start) & (this.data.length - 1)];
         }
         throw new Error(`Could not get value at index ${index}`);
     }
     set(index, obj) {
         if (index < this.length) {
-            this.data[(index + this.start) % this.data.length] = obj;
+            this.data[(index + this.start) & (this.data.length - 1)] = obj;
         }
         throw new Error(`Could not set value at index ${index}`);
     }

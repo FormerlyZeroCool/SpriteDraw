@@ -27,10 +27,10 @@ class Queue<T> {
     start:number;
     end:number;
     length:number;
-    constructor(size)
+    constructor()
     {
         this.data = [];
-        this.data.length = size;
+        this.data.length = 64;
         this.start = 0;
         this.end = 0;
         this.length = 0;
@@ -54,7 +54,7 @@ class Queue<T> {
         else
         {
             this.data[this.end++] = val; 
-            this.end %= this.data.length;
+            this.end &= this.data.length - 1;
             this.length++;
         }
     }
@@ -64,7 +64,7 @@ class Queue<T> {
         {
             const val = this.data[this.start];
             this.start++;
-            this.start %= this.data.length;
+            this.start &= this.data.length - 1;
             this.length--;
             return val;
         }
@@ -74,7 +74,7 @@ class Queue<T> {
     {
         if(index < this.length)
         {
-            return this.data[(index+this.start)%this.data.length];
+            return this.data[(index+this.start)&(this.data.length-1)];
         }
 		throw new Error(`Could not get value at index ${index}`);
     }
@@ -82,7 +82,7 @@ class Queue<T> {
     {
         if(index < this.length)
         {
-            this.data[(index+this.start)%this.data.length] = obj;
+            this.data[(index+this.start) & (this.data.length - 1)] = obj;
         }
 		throw new Error(`Could not set value at index ${index}`);
     }
