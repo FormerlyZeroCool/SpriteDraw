@@ -461,7 +461,7 @@ class SimpleGridLayoutManager {
 }
 ;
 class GuiButton {
-    constructor(callBack, text, width = 200, height = 50, fontSize = 12, pressedColor = new RGB(150, 150, 200, 1), unPressedColor = new RGB(150, 150, 150)) {
+    constructor(callBack, text, width = 200, height = 50, fontSize = 12, pressedColor = new RGB(150, 150, 200, 1), unPressedColor = new RGB(255, 255, 255)) {
         this.text = text;
         this.fontSize = fontSize;
         this.dimensions = [width, height];
@@ -474,7 +474,11 @@ class GuiButton {
         this.pressed = false;
         this.focused = true;
         this.callback = callBack;
-        this.drawInternal();
+        this.font = new FontFace("button_custom", 'url(/fonts/VCR_OSD_MONO_1.001.ttf)');
+        this.font.load().then((loaded_face) => {
+            document.fonts.add(loaded_face);
+            this.drawInternal();
+        });
     }
     handleKeyBoardEvents(type, e) {
         if (this.active()) {
@@ -532,7 +536,7 @@ class GuiButton {
             ctx.fillStyle = this.pressedColor.htmlRBG();
         else
             ctx.fillStyle = this.unPressedColor.htmlRBG();
-        ctx.font = this.fontSize + 'px Calibri';
+        ctx.font = this.fontSize + 'px button_custom';
     }
     refresh() {
         this.drawInternal();
@@ -543,7 +547,9 @@ class GuiButton {
         ctx.fillRect(0, 0, this.width(), this.height());
         ctx.strokeRect(0, 0, this.width(), this.height());
         ctx.fillStyle = "#000000";
-        ctx.fillText(this.text, 0 + this.fontSize, 0 + this.fontSize, this.width());
+        const textWidth = ctx.measureText(this.text).width;
+        const textHeight = this.fontSize;
+        ctx.fillText(this.text, this.width() / 2 - textWidth / 2, this.height() / 2 + textHeight / 2, this.width());
         ctx.fillStyle = fs;
     }
     draw(ctx, x, y, offsetX = 0, offsetY = 0) {
@@ -669,7 +675,9 @@ class Optional {
 }
 ;
 class GuiTextBox {
-    constructor(keyListener, width, submit = null, fontSize = 16, height = 2 * fontSize, flags = GuiTextBox.center | GuiTextBox.left, selectedColor = new RGB(80, 80, 220), unSelectedColor = new RGB(100, 100, 100)) {
+    constructor(keyListener, width, submit = null, fontSize = 16, height = 2 * fontSize, flags = GuiTextBox.center | GuiTextBox.left, selectedColor = new RGB(80, 80, 220), unSelectedColor = new RGB(100, 100, 100), customFontFace = null) {
+        GuiTextBox.textBoxRunningNumber++;
+        this.textBoxId = GuiTextBox.textBoxRunningNumber;
         this.cursor = 0;
         this.flags = flags;
         this.focused = false;
@@ -689,7 +697,14 @@ class GuiTextBox {
         this.ctx = this.canvas.getContext("2d");
         this.dimensions = [width, height];
         this.fontSize = fontSize;
-        this.drawInternalAndClear();
+        if (customFontFace)
+            this.font = customFontFace;
+        else
+            this.font = new FontFace(`textbox_custom${GuiTextBox.textBoxRunningNumber}`, 'url(/fonts/VCR_OSD_MONO_1.001.ttf)');
+        this.font.load().then((loaded_face) => {
+            document.fonts.add(loaded_face);
+            this.drawInternalAndClear();
+        });
     }
     //take scaled pos calc delta from cursor pos
     //
@@ -855,7 +870,7 @@ class GuiTextBox {
     setCtxState() {
         this.ctx.strokeStyle = "#000000";
         this.ctx.fillStyle = "#FFFFFF";
-        this.ctx.font = this.fontSize + 'px Calibri';
+        this.ctx.font = this.fontSize + `px textbox_custom${this.textBoxId}`;
     }
     width() {
         return this.dimensions[0];
@@ -1013,6 +1028,7 @@ GuiTextBox.horizontalAlignmentFlagsMask = 0b1100;
 GuiTextBox.textLookup = {};
 GuiTextBox.numbers = {};
 GuiTextBox.specialChars = {};
+GuiTextBox.textBoxRunningNumber = 0;
 ;
 class GuiLabel extends GuiTextBox {
     constructor(text, width, fontSize = 16, flags = GuiTextBox.bottom, height = 2 * fontSize, backgroundColor = new RGB(255, 255, 255, 0)) {
@@ -1175,7 +1191,7 @@ class RotateTool extends ExtendedTool {
 class UndoRedoTool extends SingleCheckBoxTool {
     constructor(toolSelector, name, imagePath, callback) {
         super("Slow mode:", name, imagePath, callback);
-        this.stackFrameCountLabel = new GuiLabel(`Redoable actions: ${0}\nUndoable actions: ${0}`, 200, 16, GuiTextBox.bottom, 40), 15;
+        this.stackFrameCountLabel = new GuiLabel(`Redoable actions: ${0}\nUndoable actions: ${0}`, 200, 14, GuiTextBox.bottom, 40), 15;
         this.getOptionPanel().matrixDim[1] += 5;
         this.getOptionPanel().setHeight(this.stackFrameCountLabel.height() + this.getOptionPanel().height());
         this.getOptionPanel().addElement(this.stackFrameCountLabel);
@@ -1217,7 +1233,7 @@ class PenTool extends ExtendedTool {
         this.localLayout.addElement(new GuiLabel("Line width:", 200, 16, GuiTextBox.bottom));
         this.localLayout.addElement(this.tbSize);
         this.localLayout.addElement(this.btUpdate);
-        this.localLayout.addElement(new GuiLabel("Round\npen tip:", 90, 16, GuiTextBox.bottom, 40));
+        this.localLayout.addElement(new GuiLabel("Round\npen tip:", 90, 13, GuiTextBox.bottom, 40));
         this.localLayout.addElement(PenTool.checkDrawCircular);
     }
     activateOptionPanel() {
@@ -1251,7 +1267,7 @@ class ColorPickerTool extends Tool {
         super(toolName, pathToImage);
         this.field = field;
         this.layoutManager = new SimpleGridLayoutManager([1, 3], [200, 100]);
-        this.tbColor = new GuiTextBox(true, 200, null, 15);
+        this.tbColor = new GuiTextBox(true, 200, null, 13);
         this.tbColor.promptText = "Enter RGBA color here (RGB 0-255 A 0-1):";
         this.setColorText();
         this.btUpdate = new GuiButton(() => {
