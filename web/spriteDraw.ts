@@ -2061,6 +2061,7 @@ class DrawingScreen {
     dragDataMaxPoint:number;
     dragDataMinPoint:number;
     lineWidth:number;
+    stacksUnlocked:boolean;
     ignoreAlphaInFill:boolean;
     drawCircular:boolean;
     dragOnlyOneColor:boolean;
@@ -2071,6 +2072,7 @@ class DrawingScreen {
     {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
+        this.stacksUnlocked = true;
         this.ignoreAlphaInFill = false;
         this.dragOnlyOneColor = false;
         this.rotateOnlyOneColor = false;
@@ -2188,12 +2190,6 @@ class DrawingScreen {
                 break;
                 case("paste"):                
                 this.pasteRect = [e.touchPos[0] - this.pasteRect[2]/2, e.touchPos[1] - this.pasteRect[3]/2,this.pasteRect[2],this.pasteRect[3]];
-                break;
-                case("undo"):               
-                this.undoLast();
-                break;
-                case("redo"):                
-                this.redoLast();
                 break;
                 case("colorPicker"):
                 this.color.copy(this.screenBuffer[gx + gy*this.dimensions.first]);
@@ -2656,8 +2652,9 @@ class DrawingScreen {
     }
     async undoLast()
     {
-        if(this.updatesStack.length())
+        if(this.updatesStack.length() && this.stacksUnlocked)
         {
+            this.stacksUnlocked = false;
             const data:Pair<number, RGB>[] = this.updatesStack.pop();
             const backedUpFrame = [];
             const divisor:number =  60*10;
@@ -2679,6 +2676,7 @@ class DrawingScreen {
             }
             this.undoneUpdatesStack.push(backedUpFrame);
             this.repaint = true;
+            this.stacksUnlocked = true;
         }
         else{
             console.log("Error, nothing to undo");
@@ -2687,8 +2685,9 @@ class DrawingScreen {
     }
     async redoLast()
     {
-        if(this.undoneUpdatesStack.length())
+        if(this.undoneUpdatesStack.length() && this.stacksUnlocked)
         {
+            this.stacksUnlocked = false;
             const data = this.undoneUpdatesStack.pop();
             const backedUpFrame = [];
             const divisor:number =  60*10;
@@ -2710,6 +2709,7 @@ class DrawingScreen {
             }
             this.repaint = true;
             this.updatesStack.push(backedUpFrame);
+            this.stacksUnlocked = true;
         }
         else{
             console.log("Error, nothing to redo");
