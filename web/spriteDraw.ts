@@ -1677,12 +1677,12 @@ class DrawingScreenSettingsTool extends Tool {
     btUpdate:GuiButton;
     dim:number[];
     field:DrawingScreen;
-    constructor(dim:number[] = [524, 524], field:DrawingScreen, toolName:string = "pen", pathToImage:string = "images/penSprite.png")
+    constructor(dim:number[] = [524, 524], field:DrawingScreen, toolName:string, pathToImage:string)
     {
         super(toolName, pathToImage);
         this.dim = dim;
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager([2,4],[200,130]);
+        this.layoutManager = new SimpleGridLayoutManager([2,4],[200,150]);
         this.tbX = new GuiTextBox(true, 70);
         this.tbX.promptText = "Enter width:";
         this.tbX.setText(String(this.dim[0]));
@@ -1690,7 +1690,7 @@ class DrawingScreenSettingsTool extends Tool {
         this.tbY.promptText = "Enter height:";
         this.tbY.setText(String(this.dim[1]));
         this.btUpdate = new GuiButton(() => this.recalcDim(),
-            "Update", 50, 22, 12);
+            "Update", 75, 35, 16);
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
         this.layoutManager.addElement(new GuiLabel("Sprite Resolution:", 200, 16, GuiTextBox.bottom));

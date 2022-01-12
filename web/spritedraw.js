@@ -1351,18 +1351,18 @@ class ColorPickerTool extends Tool {
 }
 ;
 class DrawingScreenSettingsTool extends Tool {
-    constructor(dim = [524, 524], field, toolName = "pen", pathToImage = "images/penSprite.png") {
+    constructor(dim = [524, 524], field, toolName, pathToImage) {
         super(toolName, pathToImage);
         this.dim = dim;
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager([2, 4], [200, 130]);
+        this.layoutManager = new SimpleGridLayoutManager([2, 4], [200, 150]);
         this.tbX = new GuiTextBox(true, 70);
         this.tbX.promptText = "Enter width:";
         this.tbX.setText(String(this.dim[0]));
         this.tbY = new GuiTextBox(true, 70); //, null, 16, 100);
         this.tbY.promptText = "Enter height:";
         this.tbY.setText(String(this.dim[1]));
-        this.btUpdate = new GuiButton(() => this.recalcDim(), "Update", 50, 22, 12);
+        this.btUpdate = new GuiButton(() => this.recalcDim(), "Update", 75, 35, 16);
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
         this.layoutManager.addElement(new GuiLabel("Sprite Resolution:", 200, 16, GuiTextBox.bottom));
