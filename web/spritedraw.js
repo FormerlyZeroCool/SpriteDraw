@@ -1240,7 +1240,7 @@ class RotateTool extends ExtendedTool {
 class UndoRedoTool extends SingleCheckBoxTool {
     constructor(toolSelector, name, imagePath, callback) {
         super("Slow mode:", name, imagePath, callback);
-        this.stackFrameCountLabel = new GuiLabel(`Redoable actions: ${0}\nUndoable actions: ${0}`, 200, 14, GuiTextBox.bottom, 40), 15;
+        this.stackFrameCountLabel = new GuiLabel(`Redoable actions: ${0}\nUndoable actions: ${0}`, 200, 16, GuiTextBox.bottom, 40), 15;
         this.getOptionPanel().matrixDim[1] += 5;
         this.getOptionPanel().setHeight(this.stackFrameCountLabel.height() + this.getOptionPanel().height());
         this.getOptionPanel().addElement(this.stackFrameCountLabel);
@@ -1282,7 +1282,7 @@ class PenTool extends ExtendedTool {
         this.localLayout.addElement(new GuiLabel("Line width:", 200, 16, GuiTextBox.bottom));
         this.localLayout.addElement(this.tbSize);
         this.localLayout.addElement(this.btUpdate);
-        this.localLayout.addElement(new GuiLabel("Round\npen tip:", 90, 13, GuiTextBox.bottom, 40));
+        this.localLayout.addElement(new GuiLabel("Round\npen tip:", 90, 16, GuiTextBox.bottom, 40));
         this.localLayout.addElement(PenTool.checkDrawCircular);
     }
     activateOptionPanel() {
@@ -1316,7 +1316,7 @@ class ColorPickerTool extends Tool {
         super(toolName, pathToImage);
         this.field = field;
         this.layoutManager = new SimpleGridLayoutManager([1, 3], [200, 100]);
-        this.tbColor = new GuiTextBox(true, 200, null, 15);
+        this.tbColor = new GuiTextBox(true, 200, null, 16);
         this.tbColor.promptText = "Enter RGBA color here (RGB 0-255 A 0-1):";
         this.setColorText();
         this.btUpdate = new GuiButton(() => {
