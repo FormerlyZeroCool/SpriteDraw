@@ -1674,7 +1674,7 @@ class ToolSelector {
 }
 ;
 class DrawingScreen {
-    constructor(canvas, keyboardHandler, palette, offset, dimensions, newColorTextBox) {
+    constructor(canvas, keyboardHandler, palette, offset, dimensions) {
         const bounds = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
         this.screenBufUnlocked = true;
@@ -1789,7 +1789,6 @@ class DrawingScreen {
                     break;
                 case ("colorPicker"):
                     this.color.copy(this.screenBuffer[gx + gy * this.dimensions.first]);
-                    newColorTextBox.value = this.color.htmlRBGA(); //for html instead of Gui lib
                     // for Gui lib
                     this.toolSelector.updateColorPickerTextBox();
                     break;
@@ -1841,7 +1840,6 @@ class DrawingScreen {
                     break;
                 case ("colorPicker"):
                     this.color.copy(this.screenBuffer[gx + gy * this.dimensions.first]);
-                    newColorTextBox.value = this.color.htmlRBGA(); //for html instead of Gui lib
                     this.toolSelector.updateColorPickerTextBox();
                     repaint = false;
                     break;
@@ -2765,13 +2763,12 @@ class SingleTouchListener {
 SingleTouchListener.mouseDown = new MouseDownTracker();
 ;
 class Pallette {
-    constructor(canvas, keyboardHandler, textBoxColor, colorCount = 10, colors = null) {
+    constructor(canvas, keyboardHandler, colorCount = 10, colors = null) {
         this.repaint = true;
         this.canvas = canvas;
         this.keyboardHandler = keyboardHandler;
         this.ctx = canvas.getContext("2d");
         this.highLightedCell = 0;
-        this.textBoxColor = textBoxColor;
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.colors = new Array();
         const width = canvas.width / colorCount;
@@ -2820,7 +2817,6 @@ class Pallette {
     }
     handleClick(event) {
         this.highLightedCell = Math.floor((event.touchPos[0] / this.canvas.width) * this.colors.length);
-        this.textBoxColor.value = this.calcColor().htmlRBGA();
     }
     setSelectedColor(color) {
         this.colors[this.highLightedCell].loadString(color);
@@ -3591,10 +3587,9 @@ function logToServer(data) {
     }).then(res => { console.log("Request complete! response:", data); });
 }
 async function main() {
-    const newColor = document.getElementById("newColor");
     const keyboardHandler = new KeyboardHandler();
-    const pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler, newColor);
-    const field = new DrawingScreen(document.getElementById("screen"), keyboardHandler, pallette, [0, 0], dim, newColor);
+    const pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler);
+    const field = new DrawingScreen(document.getElementById("screen"), keyboardHandler, pallette, [0, 0], dim);
     const animationGroupSelector = new AnimationGroupsSelector(field, keyboardHandler, "animation_group_selector", "animations", "sprites_canvas", dim[0], dim[1], 128, 128);
     animationGroupSelector.createAnimationGroup();
     animationGroupSelector.selectedAnimationGroup = 0;
@@ -3613,14 +3608,10 @@ async function main() {
     clone_animationGroup_buttonListener.registerCallBack("touchstart", e => true, e => {
         animationGroupSelector.cloneSelectedAnimationGroup();
     });
-    const setPalletteColorButton = document.getElementById("setPalletteColorButton");
-    const palletteColorButtonListener = new SingleTouchListener(setPalletteColorButton, true, true);
-    palletteColorButtonListener.registerCallBack("touchstart", e => true, e => {
-        pallette.setSelectedColor(newColor.value);
+    pallette.canvas.addEventListener("mouseup", e => {
         field.color = pallette.calcColor();
-        newColor.blur();
+        field.toolSelector.colorPickerTool.tbColor.setText(pallette.calcColor().htmlRBGA());
     });
-    pallette.canvas.addEventListener("mouseup", e => { field.color = pallette.calcColor(); });
     pallette.listeners.registerCallBack("touchend", e => true, e => { field.color = pallette.calcColor(); });
     const add_animationButton = document.getElementById("add_animation");
     const add_animationTouchListener = new SingleTouchListener(add_animationButton, false, true);
@@ -3657,14 +3648,17 @@ async function main() {
         save_serverButton.addEventListener("mousedown", e => logToServer({ animation: animationGroupSelector.animationGroup().animations[animationGroupSelector.animationGroup().selectedAnimation] }));
     keyboardHandler.registerCallBack("keydown", e => true, e => {
         field.color.copy(pallette.calcColor());
-        if ((document.getElementById('body') === document.activeElement || document.getElementById('screen') === document.activeElement) && e.code.substring(0, "Digit".length) === "Digit") {
-            const numTyped = e.code.substring("Digit".length, e.code.length);
-            pallette.highLightedCell = (parseInt(numTyped) + 9) % 10;
-            newColor.value = pallette.calcColor().htmlRBGA();
+        field.toolSelector.colorPickerTool.tbColor.setText(pallette.calcColor().htmlRBGA());
+        if ((document.getElementById('body') === document.activeElement || document.getElementById('screen') === document.activeElement)) {
+            if (e.code.substring(0, "Digit".length) === "Digit") {
+                const numTyped = e.code.substring("Digit".length, e.code.length);
+                pallette.highLightedCell = (parseInt(numTyped) + 9) % 10;
+            }
         }
     });
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
+        field.toolSelector.colorPickerTool.tbColor.setText(pallette.calcColor().htmlRBGA());
     });
     const fps = 40;
     const goalSleep = 1000 / fps;

@@ -2095,7 +2095,7 @@ class DrawingScreen {
     blendAlphaOnPaste:boolean;
     blendAlphaOnPutSelectedPixels:boolean;
 
-    constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, palette:Pallette, offset:Array<number>, dimensions:Array<number>, newColorTextBox:HTMLInputElement)
+    constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, palette:Pallette, offset:Array<number>, dimensions:Array<number>)
     {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
@@ -2221,7 +2221,6 @@ class DrawingScreen {
                 break;
                 case("colorPicker"):
                 this.color.copy(this.screenBuffer[gx + gy*this.dimensions.first]);
-                newColorTextBox.value = this.color.htmlRBGA();//for html instead of Gui lib
                 // for Gui lib
                 this.toolSelector.updateColorPickerTextBox();
                 break;
@@ -2276,7 +2275,6 @@ class DrawingScreen {
                 break;
                 case("colorPicker"):
                 this.color.copy(this.screenBuffer[gx + gy*this.dimensions.first]);
-                newColorTextBox.value = this.color.htmlRBGA();//for html instead of Gui lib
                 this.toolSelector.updateColorPickerTextBox();
                 repaint = false;
                 break;
@@ -3399,18 +3397,16 @@ class Pallette {
     canvas:any;
     listeners:SingleTouchListener;
     keyboardHandler:KeyboardHandler;
-    textBoxColor:any;
     ctx:any;
     repaint:boolean;
 
-    constructor(canvas:any, keyboardHandler:KeyboardHandler, textBoxColor:any, colorCount:number = 10, colors:Array<RGB> = null)
+    constructor(canvas:any, keyboardHandler:KeyboardHandler, colorCount:number = 10, colors:Array<RGB> = null)
     {
         this.repaint = true;
         this.canvas = canvas;
         this.keyboardHandler = keyboardHandler;
         this.ctx = canvas.getContext("2d");
         this.highLightedCell = 0;
-        this.textBoxColor = textBoxColor;
         this.listeners = new SingleTouchListener(canvas, true, true);
         this.colors = new Array<RGB>();
         const width = canvas.width / colorCount;
@@ -3467,7 +3463,6 @@ class Pallette {
     handleClick(event):void
     {
         this.highLightedCell = Math.floor((event.touchPos[0] / this.canvas.width) * this.colors.length);
-        this.textBoxColor.value = this.calcColor().htmlRBGA();
     }
     setSelectedColor(color:string)
     {
@@ -4453,10 +4448,9 @@ function logToServer(data):void
 }
 async function main()
 {
-    const newColor:HTMLInputElement = <HTMLInputElement> document.getElementById("newColor");
     const keyboardHandler:KeyboardHandler = new KeyboardHandler();
-    const pallette:Pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler, newColor);
-    const field:DrawingScreen = new DrawingScreen(<HTMLCanvasElement> document.getElementById("screen"), keyboardHandler, pallette,[0,0], dim, newColor);
+    const pallette:Pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler);
+    const field:DrawingScreen = new DrawingScreen(<HTMLCanvasElement> document.getElementById("screen"), keyboardHandler, pallette,[0,0], dim);
     
     const animationGroupSelector:AnimationGroupsSelector = new AnimationGroupsSelector(field, keyboardHandler, "animation_group_selector", "animations", "sprites_canvas", dim[0], dim[1], 128, 128);
     animationGroupSelector.createAnimationGroup();
@@ -4476,14 +4470,9 @@ async function main()
     clone_animationGroup_buttonListener.registerCallBack("touchstart", e => true, e => {
         animationGroupSelector.cloneSelectedAnimationGroup();
     });
-    
-    const setPalletteColorButton = document.getElementById("setPalletteColorButton");
-    const palletteColorButtonListener:SingleTouchListener = new SingleTouchListener(setPalletteColorButton, true, true);
-    palletteColorButtonListener.registerCallBack("touchstart", e => true, e => {
-        pallette.setSelectedColor(newColor.value);field.color = pallette.calcColor();
-        newColor.blur();
-    });
-    pallette.canvas.addEventListener("mouseup", e => { field.color = pallette.calcColor() });
+
+    pallette.canvas.addEventListener("mouseup", e => { field.color = pallette.calcColor(); 
+        field.toolSelector.colorPickerTool.tbColor.setText(pallette.calcColor().htmlRBGA()); });
     pallette.listeners.registerCallBack("touchend", e => true,  e => { field.color = pallette.calcColor(); })
     
     const add_animationButton = document.getElementById("add_animation");
@@ -4524,14 +4513,18 @@ async function main()
     
     keyboardHandler.registerCallBack("keydown", e=> true, e => {
         field.color.copy(pallette.calcColor());
-        if((document.getElementById('body') === document.activeElement || document.getElementById('screen') === document.activeElement) && e.code.substring(0,"Digit".length) === "Digit"){
-            const numTyped:string = e.code.substring("Digit".length, e.code.length);
-            pallette.highLightedCell = (parseInt(numTyped) + 9) % 10;
-            newColor.value = pallette.calcColor().htmlRBGA();
+        field.toolSelector.colorPickerTool.tbColor.setText(pallette.calcColor().htmlRBGA());
+        if((document.getElementById('body') === document.activeElement || document.getElementById('screen') === document.activeElement)){
+            if(e.code.substring(0,"Digit".length) === "Digit")
+            {
+                const numTyped:string = e.code.substring("Digit".length, e.code.length);
+                pallette.highLightedCell = (parseInt(numTyped) + 9) % 10;
+            }
         }
     });
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
+        field.toolSelector.colorPickerTool.tbColor.setText(pallette.calcColor().htmlRBGA());
     });
     const fps = 40;
     const goalSleep = 1000/fps;
