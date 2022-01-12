@@ -624,10 +624,19 @@ class GuiButton implements GuiElement {
         this.pressed = false;
         this.focused = true;
         this.callback = callBack;
-        this.font = new FontFace(`button_custom${this.buttonID}`, 'url(/fonts/Minecraft.ttf)');
+        this.font = new FontFace(`button_custom${this.buttonID}`, 'url(/web/fonts/Minecraft.ttf)');
         this.font.load().then((loaded_face) =>{
             document.fonts.add(loaded_face);
             this.drawInternal();
+        }, (error:Error) => {
+            this.font = new FontFace(`button_custom${this.buttonID}`, 'url(/fonts/Minecraft.ttf)');
+            this.font.load().then(loaded_face => {
+                    document.fonts.add(loaded_face);
+                    this.drawInternal();
+                }, (error:Error) => {
+                    console.log(error.message);
+                    this.drawInternal();
+                });
         });
     }
     handleKeyBoardEvents(type:string, e:any):void
@@ -926,10 +935,19 @@ class GuiTextBox implements GuiElement {
         if(customFontFace)
             this.font = customFontFace;
         else
-            this.font = new FontFace(`textbox_custom${GuiTextBox.textBoxRunningNumber}`, 'url(/fonts/Minecraft.ttf)');
+            this.font = new FontFace(`textbox_custom${GuiTextBox.textBoxRunningNumber}`, 'url(/web/fonts/Minecraft.ttf)');
         this.font.load().then((loaded_face) =>{
             document.fonts.add(loaded_face);
             this.drawInternalAndClear();
+        }, (error:Error) => {
+            this.font = new FontFace(`textbox_custom${this.textBoxId}`, 'url(/fonts/Minecraft.ttf)');
+            this.font.load().then(loaded_face => {
+                    document.fonts.add(loaded_face);
+                    this.refresh();
+                }, (error:Error) => {
+                    console.log(error.message);
+                    this.refresh();
+                });
         });
     }
     //take scaled pos calc delta from cursor pos
