@@ -583,7 +583,7 @@ class GuiButton {
 }
 ;
 class GuiCheckBox {
-    constructor(callBack, width = 50, height = 50, checked = false, unPressedColor = new RGB(245, 245, 245, 255), pressedColor = new RGB(150, 150, 200, 255), fontSize = height - 10) {
+    constructor(callBack, width = 50, height = 50, checked = false, unPressedColor = new RGB(255, 255, 255, 255), pressedColor = new RGB(150, 150, 200, 255), fontSize = height - 10) {
         this.checked = checked;
         this.fontSize = fontSize;
         this.dimensions = [width, height];
@@ -665,6 +665,7 @@ class GuiCheckBox {
         ctx.fillRect(0, 0, this.width(), this.height());
         ctx.fillStyle = "#000000";
         ctx.fillText(this.checked ? "\u2713" : "", this.width() / 2 - this.ctx.measureText("\u2713").width / 2, 0 + this.fontSize, this.width());
+        ctx.strokeRect(1, 1, this.canvas.width - 2, this.canvas.height - 2);
         ctx.fillStyle = fs;
     }
     draw(ctx, x, y, offsetX = 0, offsetY = 0) {
@@ -3734,7 +3735,7 @@ async function main() {
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
     });
-    const fps = ;
+    const fps = 27;
     const goalSleep = 1000 / fps;
     let counter = 0;
     while (true) {

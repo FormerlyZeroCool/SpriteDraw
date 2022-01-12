@@ -754,7 +754,7 @@ class GuiCheckBox implements GuiElement {
     pressed:boolean;
     focused:boolean;
     callback:(event) => void;
-    constructor(callBack:(event) => void, width:number = 50, height:number = 50, checked:boolean = false, unPressedColor:RGB = new RGB(245, 245, 245, 255), pressedColor:RGB = new RGB(150, 150, 200, 255), fontSize:number = height - 10)
+    constructor(callBack:(event) => void, width:number = 50, height:number = 50, checked:boolean = false, unPressedColor:RGB = new RGB(255, 255, 255, 255), pressedColor:RGB = new RGB(150, 150, 200, 255), fontSize:number = height - 10)
     {
         this.checked = checked;
         this.fontSize = fontSize;
@@ -847,6 +847,7 @@ class GuiCheckBox implements GuiElement {
         ctx.fillRect(0, 0, this.width(), this.height());
         ctx.fillStyle = "#000000";
         ctx.fillText(this.checked?"\u2713":"", this.width()/2 - this.ctx.measureText("\u2713").width/2, 0 + this.fontSize, this.width());
+        ctx.strokeRect(1, 1, this.canvas.width - 2, this.canvas.height - 2);
         ctx.fillStyle = fs;
     } 
     draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0):void
