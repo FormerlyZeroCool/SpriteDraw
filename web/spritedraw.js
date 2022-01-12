@@ -1632,6 +1632,182 @@ class ToolSelector {
             }
             this.repaint = true;
         });
+        {
+            //field listeners
+            const colorBackup = new RGB(field.noColor.red(), field.noColor.green(), field.noColor.blue(), field.noColor.alpha());
+            this.drawingScreenListener = new SingleTouchListener(field.canvas, true, true);
+            this.drawingScreenListener.registerCallBack("touchstart", e => true, e => {
+                //save for undo
+                if (field.updatesStack.length() === 0 || field.updatesStack.get(field.updatesStack.length() - 1).length) {
+                    if (field.toolSelector.selectedToolName() !== "redo" && field.toolSelector.selectedToolName() !== "undo") {
+                        field.updatesStack.push(new Array());
+                        field.undoneUpdatesStack.empty();
+                    }
+                }
+                document.activeElement.blur();
+                if (field.toolSelector.selectedToolName() != "paste") {
+                    field.pasteRect = [0, 0, 0, 0];
+                }
+                else {
+                    field.pasteRect = [e.touchPos[0], e.touchPos[1], field.clipBoard.currentDim[0] * (field.bounds.first / field.dimensions.first), field.clipBoard.currentDim[1] * (field.bounds.second / field.dimensions.second)];
+                }
+                const gx = Math.floor((e.touchPos[0] - field.offset.first) / field.bounds.first * field.dimensions.first);
+                const gy = Math.floor((e.touchPos[1] - field.offset.second) / field.bounds.second * field.dimensions.second);
+                switch (field.toolSelector.selectedToolName()) {
+                    case ("eraser"):
+                        colorBackup.copy(field.color);
+                        {
+                            const eraser = field.toolSelector.eraserTool;
+                            field.lineWidth = eraser.lineWidth;
+                            eraser.tbSize.setText(String(field.lineWidth));
+                            field.color.copy(field.noColor);
+                        }
+                        break;
+                    case ("fill"):
+                        break;
+                    case ("rotate"):
+                        field.saveDragDataToScreenAntiAliased();
+                        if (field.rotateOnlyOneColor || field.keyboardHandler.keysHeld["AltLeft"])
+                            field.dragData = field.getSelectedPixelGroup(new Pair(gx, gy), true);
+                        else
+                            field.dragData = field.getSelectedPixelGroup(new Pair(gx, gy), false);
+                        break;
+                    case ("drag"):
+                        field.saveDragDataToScreen();
+                        if (field.dragOnlyOneColor || field.keyboardHandler.keysHeld["AltLeft"])
+                            field.dragData = field.getSelectedPixelGroup(new Pair(gx, gy), true);
+                        else
+                            field.dragData = field.getSelectedPixelGroup(new Pair(gx, gy), false);
+                        break;
+                    case ("oval"):
+                    case ("rect"):
+                    case ("copy"):
+                        field.selectionRect = [e.touchPos[0], e.touchPos[1], 0, 0];
+                    case ("line"):
+                    case ("pen"):
+                        {
+                            field.setLineWidthPen();
+                        }
+                        break;
+                    case ("paste"):
+                        field.pasteRect = [e.touchPos[0] - field.pasteRect[2] / 2, e.touchPos[1] - field.pasteRect[3] / 2, field.pasteRect[2], field.pasteRect[3]];
+                        break;
+                    case ("colorPicker"):
+                        field.color.copy(field.screenBuffer[gx + gy * field.dimensions.first]);
+                        // for Gui lib
+                        field.toolSelector.updateColorPickerTextBox();
+                        break;
+                }
+            });
+            this.drawingScreenListener.registerCallBack("touchmove", e => true, e => {
+                const x1 = e.touchPos[0] - e.deltaX;
+                const y1 = e.touchPos[1] - e.deltaY;
+                const gx = Math.floor((e.touchPos[0] - field.offset.first) / field.bounds.first * field.dimensions.first);
+                const gy = Math.floor((e.touchPos[1] - field.offset.second) / field.bounds.second * field.dimensions.second);
+                let repaint = true;
+                switch (field.toolSelector.selectedToolName()) {
+                    case ("pen"):
+                        field.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
+                        break;
+                    case ("eraser"):
+                        field.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
+                        break;
+                    case ("drag"):
+                        field.dragData.first.first += (e.deltaX / field.bounds.first) * field.dimensions.first;
+                        field.dragData.first.second += (e.deltaY / field.bounds.second) * field.dimensions.second;
+                        break;
+                    case ("rotate"):
+                        if (e.moveCount % 2 === 0)
+                            if (e.deltaY > 0)
+                                field.rotateSelectedPixelGroup(Math.PI / 32, [(this.drawingScreenListener.startTouchPos[0] / field.bounds.first) * field.dimensions.first,
+                                    (this.drawingScreenListener.startTouchPos[1] / field.bounds.second) * field.dimensions.second]);
+                            else if (e.deltaY < 0)
+                                field.rotateSelectedPixelGroup(-Math.PI / 32, [(this.drawingScreenListener.startTouchPos[0] / field.bounds.first) * field.dimensions.first,
+                                    (this.drawingScreenListener.startTouchPos[1] / field.bounds.second) * field.dimensions.second]);
+                        break;
+                    case ("fill"):
+                        field.fillArea(new Pair(gx, gy));
+                        break;
+                    case ("oval"):
+                    case ("rect"):
+                        field.selectionRect[2] += e.deltaX;
+                        field.selectionRect[3] += e.deltaY;
+                        break;
+                    case ("copy"):
+                        field.selectionRect[2] += e.deltaX;
+                        field.selectionRect[3] += e.deltaY;
+                        field.pasteRect[2] = field.selectionRect[2];
+                        field.pasteRect[3] = field.selectionRect[3];
+                        break;
+                    case ("paste"):
+                        field.pasteRect[0] += e.deltaX;
+                        field.pasteRect[1] += e.deltaY;
+                        break;
+                    case ("colorPicker"):
+                        field.color.copy(field.screenBuffer[gx + gy * field.dimensions.first]);
+                        field.toolSelector.updateColorPickerTextBox();
+                        repaint = false;
+                        break;
+                }
+                field.repaint = repaint;
+            });
+            this.drawingScreenListener.registerCallBack("touchend", e => true, async (e) => {
+                let repaint = true;
+                switch (field.toolSelector.selectedToolName()) {
+                    case ("oval"):
+                        field.handleEllipse(e);
+                        field.selectionRect = [0, 0, 0, 0];
+                        break;
+                    case ("pen"):
+                        if (e.deltaX === 0 && e.deltaY === 0) {
+                            field.handleTap(e.touchPos[0], e.touchPos[1]);
+                        }
+                        break;
+                    case ("eraser"):
+                        field.handleTap(e.touchPos[0], e.touchPos[1]);
+                        field.color.copy(colorBackup);
+                        break;
+                    case ("rotate"):
+                        field.saveDragDataToScreenAntiAliased();
+                        field.dragData = null;
+                        break;
+                    case ("drag"):
+                        field.saveDragDataToScreen();
+                        field.dragData = null;
+                        break;
+                    case ("fill"):
+                        const gx = Math.floor((e.touchPos[0] - field.offset.first) / field.bounds.first * field.dimensions.first);
+                        const gy = Math.floor((e.touchPos[1] - field.offset.second) / field.bounds.second * field.dimensions.second);
+                        field.fillArea(new Pair(gx, gy));
+                        break;
+                    case ("line"):
+                        const x1 = e.touchPos[0] - e.deltaX;
+                        const y1 = e.touchPos[1] - e.deltaY;
+                        if (e.deltaX === 0 && e.deltaY === 0) {
+                            field.handleTap(e.touchPos[0], e.touchPos[1]);
+                        }
+                        field.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
+                        break;
+                    case ("copy"):
+                        const bounds = field.saveToBuffer(field.selectionRect, field.clipBoard.clipBoardBuffer);
+                        field.clipBoard.refreshImageFromBuffer(bounds.first, bounds.second);
+                        field.selectionRect = [0, 0, 0, 0];
+                        break;
+                    case ("paste"):
+                        field.paste();
+                        break;
+                    case ("rect"):
+                        field.drawRect([field.selectionRect[0], field.selectionRect[1]], [field.selectionRect[0] + field.selectionRect[2], field.selectionRect[1] + field.selectionRect[3]]);
+                        field.selectionRect = [0, 0, 0, 0];
+                        break;
+                    case ("colorPicker"):
+                        repaint = false;
+                        break;
+                }
+                field.updateLabelUndoRedoCount();
+                field.repaint = repaint;
+            });
+        }
         this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png");
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.slow = !field.slow);
         this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.rotateOnlyOneColor = this.rotateTool.checkBox.checked, [this.undoTool.getOptionPanel()]);
@@ -1720,6 +1896,7 @@ class DrawingScreen {
     constructor(canvas, keyboardHandler, palette, offset, dimensions) {
         const bounds = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
+        this.noColor = new RGB(255, 255, 255, 0);
         this.screenBufUnlocked = true;
         this.blendAlphaOnPutSelectedPixels = true;
         this.ignoreAlphaInFill = false;
@@ -1749,7 +1926,6 @@ class DrawingScreen {
         this.screenBuffer = new Array();
         this.selectionRect = [0, 0, 0, 0];
         this.pasteRect = [0, 0, 0, 0];
-        this.noColor = new RGB(255, 255, 255, 0);
         for (let i = 0; i < dimensions[0] * dimensions[1]; i++) {
             this.screenBuffer.push(new RGB(this.noColor.red(), this.noColor.green(), this.noColor.blue(), this.noColor.alpha()));
         }
@@ -1772,178 +1948,6 @@ class DrawingScreen {
                     this.redoLast().then(() => this.updateLabelUndoRedoCount());
                     break;
             }
-        });
-        this.listeners = new SingleTouchListener(canvas, true, true);
-        this.listeners.registerCallBack("touchstart", e => true, e => {
-            //save for undo
-            if (this.updatesStack.length() === 0 || this.updatesStack.get(this.updatesStack.length() - 1).length) {
-                if (this.toolSelector.selectedToolName() !== "redo" && this.toolSelector.selectedToolName() !== "undo") {
-                    this.updatesStack.push(new Array());
-                    this.undoneUpdatesStack.empty();
-                }
-            }
-            document.activeElement.blur();
-            if (this.toolSelector.selectedToolName() != "paste") {
-                this.pasteRect = [0, 0, 0, 0];
-            }
-            else {
-                this.pasteRect = [e.touchPos[0], e.touchPos[1], this.clipBoard.currentDim[0] * (this.bounds.first / this.dimensions.first), this.clipBoard.currentDim[1] * (this.bounds.second / this.dimensions.second)];
-            }
-            const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
-            const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
-            switch (this.toolSelector.selectedToolName()) {
-                case ("eraser"):
-                    colorBackup.copy(this.color);
-                    {
-                        const eraser = this.toolSelector.eraserTool;
-                        this.lineWidth = eraser.lineWidth;
-                        eraser.tbSize.setText(String(this.lineWidth));
-                        this.color.copy(this.noColor);
-                    }
-                    break;
-                case ("fill"):
-                    break;
-                case ("rotate"):
-                    this.saveDragDataToScreenAntiAliased();
-                    if (this.rotateOnlyOneColor || this.keyboardHandler.keysHeld["AltLeft"])
-                        this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), true);
-                    else
-                        this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), false);
-                    break;
-                case ("drag"):
-                    this.saveDragDataToScreen();
-                    if (this.dragOnlyOneColor || this.keyboardHandler.keysHeld["AltLeft"])
-                        this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), true);
-                    else
-                        this.dragData = this.getSelectedPixelGroup(new Pair(gx, gy), false);
-                    break;
-                case ("oval"):
-                case ("rect"):
-                case ("copy"):
-                    this.selectionRect = [e.touchPos[0], e.touchPos[1], 0, 0];
-                case ("line"):
-                case ("pen"):
-                    {
-                        this.setLineWidthPen();
-                    }
-                    break;
-                case ("paste"):
-                    this.pasteRect = [e.touchPos[0] - this.pasteRect[2] / 2, e.touchPos[1] - this.pasteRect[3] / 2, this.pasteRect[2], this.pasteRect[3]];
-                    break;
-                case ("colorPicker"):
-                    this.color.copy(this.screenBuffer[gx + gy * this.dimensions.first]);
-                    // for Gui lib
-                    this.toolSelector.updateColorPickerTextBox();
-                    break;
-            }
-        });
-        this.listeners.registerCallBack("touchmove", e => true, e => {
-            const x1 = e.touchPos[0] - e.deltaX;
-            const y1 = e.touchPos[1] - e.deltaY;
-            const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
-            const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
-            let repaint = true;
-            switch (this.toolSelector.selectedToolName()) {
-                case ("pen"):
-                    this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
-                    break;
-                case ("eraser"):
-                    this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
-                    break;
-                case ("drag"):
-                    this.dragData.first.first += (e.deltaX / this.bounds.first) * this.dimensions.first;
-                    this.dragData.first.second += (e.deltaY / this.bounds.second) * this.dimensions.second;
-                    break;
-                case ("rotate"):
-                    if (e.moveCount % 2 === 0)
-                        if (e.deltaY > 0)
-                            this.rotateSelectedPixelGroup(Math.PI / 32, [(this.listeners.startTouchPos[0] / this.bounds.first) * this.dimensions.first,
-                                (this.listeners.startTouchPos[1] / this.bounds.second) * this.dimensions.second]);
-                        else if (e.deltaY < 0)
-                            this.rotateSelectedPixelGroup(-Math.PI / 32, [(this.listeners.startTouchPos[0] / this.bounds.first) * this.dimensions.first,
-                                (this.listeners.startTouchPos[1] / this.bounds.second) * this.dimensions.second]);
-                    break;
-                case ("fill"):
-                    this.fillArea(new Pair(gx, gy));
-                    break;
-                case ("oval"):
-                case ("rect"):
-                    this.selectionRect[2] += e.deltaX;
-                    this.selectionRect[3] += e.deltaY;
-                    break;
-                case ("copy"):
-                    this.selectionRect[2] += e.deltaX;
-                    this.selectionRect[3] += e.deltaY;
-                    this.pasteRect[2] = this.selectionRect[2];
-                    this.pasteRect[3] = this.selectionRect[3];
-                    break;
-                case ("paste"):
-                    this.pasteRect[0] += e.deltaX;
-                    this.pasteRect[1] += e.deltaY;
-                    break;
-                case ("colorPicker"):
-                    this.color.copy(this.screenBuffer[gx + gy * this.dimensions.first]);
-                    this.toolSelector.updateColorPickerTextBox();
-                    repaint = false;
-                    break;
-            }
-            this.repaint = repaint;
-        });
-        this.listeners.registerCallBack("touchend", e => true, async (e) => {
-            let repaint = true;
-            switch (this.toolSelector.selectedToolName()) {
-                case ("oval"):
-                    this.handleEllipse(e);
-                    this.selectionRect = [0, 0, 0, 0];
-                    break;
-                case ("pen"):
-                    if (e.deltaX === 0 && e.deltaY === 0) {
-                        this.handleTap(e.touchPos[0], e.touchPos[1]);
-                    }
-                    break;
-                case ("eraser"):
-                    this.handleTap(e.touchPos[0], e.touchPos[1]);
-                    this.color.copy(colorBackup);
-                    break;
-                case ("rotate"):
-                    this.saveDragDataToScreenAntiAliased();
-                    this.dragData = null;
-                    break;
-                case ("drag"):
-                    this.saveDragDataToScreen();
-                    this.dragData = null;
-                    break;
-                case ("fill"):
-                    const gx = Math.floor((e.touchPos[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
-                    const gy = Math.floor((e.touchPos[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
-                    this.fillArea(new Pair(gx, gy));
-                    break;
-                case ("line"):
-                    const x1 = e.touchPos[0] - e.deltaX;
-                    const y1 = e.touchPos[1] - e.deltaY;
-                    if (e.deltaX === 0 && e.deltaY === 0) {
-                        this.handleTap(e.touchPos[0], e.touchPos[1]);
-                    }
-                    this.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
-                    break;
-                case ("copy"):
-                    const bounds = this.saveToBuffer(this.selectionRect, this.clipBoard.clipBoardBuffer);
-                    this.clipBoard.refreshImageFromBuffer(bounds.first, bounds.second);
-                    this.selectionRect = [0, 0, 0, 0];
-                    break;
-                case ("paste"):
-                    this.paste();
-                    break;
-                case ("rect"):
-                    this.drawRect([this.selectionRect[0], this.selectionRect[1]], [this.selectionRect[0] + this.selectionRect[2], this.selectionRect[1] + this.selectionRect[3]]);
-                    this.selectionRect = [0, 0, 0, 0];
-                    break;
-                case ("colorPicker"):
-                    repaint = false;
-                    break;
-            }
-            this.updateLabelUndoRedoCount();
-            this.repaint = repaint;
         });
         this.color = new RGB(0, 0, 0, 255);
     }
@@ -2467,7 +2471,7 @@ class DrawingScreen {
                 }
                 ;
             }
-            if (this.pasteRect[3] !== 0 && this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "paste") {
+            if (this.pasteRect[3] !== 0 && this.toolSelector.drawingScreenListener.registeredTouch && this.toolSelector.selectedToolName() === "paste") {
                 const dest_x = Math.floor((this.pasteRect[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
                 const dest_y = Math.floor((this.pasteRect[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
                 const width = this.clipBoard.currentDim[0];
@@ -2490,16 +2494,16 @@ class DrawingScreen {
                 }
             }
             spriteScreenBuf.putPixels(ctx);
-            if (this.listeners.registeredTouch && this.toolSelector.selectedToolName() === "line") {
-                let touchStart = [this.listeners.touchStart["offsetX"], this.listeners.touchStart["offsetY"]];
+            if (this.toolSelector.drawingScreenListener.registeredTouch && this.toolSelector.selectedToolName() === "line") {
+                let touchStart = [this.toolSelector.drawingScreenListener.touchStart["offsetX"], this.toolSelector.drawingScreenListener.touchStart["offsetY"]];
                 if (!touchStart[0]) {
-                    touchStart = [this.listeners.touchStart["clientX"] - this.canvas.getBoundingClientRect().left, this.listeners.touchStart["clientY"] - this.canvas.getBoundingClientRect().top];
+                    touchStart = [this.toolSelector.drawingScreenListener.touchStart["clientX"] - this.canvas.getBoundingClientRect().left, this.toolSelector.drawingScreenListener.touchStart["clientY"] - this.canvas.getBoundingClientRect().top];
                 }
                 ctx.lineWidth = 6;
                 ctx.beginPath();
                 ctx.strokeStyle = this.color.htmlRBGA();
                 ctx.moveTo(touchStart[0], touchStart[1]);
-                ctx.lineTo(this.listeners.touchPos[0], this.listeners.touchPos[1]);
+                ctx.lineTo(this.toolSelector.drawingScreenListener.touchPos[0], this.toolSelector.drawingScreenListener.touchPos[1]);
                 ctx.stroke();
             }
             if (this.pasteRect[3] !== 0) {
