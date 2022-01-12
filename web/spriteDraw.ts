@@ -1486,9 +1486,9 @@ class SingleCheckBoxTool extends GenericTool {
     constructor(label:string, name:string, imagePath:string, callback:() => void = () => null)
     {
         super(name, imagePath);
-        this.optionPanel = new SimpleGridLayoutManager([1,4], [200, 90]);
+        this.optionPanel = new SimpleGridLayoutManager([6,4], [200, 200]);
         this.checkBox = new GuiCheckBox(callback, 40, 40);
-        this.optionPanel.addElement(new GuiLabel(label, 200, 16, GuiTextBox.bottom, 40));
+        this.optionPanel.addElement(new GuiLabel(label, this.optionPanel.ctx.measureText(label).width*2, 16, GuiTextBox.bottom | GuiTextBox.left, 40));
         this.optionPanel.addElement(this.checkBox);
     }
     activateOptionPanel():void { this.optionPanel.activate(); }
@@ -1533,9 +1533,10 @@ class RotateTool extends ExtendedTool {
         this.checkBoxAntiAlias = new GuiCheckBox(callBackAntiAlias, 40, 40);
         this.checkBoxAntiAlias.checked = true;
         this.checkBoxAntiAlias.refresh();
-        this.localLayout.addElement(new GuiLabel("Only rotate adjacent\npixels of same color:", 200, 14, GuiTextBox.bottom | GuiTextBox.left, 50));
+        this.localLayout.addElement(new GuiLabel("Only rotate adjacent\npixels of same color:", 200, 16, GuiTextBox.bottom | GuiTextBox.left, 50));
         this.localLayout.addElement(this.checkBox);
-        this.localLayout.addElement(new GuiLabel("anti-alias\nrotation:", 200, 14, GuiTextBox.bottom | GuiTextBox.left, 50));
+        this.localLayout.addElement(new GuiLabel("", 100, 14, GuiTextBox.bottom | GuiTextBox.left, 50));
+        this.localLayout.addElement(new GuiLabel("anti-alias\nrotation:", 90, 16, GuiTextBox.bottom | GuiTextBox.left, 50));
         this.localLayout.addElement(this.checkBoxAntiAlias);
 
     }
