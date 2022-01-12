@@ -462,6 +462,8 @@ class SimpleGridLayoutManager {
 ;
 class GuiButton {
     constructor(callBack, text, width = 200, height = 50, fontSize = 12, pressedColor = new RGB(150, 150, 200, 1), unPressedColor = new RGB(255, 255, 255)) {
+        GuiButton.button_count++;
+        this.buttonID = GuiButton.button_count;
         this.text = text;
         this.fontSize = fontSize;
         this.dimensions = [width, height];
@@ -474,7 +476,7 @@ class GuiButton {
         this.pressed = false;
         this.focused = true;
         this.callback = callBack;
-        this.font = new FontFace("button_custom", 'url(/fonts/Minecraft.ttf)');
+        this.font = new FontFace(`button_custom${this.buttonID}`, 'url(/fonts/Minecraft.ttf)');
         this.font.load().then((loaded_face) => {
             document.fonts.add(loaded_face);
             this.drawInternal();
@@ -536,7 +538,7 @@ class GuiButton {
             ctx.fillStyle = this.pressedColor.htmlRBG();
         else
             ctx.fillStyle = this.unPressedColor.htmlRBG();
-        ctx.font = this.fontSize + 'px button_custom';
+        ctx.font = this.fontSize + `px button_custom${this.buttonID}`;
     }
     refresh() {
         this.drawInternal();
@@ -556,6 +558,7 @@ class GuiButton {
         ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
     }
 }
+GuiButton.button_count = 0;
 ;
 class GuiCheckBox {
     constructor(callBack, width = 50, height = 50, checked = false, unPressedColor = new RGB(245, 245, 245, 255), pressedColor = new RGB(150, 150, 200, 255), fontSize = height - 10) {

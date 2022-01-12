@@ -606,8 +606,12 @@ class GuiButton implements GuiElement {
     pressed:boolean;
     focused:boolean;
     font:FontFace;
+    static button_count:number = 0;
+    buttonID:number;
     callback:() => void;constructor(callBack:() => void, text:string, width:number = 200, height:number = 50, fontSize:number = 12, pressedColor:RGB = new RGB(150, 150, 200, 1), unPressedColor:RGB = new RGB(255, 255, 255))
     {
+        GuiButton.button_count++;
+        this.buttonID = GuiButton.button_count;
         this.text = text;
         this.fontSize = fontSize;
         this.dimensions = [width, height];
@@ -620,7 +624,7 @@ class GuiButton implements GuiElement {
         this.pressed = false;
         this.focused = true;
         this.callback = callBack;
-        this.font = new FontFace("button_custom", 'url(/fonts/Minecraft.ttf)');
+        this.font = new FontFace(`button_custom${this.buttonID}`, 'url(/fonts/Minecraft.ttf)');
         this.font.load().then((loaded_face) =>{
             document.fonts.add(loaded_face);
             this.drawInternal();
@@ -691,7 +695,7 @@ class GuiButton implements GuiElement {
             ctx.fillStyle = this.pressedColor.htmlRBG();
         else
             ctx.fillStyle = this.unPressedColor.htmlRBG();
-        ctx.font = this.fontSize + 'px button_custom';
+        ctx.font = this.fontSize + `px button_custom${this.buttonID}`;
     }
     refresh(): void {
         this.drawInternal();
