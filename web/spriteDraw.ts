@@ -1530,7 +1530,7 @@ class PenTool extends ExtendedTool {
     {
         super(toolName, pathToImage, optionPanes, [200, 130], [2,8]);
         this.lineWidth = strokeWith;
-        this.tbSize = new GuiTextBox(true, 80, null, 16, 34, GuiTextBox.top);
+        this.tbSize = new GuiTextBox(true, 80);
         this.tbSize.promptText = "Enter line width:";
         this.tbSize.setText(String(this.lineWidth));
         this.btUpdate = new GuiButton(() => { 
