@@ -1525,12 +1525,19 @@ class DragTool extends ExtendedTool {
 };
 class RotateTool extends ExtendedTool {
     checkBox:GuiCheckBox;
-    constructor(name:string, imagePath:string, callBack:() => void, optionPanes:SimpleGridLayoutManager[] = [])
+    checkBoxAntiAlias:GuiCheckBox;
+    constructor(name:string, imagePath:string, callBack:() => void, callBackAntiAlias:() => void, optionPanes:SimpleGridLayoutManager[] = [])
     {
-        super(name, imagePath, optionPanes, [200, 100]);
+        super(name, imagePath, optionPanes, [200, 200]);
         this.checkBox = new GuiCheckBox(callBack, 40, 40);
-        this.localLayout.addElement(new GuiLabel("Only rotate adjacent\npixels of same color:", 200, 14, GuiTextBox.bottom, 50));
+        this.checkBoxAntiAlias = new GuiCheckBox(callBackAntiAlias, 40, 40);
+        this.checkBoxAntiAlias.checked = true;
+        this.checkBoxAntiAlias.refresh();
+        this.localLayout.addElement(new GuiLabel("Only rotate adjacent\npixels of same color:", 200, 14, GuiTextBox.bottom | GuiTextBox.left, 50));
         this.localLayout.addElement(this.checkBox);
+        this.localLayout.addElement(new GuiLabel("anti-alias\nrotation:", 200, 14, GuiTextBox.bottom | GuiTextBox.left, 50));
+        this.localLayout.addElement(this.checkBoxAntiAlias);
+
     }
 };
 class UndoRedoTool extends SingleCheckBoxTool {
@@ -2053,14 +2060,17 @@ class ToolSelector {
                 case("fill"):
                 break;
                 case("rotate"):
-                field.saveDragDataToScreenAntiAliased();
+                if(field.antiAliasRotation)
+                    field.saveDragDataToScreenAntiAliased();
+                else
+                    field.saveDragDataToScreen();
                 if(field.rotateOnlyOneColor || field.keyboardHandler.keysHeld["AltLeft"])
                     field.dragData = field.getSelectedPixelGroup(new Pair<number>(gx,gy), true);
                 else
                     field.dragData = field.getSelectedPixelGroup(new Pair<number>(gx,gy), false);
                 break;
                 case("drag"):
-                field.saveDragDataToScreen();
+                    field.saveDragDataToScreen();
                 if(field.dragOnlyOneColor || field.keyboardHandler.keysHeld["AltLeft"])
                     field.dragData = field.getSelectedPixelGroup(new Pair<number>(gx,gy), true);
                 else
@@ -2106,13 +2116,23 @@ class ToolSelector {
                 field.dragData.first.second += (e.deltaY / field.bounds.second) * field.dimensions.second;
                 break;
                 case("rotate"):
-                if(e.moveCount % 2 === 0)
+                let angle:number = Math.PI / 2;
+                let moveCountBeforeRotation:number = 10;
+                if(field.antiAliasRotation){
+                    angle = Math.PI / 32;
+                    moveCountBeforeRotation = 2;
+                }
+                if(e.moveCount % moveCountBeforeRotation === 0)
                     if(e.deltaY > 0)
-                        field.rotateSelectedPixelGroup(Math.PI/32, [(this.drawingScreenListener.startTouchPos[0] / field.bounds.first) * field.dimensions.first,
+                        field.rotateSelectedPixelGroup(angle, [(this.drawingScreenListener.startTouchPos[0] / field.bounds.first) * field.dimensions.first,
                             (this.drawingScreenListener.startTouchPos[1] / field.bounds.second) * field.dimensions.second]);
                     else if(e.deltaY < 0)
-                        field.rotateSelectedPixelGroup(-Math.PI/32, [(this.drawingScreenListener.startTouchPos[0] / field.bounds.first) * field.dimensions.first,
+                        field.rotateSelectedPixelGroup(-angle, [(this.drawingScreenListener.startTouchPos[0] / field.bounds.first) * field.dimensions.first,
                             (this.drawingScreenListener.startTouchPos[1] / field.bounds.second) * field.dimensions.second]);
+                    
+                    if(field.antiAliasRotation){
+                        field.dragData.second;
+                    }
                 break;
                 case("fill"):
                 field.fillArea(new Pair<number>(gx, gy));
@@ -2162,7 +2182,10 @@ class ToolSelector {
                     field.color.copy(colorBackup);
                 break;
                 case("rotate"):
-                    field.saveDragDataToScreenAntiAliased();
+                    if(field.antiAliasRotation)
+                        field.saveDragDataToScreenAntiAliased();
+                    else
+                        field.saveDragDataToScreen();
                     field.dragData = null;
                 break;
                 case("drag"):
@@ -2207,7 +2230,8 @@ class ToolSelector {
 
         this.colorPickerTool = new ColorPickerTool(field,"colorPicker", "images/colorPickerSprite.png");
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.slow = !field.slow);
-        this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.rotateOnlyOneColor = this.rotateTool.checkBox.checked, [this.undoTool.getOptionPanel()]);
+        this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.rotateOnlyOneColor = this.rotateTool.checkBox.checked, 
+            () => field.antiAliasRotation = this.rotateTool.checkBoxAntiAlias.checked, [this.undoTool.getOptionPanel()]);
         this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.dragOnlyOneColor = this.dragTool.checkBox.checked,
         () => field.blendAlphaOnPutSelectedPixels = this.dragTool.checkBox_blendAlpha.checked, [this.undoTool.getOptionPanel()]);
         this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings","images/settingsSprite.png");
@@ -2333,12 +2357,14 @@ class DrawingScreen {
     rotateOnlyOneColor:boolean;
     blendAlphaOnPaste:boolean;
     blendAlphaOnPutSelectedPixels:boolean;
+    antiAliasRotation:boolean;
 
     constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, palette:Pallette, offset:Array<number>, dimensions:Array<number>)
     {
         const bounds:Array<number> = [Math.ceil(canvas.width / dim[0]) * dim[0], Math.ceil(canvas.height / dim[1]) * dim[1]];
         this.palette = palette;
         this.noColor = new RGB(255, 255, 255, 0);
+        this.antiAliasRotation = true;
         this.screenBufUnlocked = true;
         this.blendAlphaOnPutSelectedPixels = true;
         this.ignoreAlphaInFill = false;
@@ -2669,9 +2695,14 @@ class DrawingScreen {
         {
             for(let j = i; j < i+8; j += 2)
             {
-
-                vec[0] = this.dragData.second[j];
-                vec[1] = this.dragData.second[j+1];
+                if(this.antiAliasRotation){
+                    vec[0] = this.dragData.second[j];
+                    vec[1] = this.dragData.second[j+1];
+                }
+                else {
+                    vec[0] = Math.round(this.dragData.second[j]);
+                    vec[1] = Math.round(this.dragData.second[j+1]);
+                }
                 vec[2] = 1;
                 let transformed:number[] = matByVec(finalTransformationMatrix, vec);
                 const point:number =  Math.floor(transformed[0]) + Math.floor(transformed[1]) * this.dimensions.first;
