@@ -474,7 +474,7 @@ class GuiButton {
         this.pressed = false;
         this.focused = true;
         this.callback = callBack;
-        this.font = new FontFace("button_custom", 'url(/fonts/VCR_OSD_MONO_1.001.ttf)');
+        this.font = new FontFace("button_custom", 'url(/fonts/Minecraft.ttf)');
         this.font.load().then((loaded_face) => {
             document.fonts.add(loaded_face);
             this.drawInternal();
@@ -700,7 +700,7 @@ class GuiTextBox {
         if (customFontFace)
             this.font = customFontFace;
         else
-            this.font = new FontFace(`textbox_custom${GuiTextBox.textBoxRunningNumber}`, 'url(/fonts/VCR_OSD_MONO_1.001.ttf)');
+            this.font = new FontFace(`textbox_custom${GuiTextBox.textBoxRunningNumber}`, 'url(/fonts/Minecraft.ttf)');
         this.font.load().then((loaded_face) => {
             document.fonts.add(loaded_face);
             this.drawInternalAndClear();
@@ -1273,7 +1273,7 @@ class ColorPickerTool extends Tool {
         super(toolName, pathToImage);
         this.field = field;
         this.layoutManager = new SimpleGridLayoutManager([1, 3], [200, 100]);
-        this.tbColor = new GuiTextBox(true, 200, null, 13);
+        this.tbColor = new GuiTextBox(true, 200, null, 15);
         this.tbColor.promptText = "Enter RGBA color here (RGB 0-255 A 0-1):";
         this.setColorText();
         this.btUpdate = new GuiButton(() => {
@@ -1706,7 +1706,7 @@ class DrawingScreen {
         this.screenBuffer = new Array();
         this.selectionRect = [0, 0, 0, 0];
         this.pasteRect = [0, 0, 0, 0];
-        this.noColor = new RGB(0, 255, 255, 0);
+        this.noColor = new RGB(255, 255, 255, 0);
         for (let i = 0; i < dimensions[0] * dimensions[1]; i++) {
             this.screenBuffer.push(new RGB(this.noColor.red(), this.noColor.green(), this.noColor.blue(), this.noColor.alpha()));
         }
