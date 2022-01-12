@@ -624,7 +624,7 @@ class GuiButton implements GuiElement {
         this.pressed = false;
         this.focused = true;
         this.callback = callBack;
-        this.font = new FontFace(`button_custom${this.buttonID}`, 'url(/web/fonts/Minecraft.ttf)');
+        this.font = new FontFace(`button_custom${this.buttonID}`, 'url(/SpriteDraw/web/fonts/Minecraft.ttf)');
         this.font.load().then((loaded_face) =>{
             document.fonts.add(loaded_face);
             this.drawInternal();
@@ -935,7 +935,7 @@ class GuiTextBox implements GuiElement {
         if(customFontFace)
             this.font = customFontFace;
         else
-            this.font = new FontFace(`textbox_custom${GuiTextBox.textBoxRunningNumber}`, 'url(/web/fonts/Minecraft.ttf)');
+            this.font = new FontFace(`textbox_custom${GuiTextBox.textBoxRunningNumber}`, 'url(/SpriteDraw/web/fonts/Minecraft.ttf)');
         this.font.load().then((loaded_face) =>{
             document.fonts.add(loaded_face);
             this.drawInternalAndClear();
