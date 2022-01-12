@@ -1530,7 +1530,7 @@ class PenTool extends ExtendedTool {
     {
         super(toolName, pathToImage, optionPanes, [200, 130], [2,8]);
         this.lineWidth = strokeWith;
-        this.tbSize = new GuiTextBox(true, 80);
+        this.tbSize = new GuiTextBox(true, 80, null, 16, 34, GuiTextBox.top);
         this.tbSize.promptText = "Enter line width:";
         this.tbSize.setText(String(this.lineWidth));
         this.btUpdate = new GuiButton(() => { 
@@ -4513,7 +4513,6 @@ async function main()
     
     keyboardHandler.registerCallBack("keydown", e=> true, e => {
         field.color.copy(pallette.calcColor());
-        field.toolSelector.colorPickerTool.tbColor.setText(pallette.calcColor().htmlRBGA());
         if((document.getElementById('body') === document.activeElement || document.getElementById('screen') === document.activeElement)){
             if(e.code.substring(0,"Digit".length) === "Digit")
             {
@@ -4524,7 +4523,6 @@ async function main()
     });
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.color.copy(pallette.calcColor());
-        field.toolSelector.colorPickerTool.tbColor.setText(pallette.calcColor().htmlRBGA());
     });
     const fps = 40;
     const goalSleep = 1000/fps;
