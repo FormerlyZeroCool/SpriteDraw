@@ -2,7 +2,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 function changeFavicon(src) {
-    var link = document.createElement('link'), oldLink = document.getElementById('dynamic-favicon');
+    let link = document.createElement('link'), oldLink = document.getElementById('dynamic-favicon');
     link.id = 'dynamic-favicon';
     link.rel = 'shortcut icon';
     link.href = src;
@@ -11,7 +11,8 @@ function changeFavicon(src) {
     }
     document.head.appendChild(link);
 }
-changeFavicon('/SpriteDraw/web/images/favicon.ico');
+fetchImage('/SpriteDraw/web/images/favicon.ico').then((value) => changeFavicon('/SpriteDraw/web/images/favicon.ico'));
+fetchImage('images/favicon.ico').then((value) => changeFavicon('images/favicon.ico'));
 const dim = [128, 128];
 function threeByThreeMat(a, b) {
     return [a[0] * b[0] + a[1] * b[3] + a[2] * b[6],
