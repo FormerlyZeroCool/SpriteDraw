@@ -621,13 +621,9 @@ class GuiButton implements GuiElement {
     pressed:boolean;
     focused:boolean;
     font:FontFace;
-    static button_count:number = 0;
-    buttonID:number;
     fontName:string
     callback:() => void;constructor(callBack:() => void, text:string, width:number = 200, height:number = 50, fontSize:number = 12, pressedColor:RGB = new RGB(150, 150, 200, 1), unPressedColor:RGB = new RGB(255, 255, 255), fontName:string = "button_font")
     {
-        GuiButton.button_count++;
-        this.buttonID = GuiButton.button_count;
         this.text = text;
         this.fontSize = fontSize;
         this.dimensions = [width, height];
@@ -2533,7 +2529,7 @@ class DrawingScreen {
             this.screenBufUnlocked = true;
         }
     }
-    fillArea(startCoordinate:Pair<number>):void
+    async fillArea(startCoordinate:Pair<number>):Promise<void>
     {
         if(this.screenBufUnlocked)
         {
@@ -2552,8 +2548,12 @@ class DrawingScreen {
 
             stack.push(startIndex);
             const length:number = this.screenBuffer.length;
+            let counter:number = 0;
             while(stack.length > 0)
             {
+                counter++;
+                if((counter & ((2<<22) - 1)) === 0)
+                    await sleep(1);
                 const cur:number = stack.pop();
                 const pixelColor:RGB = this.screenBuffer[cur];
                 if(cur >= 0 && cur < length && 
@@ -2866,21 +2866,25 @@ class DrawingScreen {
             newKey += this.dimensions.first * this.dimensions.second;*/
         return (key) % (this.screenBuffer.length) + +(key<0) * this.screenBuffer.length;
     }
-    loadSprite(sprite:Sprite):void{
+    loadSprite(sprite:Sprite):void {
         sprite.copyToBuffer(this.screenBuffer);
         this.undoneUpdatesStack.empty();
         this.updatesStack.empty();
         this.updateLabelUndoRedoCount();
         this.repaint = true;
     }
-    saveDragDataToScreen():void
+    async saveDragDataToScreen():Promise<void>
     {
         if(this.dragData)
         {
+            let counter:number = 0;
             const color:RGB = new RGB(0,0,0,0);
             const dragDataColors = this.dragData.second;
             for(let i = 0; i < this.dragData.second.length; i += 9)
             {
+                counter++;
+                if((counter & ((2<<20) - 1)) === 0)
+                    await sleep(1);
                 const x:number = Math.floor(dragDataColors[i + 0] + this.dragData.first.first);
                 const y:number = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
                 let key:number = this.reboundKey(x + y * this.dimensions.first);
@@ -2895,15 +2899,19 @@ class DrawingScreen {
             this.repaint = true;
         }
     }
-    saveDragDataToScreenAntiAliased():void
+    async saveDragDataToScreenAntiAliased():Promise<void>
     {
         if(this.dragData)
         {
+            let counter:number = 0;
             const color0:RGB = new RGB(0,0,0,0);
             const color1:RGB = new RGB(0,0,0,0);
             const dragDataColors = this.dragData.second;
             const map:Map<number, number[]> = new Map<number,number[]>();
             for(let i = 0; i < this.dragData.second.length; i += 9){
+                counter++;
+                if((counter & ((2<<20) - 1)) === 0)
+                    await sleep(1);
                 const x1:number = dragDataColors[i + 0] + Math.floor(this.dragData.first.first);
                 const y1:number = dragDataColors[i + 1] + Math.floor(this.dragData.first.second);
                 const x2:number = dragDataColors[i + 2] + Math.floor(this.dragData.first.first);
@@ -2923,6 +2931,7 @@ class DrawingScreen {
                     {
                         for(let k = 0; k <= limit; k++)
                         {
+                            counter++;
                             const sub_x:number = Math.floor(k*ratio * deltaX + j*ratio * deltaX2 + x1);
                             const sub_y:number = Math.floor(k*ratio * deltaY + j*ratio * deltaY2 + y1);
                             const pixelIndex = sub_x + sub_y * this.dimensions.first;
@@ -3726,7 +3735,7 @@ class Sprite {
     }
 };
 class SpriteAnimation {
-    sprites:Array<Sprite>;
+    sprites:Sprite[];
     x:number;
     y:number;
     width:number;
@@ -3735,7 +3744,7 @@ class SpriteAnimation {
 
     constructor(x:number, y:number, width:number, height:number)
     {
-        this.sprites = new Array<Sprite>();
+        this.sprites = [];
         this.x = x;
         this.y = y;
         this.width = width;
@@ -4329,6 +4338,27 @@ class AnimationGroupsSelector {
     {
         return Math.floor(this.animationGroups.length / this.spritesPerRow) + 1;
     }  
+    binaryFileSize():number {
+        let size:number = 2;
+        this.animationGroups.forEach(el =>
+            size += el.first.binaryFileSize());
+        return size;
+    }
+    buildFromBinary(binary:Uint32Array):void
+    {
+        const groups:AnimationGroup[] = this.animationGroup().buildFromBinary(binary);
+        this.animationGroups = [];
+        this.selectedAnimationGroup = 0;
+        groups.forEach(el => {
+            this.animationGroups.push(new Pair(el, new Pair(0,0)));
+        })
+    }
+    save():void {
+        var a = document.createElement("a");
+        a.href = window.URL.createObjectURL(new Blob([this.animationGroup().toBinary()], {type: "application/octet-stream"}));
+        a.download = "demo.txt";
+        a.click();
+    }
     autoResizeCanvas()
     {
         if(this.animationGroup())
@@ -4563,7 +4593,7 @@ async function main()
     });
     const save_serverButton = document.getElementById("save_server");
     if(save_serverButton)
-        save_serverButton.addEventListener("mousedown", e => logToServer({animation:animationGroupSelector.animationGroup().animations[animationGroupSelector.animationGroup().selectedAnimation]}))
+        save_serverButton.addEventListener("mousedown", e => animationGroupSelector.save())
     
     keyboardHandler.registerCallBack("keydown", e=> true, e => {
         field.color.copy(pallette.calcColor());

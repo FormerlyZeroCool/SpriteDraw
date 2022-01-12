@@ -474,8 +474,6 @@ class SimpleGridLayoutManager {
 ;
 class GuiButton {
     constructor(callBack, text, width = 200, height = 50, fontSize = 12, pressedColor = new RGB(150, 150, 200, 1), unPressedColor = new RGB(255, 255, 255), fontName = "button_font") {
-        GuiButton.button_count++;
-        this.buttonID = GuiButton.button_count;
         this.text = text;
         this.fontSize = fontSize;
         this.dimensions = [width, height];
@@ -583,7 +581,6 @@ class GuiButton {
         ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
     }
 }
-GuiButton.button_count = 0;
 ;
 class GuiCheckBox {
     constructor(callBack, width = 50, height = 50, checked = false, unPressedColor = new RGB(245, 245, 245, 255), pressedColor = new RGB(150, 150, 200, 255), fontSize = height - 10) {
@@ -2059,7 +2056,7 @@ class DrawingScreen {
             this.screenBufUnlocked = true;
         }
     }
-    fillArea(startCoordinate) {
+    async fillArea(startCoordinate) {
         if (this.screenBufUnlocked) {
             this.screenBufUnlocked = false;
             let stack;
@@ -2074,7 +2071,11 @@ class DrawingScreen {
             const spc = new RGB(startPixel.red(), startPixel.green(), startPixel.blue(), startPixel.alpha());
             stack.push(startIndex);
             const length = this.screenBuffer.length;
+            let counter = 0;
             while (stack.length > 0) {
+                counter++;
+                if ((counter & ((2 << 22) - 1)) === 0)
+                    await sleep(1);
                 const cur = stack.pop();
                 const pixelColor = this.screenBuffer[cur];
                 if (cur >= 0 && cur < length &&
@@ -2353,11 +2354,15 @@ class DrawingScreen {
         this.updateLabelUndoRedoCount();
         this.repaint = true;
     }
-    saveDragDataToScreen() {
+    async saveDragDataToScreen() {
         if (this.dragData) {
+            let counter = 0;
             const color = new RGB(0, 0, 0, 0);
             const dragDataColors = this.dragData.second;
             for (let i = 0; i < this.dragData.second.length; i += 9) {
+                counter++;
+                if ((counter & ((2 << 20) - 1)) === 0)
+                    await sleep(1);
                 const x = Math.floor(dragDataColors[i + 0] + this.dragData.first.first);
                 const y = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
                 let key = this.reboundKey(x + y * this.dimensions.first);
@@ -2371,13 +2376,17 @@ class DrawingScreen {
             this.repaint = true;
         }
     }
-    saveDragDataToScreenAntiAliased() {
+    async saveDragDataToScreenAntiAliased() {
         if (this.dragData) {
+            let counter = 0;
             const color0 = new RGB(0, 0, 0, 0);
             const color1 = new RGB(0, 0, 0, 0);
             const dragDataColors = this.dragData.second;
             const map = new Map();
             for (let i = 0; i < this.dragData.second.length; i += 9) {
+                counter++;
+                if ((counter & ((2 << 20) - 1)) === 0)
+                    await sleep(1);
                 const x1 = dragDataColors[i + 0] + Math.floor(this.dragData.first.first);
                 const y1 = dragDataColors[i + 1] + Math.floor(this.dragData.first.second);
                 const x2 = dragDataColors[i + 2] + Math.floor(this.dragData.first.first);
@@ -2394,6 +2403,7 @@ class DrawingScreen {
                 const percent = 1 / (limit * limit);
                 for (let j = 0; j <= limit; j++) {
                     for (let k = 0; k <= limit; k++) {
+                        counter++;
                         const sub_x = Math.floor(k * ratio * deltaX + j * ratio * deltaX2 + x1);
                         const sub_y = Math.floor(k * ratio * deltaY + j * ratio * deltaY2 + y1);
                         const pixelIndex = sub_x + sub_y * this.dimensions.first;
@@ -3037,7 +3047,7 @@ class Sprite {
 ;
 class SpriteAnimation {
     constructor(x, y, width, height) {
-        this.sprites = new Array();
+        this.sprites = [];
         this.x = x;
         this.y = y;
         this.width = width;
@@ -3496,6 +3506,25 @@ class AnimationGroupsSelector {
     neededRowsInCanvas() {
         return Math.floor(this.animationGroups.length / this.spritesPerRow) + 1;
     }
+    binaryFileSize() {
+        let size = 2;
+        this.animationGroups.forEach(el => size += el.first.binaryFileSize());
+        return size;
+    }
+    buildFromBinary(binary) {
+        const groups = this.animationGroup().buildFromBinary(binary);
+        this.animationGroups = [];
+        this.selectedAnimationGroup = 0;
+        groups.forEach(el => {
+            this.animationGroups.push(new Pair(el, new Pair(0, 0)));
+        });
+    }
+    save() {
+        var a = document.createElement("a");
+        a.href = window.URL.createObjectURL(new Blob([this.animationGroup().toBinary()], { type: "application/octet-stream" }));
+        a.download = "demo.txt";
+        a.click();
+    }
     autoResizeCanvas() {
         if (this.animationGroup()) {
             this.canvas.width = this.renderWidth * this.spritesPerRow;
@@ -3692,7 +3721,7 @@ async function main() {
     });
     const save_serverButton = document.getElementById("save_server");
     if (save_serverButton)
-        save_serverButton.addEventListener("mousedown", e => logToServer({ animation: animationGroupSelector.animationGroup().animations[animationGroupSelector.animationGroup().selectedAnimation] }));
+        save_serverButton.addEventListener("mousedown", e => animationGroupSelector.save());
     keyboardHandler.registerCallBack("keydown", e => true, e => {
         field.color.copy(pallette.calcColor());
         if ((document.getElementById('body') === document.activeElement || document.getElementById('screen') === document.activeElement)) {
