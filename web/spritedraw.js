@@ -1534,7 +1534,7 @@ class CopyPasteTool extends ExtendedTool {
         this.blendAlpha.refresh();
         this.localLayout.addElement(new GuiLabel("Clipboard:", 200, 16));
         this.localLayout.addElement(clipBoard);
-        this.localLayout.addElement(new GuiLabel("Preserve transparency:", 200, 13));
+        this.localLayout.addElement(new GuiLabel("Preserve\ntransparency:", 200, 16, GuiTextBox.bottom | GuiTextBox.left, 40));
         this.localLayout.addElement(this.blendAlpha);
     }
 }
