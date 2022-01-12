@@ -1557,7 +1557,7 @@ class FillTool extends ExtendedTool {
         super(name, path, optionPanes, [200, 150], [30, 10]);
         this.checkIgnoreAlpha = new GuiCheckBox(updateIgnoreSameColorBoundaries);
         this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
-        this.localLayout.addElement(new GuiLabel("Ignore Alpha:", 130, 14, GuiTextBox.bottom, 35));
+        this.localLayout.addElement(new GuiLabel("Ignore Alpha:", 130, 16, GuiTextBox.bottom, 35));
         this.localLayout.addElement(this.checkIgnoreAlpha);
     }
 };
