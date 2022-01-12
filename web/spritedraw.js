@@ -1,6 +1,17 @@
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+function changeFavicon(src) {
+    var link = document.createElement('link'), oldLink = document.getElementById('dynamic-favicon');
+    link.id = 'dynamic-favicon';
+    link.rel = 'shortcut icon';
+    link.href = src;
+    if (oldLink) {
+        document.head.removeChild(oldLink);
+    }
+    document.head.appendChild(link);
+}
+changeFavicon('/SpriteDraw/web/images/favicon.ico');
 const dim = [128, 128];
 function threeByThreeMat(a, b) {
     return [a[0] * b[0] + a[1] * b[3] + a[2] * b[6],
@@ -716,8 +727,10 @@ class GuiTextBox {
         this.fontName = fontName;
         //if(document.fonts.check(`16px ${this.fontName}`))
         {
-            if (customFontFace)
+            if (customFontFace) {
                 this.font = customFontFace;
+                this.font.family;
+            }
             else
                 this.font = new FontFace(fontName, 'url(/SpriteDraw/web/fonts/Minecraft.ttf)');
             this.font.load().then((loaded_face) => {
