@@ -1315,11 +1315,10 @@ class PenTool extends ExtendedTool {
 }
 PenTool.checkDrawCircular = new GuiCheckBox(null, 40, 40);
 ;
-class ColorPickerTool extends Tool {
-    constructor(field, toolName = "colorPicker", pathToImage = "images/colorPickerSprite.png") {
-        super(toolName, pathToImage);
+class ColorPickerTool extends ExtendedTool {
+    constructor(field, toolName = "colorPicker", pathToImage = "images/colorPickerSprite.png", optionPanes = []) {
+        super(toolName, pathToImage, optionPanes, [200, 100], [1, 3]);
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager([1, 3], [200, 100]);
         this.tbColor = new GuiTextBox(true, 200, null, 16);
         this.tbColor.promptText = "Enter RGBA color here (RGB 0-255 A 0-1):";
         this.setColorText();
@@ -1328,9 +1327,9 @@ class ColorPickerTool extends Tool {
             this.field.color = this.field.palette.calcColor();
         }, "Update", 75, this.tbColor.height(), 16);
         this.tbColor.submissionButton = this.btUpdate;
-        this.layoutManager.addElement(new GuiLabel("Color:", 150, 16));
-        this.layoutManager.addElement(this.tbColor);
-        this.layoutManager.addElement(this.btUpdate);
+        this.localLayout.addElement(new GuiLabel("Color:", 150, 16));
+        this.localLayout.addElement(this.tbColor);
+        this.localLayout.addElement(this.btUpdate);
     }
     color() {
         return this.field.color;
@@ -1827,19 +1826,19 @@ class ToolSelector {
                 field.repaint = repaint;
             });
         }
-        this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png");
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.slow = !field.slow);
+        this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png", [this.undoTool.getOptionPanel()]);
         this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.rotateOnlyOneColor = this.rotateTool.checkBox.checked, () => field.antiAliasRotation = this.rotateTool.checkBoxAntiAlias.checked, [this.undoTool.getOptionPanel()]);
         this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.dragOnlyOneColor = this.dragTool.checkBox.checked, () => field.blendAlphaOnPutSelectedPixels = this.dragTool.checkBox_blendAlpha.checked, [this.undoTool.getOptionPanel()]);
         this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings", "images/settingsSprite.png");
         this.copyTool = new CopyPasteTool("copy", "images/copySprite.png", [this.undoTool.getOptionPanel()], field.clipBoard, () => field.blendAlphaOnPaste = this.copyTool.blendAlpha.checked);
         PenTool.checkDrawCircular.checked = true;
         PenTool.checkDrawCircular.refresh();
-        this.penTool = new PenTool(field.suggestedLineWidth(), "pen", "images/penSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()]);
+        this.penTool = new PenTool(field.suggestedLineWidth(), "pen", "images/penSprite.png", [this.colorPickerTool.getOptionPanel()]);
         this.penTool.activateOptionPanel();
         this.eraserTool = new PenTool(field.suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png", [this.undoTool.getOptionPanel()]);
         PenTool.checkDrawCircular.callback = () => field.drawCircular = PenTool.checkDrawCircular.checked;
-        this.fillTool = new FillTool("fill", "images/fillSprite.png", [this.colorPickerTool.getOptionPanel(), this.undoTool.getOptionPanel()], () => {
+        this.fillTool = new FillTool("fill", "images/fillSprite.png", [this.colorPickerTool.getOptionPanel()], () => {
             field.ignoreAlphaInFill = this.fillTool.checkIgnoreAlpha.checked;
         });
         this.toolArray = [];
