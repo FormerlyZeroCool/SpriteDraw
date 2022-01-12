@@ -1277,7 +1277,7 @@ class PenTool extends ExtendedTool {
         this.btUpdate = new GuiButton(() => {
             this.lineWidth = this.tbSize.asNumber.get() ? (this.tbSize.asNumber.get() <= 128 ? this.tbSize.asNumber.get() : 128) : this.lineWidth;
             this.tbSize.setText(String(this.lineWidth));
-        }, "Update", 50, this.tbSize.height(), 12);
+        }, "Update", 75, this.tbSize.height(), 16);
         this.tbSize.submissionButton = this.btUpdate;
         this.localLayout.addElement(new GuiLabel("Line width:", 200, 16, GuiTextBox.bottom));
         this.localLayout.addElement(this.tbSize);
@@ -1322,7 +1322,7 @@ class ColorPickerTool extends Tool {
         this.btUpdate = new GuiButton(() => {
             this.field.palette.setSelectedColor(this.tbColor.text);
             this.field.color = this.field.palette.calcColor();
-        }, "Update", 50, this.tbColor.height(), 12);
+        }, "Update", 75, this.tbColor.height(), 16);
         this.tbColor.submissionButton = this.btUpdate;
         this.layoutManager.addElement(new GuiLabel("Color:", 150, 16));
         this.layoutManager.addElement(this.tbColor);
