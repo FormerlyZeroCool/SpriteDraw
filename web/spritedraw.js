@@ -461,7 +461,7 @@ class SimpleGridLayoutManager {
 }
 ;
 class GuiButton {
-    constructor(callBack, text, width = 200, height = 50, fontSize = 12, pressedColor = new RGB(150, 150, 200, 1), unPressedColor = new RGB(255, 255, 255)) {
+    constructor(callBack, text, width = 200, height = 50, fontSize = 12, pressedColor = new RGB(150, 150, 200, 1), unPressedColor = new RGB(255, 255, 255), fontName = "button_font") {
         GuiButton.button_count++;
         this.buttonID = GuiButton.button_count;
         this.text = text;
@@ -476,20 +476,24 @@ class GuiButton {
         this.pressed = false;
         this.focused = true;
         this.callback = callBack;
-        this.font = new FontFace(`button_custom${this.buttonID}`, 'url(/SpriteDraw/web/fonts/Minecraft.ttf)');
-        this.font.load().then((loaded_face) => {
-            document.fonts.add(loaded_face);
-            this.drawInternal();
-        }, (error) => {
-            this.font = new FontFace(`button_custom${this.buttonID}`, 'url(/fonts/Minecraft.ttf)');
-            this.font.load().then(loaded_face => {
+        this.fontName = fontName;
+        //if(document.fonts.check(`16px ${this.fontName}`, "a"))
+        {
+            this.font = new FontFace(`${this.fontName}`, 'url(/SpriteDraw/web/fonts/Minecraft.ttf)');
+            this.font.load().then((loaded_face) => {
                 document.fonts.add(loaded_face);
                 this.drawInternal();
             }, (error) => {
-                console.log(error.message);
-                this.drawInternal();
+                this.font = new FontFace(`${this.fontName}`, 'url(/fonts/Minecraft.ttf)');
+                this.font.load().then(loaded_face => {
+                    document.fonts.add(loaded_face);
+                    this.drawInternal();
+                }, (error) => {
+                    console.log(error.message);
+                    this.drawInternal();
+                });
             });
-        });
+        }
     }
     handleKeyBoardEvents(type, e) {
         if (this.active()) {
@@ -547,7 +551,7 @@ class GuiButton {
             ctx.fillStyle = this.pressedColor.htmlRBG();
         else
             ctx.fillStyle = this.unPressedColor.htmlRBG();
-        ctx.font = this.fontSize + `px button_custom${this.buttonID}`;
+        ctx.font = this.fontSize + `px ${this.fontName}`;
     }
     refresh() {
         this.drawInternal();
@@ -687,7 +691,7 @@ class Optional {
 }
 ;
 class GuiTextBox {
-    constructor(keyListener, width, submit = null, fontSize = 16, height = 2 * fontSize, flags = GuiTextBox.default, selectedColor = new RGB(80, 80, 220), unSelectedColor = new RGB(100, 100, 100), customFontFace = null) {
+    constructor(keyListener, width, submit = null, fontSize = 16, height = 2 * fontSize, flags = GuiTextBox.default, selectedColor = new RGB(80, 80, 220), unSelectedColor = new RGB(100, 100, 100), fontName = "textBox_default", customFontFace = null) {
         GuiTextBox.textBoxRunningNumber++;
         this.textBoxId = GuiTextBox.textBoxRunningNumber;
         this.cursor = 0;
@@ -709,23 +713,27 @@ class GuiTextBox {
         this.ctx = this.canvas.getContext("2d");
         this.dimensions = [width, height];
         this.fontSize = fontSize;
-        if (customFontFace)
-            this.font = customFontFace;
-        else
-            this.font = new FontFace(`textbox_custom${GuiTextBox.textBoxRunningNumber}`, 'url(/SpriteDraw/web/fonts/Minecraft.ttf)');
-        this.font.load().then((loaded_face) => {
-            document.fonts.add(loaded_face);
-            this.drawInternalAndClear();
-        }, (error) => {
-            this.font = new FontFace(`textbox_custom${this.textBoxId}`, 'url(/fonts/Minecraft.ttf)');
-            this.font.load().then(loaded_face => {
+        this.fontName = fontName;
+        //if(document.fonts.check(`16px ${this.fontName}`))
+        {
+            if (customFontFace)
+                this.font = customFontFace;
+            else
+                this.font = new FontFace(fontName, 'url(/SpriteDraw/web/fonts/Minecraft.ttf)');
+            this.font.load().then((loaded_face) => {
                 document.fonts.add(loaded_face);
-                this.refresh();
+                this.drawInternalAndClear();
             }, (error) => {
-                console.log(error.message);
-                this.refresh();
+                this.font = new FontFace(fontName, 'url(/fonts/Minecraft.ttf)');
+                this.font.load().then(loaded_face => {
+                    document.fonts.add(loaded_face);
+                    this.refresh();
+                }, (error) => {
+                    console.log(error.message);
+                    this.refresh();
+                });
             });
-        });
+        }
     }
     //take scaled pos calc delta from cursor pos
     //
@@ -891,7 +899,7 @@ class GuiTextBox {
     setCtxState() {
         this.ctx.strokeStyle = "#000000";
         this.ctx.fillStyle = "#FFFFFF";
-        this.ctx.font = this.fontSize + `px textbox_custom${this.textBoxId}`;
+        this.ctx.font = this.fontSize + `px ${this.fontName}`;
     }
     width() {
         return this.dimensions[0];
