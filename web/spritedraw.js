@@ -833,7 +833,6 @@ class GuiTextBox {
                                 else if (GuiTextBox.specialChars[e.code]) {
                                     //todo
                                 }
-                                console.log(e.code);
                             }
                     }
                     if (!isNaN(Number(this.text))) {
@@ -1105,8 +1104,8 @@ class ToolBarItem {
         return this.toolImage.name;
     }
     drawImage(ctx, x, y, width, height) {
-        if (this.toolImage.image) {
-            ctx.drawImage(this.toolImage.image, x, y, width, height);
+        if (this.image()) {
+            ctx.drawImage(this.image(), x, y, width, height);
         }
     }
 }
@@ -1553,17 +1552,21 @@ class GuiToolBar {
     constructor(renderDim, tools = []) {
         this.focused = false;
         this.selected = 0;
-        this.vertical = false;
+        this.vertical = true;
+        this.toolsPerRow = 10;
         this.toolRenderDim = [renderDim[0], renderDim[1]];
         this.tools = tools;
         this.canvas = document.createElement("canvas");
         this.canvas.height = this.height();
         this.canvas.width = this.width();
         this.ctx = this.canvas.getContext("2d");
+        this.ctx.fillStyle = "#FFFFFF";
     }
     resize(width = this.width(), height = this.height()) {
         this.canvas.width = width;
         this.canvas.height = height;
+        this.ctx = this.canvas.getContext("2d");
+        this.ctx.fillStyle = "#FFFFFF";
     }
     active() {
         return this.focused;
@@ -1576,7 +1579,7 @@ class GuiToolBar {
     }
     width() {
         if (this.vertical)
-            return this.toolRenderDim[0] * Math.floor(this.tools.length / this.toolsPerRow);
+            return this.toolRenderDim[0] * (1 + Math.floor(this.tools.length / this.toolsPerRow));
         else
             return this.toolRenderDim[0] * this.toolsPerRow;
     }
@@ -1584,9 +1587,10 @@ class GuiToolBar {
         if (this.vertical)
             return this.toolRenderDim[1] * this.toolsPerRow;
         else
-            return this.toolRenderDim[1] * Math.floor(this.tools.length / this.toolsPerRow);
+            return this.toolRenderDim[1] * (1 + Math.floor(this.tools.length / this.toolsPerRow));
     }
     refresh() {
+        this.ctx.fillRect(0, 0, this.width(), this.height());
         for (let i = 0; i < this.tools.length; i++) {
             let gridX = 0;
             let gridY = 0;
@@ -1601,12 +1605,15 @@ class GuiToolBar {
             }
             const pixelX = gridX * this.toolRenderDim[0];
             const pixelY = gridY * this.toolRenderDim[1];
-            const image = this.tools[i].toolImage.image;
+            const image = this.tools[i].image();
             if (image) {
                 this.ctx.drawImage(image, pixelX, pixelY, this.toolRenderDim[0], this.toolRenderDim[1]);
             }
             else {
                 console.log("Still loading image for: ", this.tools[i].name());
+            }
+            if (this.selected === i) {
+                this.ctx.strokeRect(pixelX, pixelY, this.toolRenderDim[0], this.toolRenderDim[1]);
             }
         }
     }
@@ -1640,12 +1647,12 @@ class GuiToolBar {
 // To do refactor tools to make sure they load in the same order every time
 class ToolSelector {
     constructor(field, keyboardHandler, imgWidth = 50, imgHeight = 50) {
-        this.imgWidth = imgWidth;
         this.lastDrawTime = Date.now();
+        this.toolBar = new GuiToolBar([50, 50], []);
+        this.toolBar.toolRenderDim[1] = imgHeight;
+        this.toolBar.toolRenderDim[0] = imgWidth;
         this.sprayPaint = false;
         this.repaint = false;
-        this.imgHeight = imgHeight;
-        this.selectedTool = 0;
         this.toolPixelDim = [imgWidth, imgHeight * 10];
         this.canvas = document.getElementById("tool_selector_screen");
         this.keyboardHandler = keyboardHandler;
@@ -1653,19 +1660,19 @@ class ToolSelector {
         this.keyboardHandler.registerCallBack("keyup", e => this.tool().getOptionPanel(), e => { this.tool().getOptionPanel().handleKeyBoardEvents("keyup", e); this.repaint = true; });
         this.keyboardHandler.registerCallBack("keydown", e => { if (e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "ArrowLeft" || e.code === "ArrowRight")
             return true; }, e => {
-            const imgPerColumn = (this.canvas.height / this.imgHeight);
+            const imgPerColumn = (this.canvas.height / this.toolBar.toolRenderDim[1]);
             if ((this.keyboardHandler.keysHeld["AltLeft"] || this.keyboardHandler.keysHeld["AltRight"]) && (document.activeElement.id === "body" || field.canvas === document.activeElement || this.canvas === document.activeElement)) {
                 e.preventDefault();
-                let newToolIndex = this.selectedTool;
+                let newToolIndex = this.selected();
                 if (e.code === "ArrowUp") {
-                    if (this.selectedTool !== 0)
+                    if (this.selected() !== 0)
                         newToolIndex--;
                     else
-                        newToolIndex = this.toolArray.length - 1;
+                        newToolIndex = this.toolBar.tools.length - 1;
                 }
                 else if (e.code === "ArrowDown") {
                     newToolIndex++;
-                    newToolIndex %= this.toolArray.length;
+                    newToolIndex %= this.toolBar.tools.length;
                 }
                 else if (e.code === "ArrowLeft") {
                     if (newToolIndex >= imgPerColumn)
@@ -1674,14 +1681,14 @@ class ToolSelector {
                         newToolIndex = 0;
                 }
                 else if (e.code === "ArrowRight") {
-                    if (this.toolArray.length - newToolIndex > imgPerColumn)
+                    if (this.toolBar.tools.length - newToolIndex > imgPerColumn)
                         newToolIndex += imgPerColumn;
                     else
-                        newToolIndex = this.toolArray.length - 1;
+                        newToolIndex = this.toolBar.tools.length - 1;
                 }
-                if (this.tool() && this.selectedTool !== newToolIndex) {
+                if (this.tool() && this.selected() !== newToolIndex) {
                     this.tool().deactivateOptionPanel();
-                    this.selectedTool = newToolIndex;
+                    this.toolBar.selected = newToolIndex;
                     this.tool().activateOptionPanel();
                 }
             }
@@ -1708,23 +1715,23 @@ class ToolSelector {
         });
         this.touchListener.registerCallBack("touchstart", e => true, e => {
             document.activeElement.blur();
-            const previousTool = this.selectedTool;
-            const imgPerColumn = (this.canvas.height / this.imgHeight);
-            const y = Math.floor(e.touchPos[1] / this.imgHeight);
-            const x = Math.floor(e.touchPos[0] / this.imgWidth);
+            const previousTool = this.selected();
+            const imgPerColumn = (this.canvas.height / this.toolBar.toolRenderDim[1]);
+            const y = Math.floor(e.touchPos[1] / this.toolBar.toolRenderDim[1]);
+            const x = Math.floor(e.touchPos[0] / this.toolBar.toolRenderDim[0]);
             const clicked = y + x * imgPerColumn;
-            if (clicked >= 0 && clicked < this.toolArray.length) {
+            if (clicked >= 0 && clicked < this.toolBar.tools.length) {
                 if (this.tool())
                     this.tool().deactivateOptionPanel();
-                this.selectedTool = clicked;
+                this.toolBar.selected = clicked;
             }
             if (this.selectedToolName() === "undo") {
                 field.undoLast().then(() => this.undoTool.updateLabel(field.undoneUpdatesStack.length(), field.updatesStack.length()));
-                this.selectedTool = previousTool;
+                this.toolBar.selected = previousTool;
             }
             else if (this.selectedToolName() === "redo") {
                 field.redoLast().then(() => this.undoTool.updateLabel(field.undoneUpdatesStack.length(), field.updatesStack.length()));
-                this.selectedTool = previousTool;
+                this.toolBar.selected = previousTool;
             }
             if (this.tool()) {
                 this.tool().activateOptionPanel();
@@ -1937,21 +1944,22 @@ class ToolSelector {
         this.fillTool = new FillTool("fill", "images/fillSprite.png", [this.colorPickerTool.getOptionPanel()], () => {
             field.ignoreAlphaInFill = this.fillTool.checkIgnoreAlpha.checked;
         });
-        this.toolArray = [];
-        this.toolArray.push(this.penTool);
-        this.toolArray.push(this.fillTool);
-        this.toolArray.push(new PenViewTool(this.penTool, "line", "images/LineDrawSprite.png"));
-        this.toolArray.push(new PenViewTool(this.penTool, "rect", "images/rectSprite.png"));
-        this.toolArray.push(new PenViewTool(this.penTool, "oval", "images/ovalSprite.png"));
-        this.toolArray.push(this.copyTool);
-        this.toolArray.push(new ViewLayoutTool(this.copyTool.getOptionPanel(), "paste", "images/pasteSprite.png"));
-        this.toolArray.push(this.dragTool);
-        this.toolArray.push(new ViewLayoutTool(this.undoTool.getOptionPanel(), "redo", "images/redoSprite.png"));
-        this.toolArray.push(this.undoTool);
-        this.toolArray.push(this.colorPickerTool);
-        this.toolArray.push(this.eraserTool);
-        this.toolArray.push(this.rotateTool);
-        this.toolArray.push(this.settingsTool);
+        this.toolBar.tools = [];
+        this.toolBar.tools.push(this.penTool);
+        this.toolBar.tools.push(this.fillTool);
+        this.toolBar.tools.push(new PenViewTool(this.penTool, "line", "images/LineDrawSprite.png"));
+        this.toolBar.tools.push(new PenViewTool(this.penTool, "rect", "images/rectSprite.png"));
+        this.toolBar.tools.push(new PenViewTool(this.penTool, "oval", "images/ovalSprite.png"));
+        this.toolBar.tools.push(this.copyTool);
+        this.toolBar.tools.push(new ViewLayoutTool(this.copyTool.getOptionPanel(), "paste", "images/pasteSprite.png"));
+        this.toolBar.tools.push(this.dragTool);
+        this.toolBar.tools.push(new ViewLayoutTool(this.undoTool.getOptionPanel(), "redo", "images/redoSprite.png"));
+        this.toolBar.tools.push(this.undoTool);
+        this.toolBar.tools.push(this.colorPickerTool);
+        this.toolBar.tools.push(this.eraserTool);
+        this.toolBar.tools.push(this.rotateTool);
+        this.toolBar.tools.push(this.settingsTool);
+        this.toolBar.resize();
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = "#000000";
@@ -1959,17 +1967,20 @@ class ToolSelector {
         this.repaint = true;
         this.lastDrawTime = Date.now();
     }
+    selected() {
+        return this.toolBar.selected;
+    }
     updateColorPickerTextBox() {
         this.colorPickerTool.setColorText();
         this.repaint = true;
     }
     resizeCanvas() {
-        const imgPerColumn = (this.toolPixelDim[1] / this.imgHeight);
-        const imgPerRow = (this.toolPixelDim[0] / this.imgWidth);
-        if (this.tool() && this.tool().image() && this.toolArray.length > imgPerColumn * imgPerRow) {
-            this.toolPixelDim[0] = this.imgWidth * Math.ceil(this.toolArray.length / imgPerColumn);
+        const imgPerColumn = (this.toolPixelDim[1] / this.toolBar.toolRenderDim[1]);
+        const imgPerRow = (this.toolPixelDim[0] / this.toolBar.toolRenderDim[0]);
+        if (this.tool() && this.tool().image() && this.toolBar.tools.length > imgPerColumn * imgPerRow) {
+            this.toolPixelDim[0] = this.toolBar.toolRenderDim[0] * Math.ceil(this.toolBar.tools.length / imgPerColumn);
             this.canvas.width = this.toolPixelDim[0] + this.tool().optionPanelSize()[0];
-            this.toolPixelDim[1] = this.imgHeight * 10;
+            this.toolPixelDim[1] = this.toolBar.toolRenderDim[1] * 10;
             this.canvas.height = this.toolPixelDim[1] > this.tool().height() ? this.toolPixelDim[1] : this.tool().height();
             this.ctx = this.canvas.getContext("2d");
             this.ctx.fillStyle = "#FFFFFF";
@@ -1980,16 +1991,13 @@ class ToolSelector {
             this.repaint = false;
             this.lastDrawTime = Date.now();
             this.resizeCanvas();
-            const imgPerColumn = (this.toolPixelDim[1] / this.imgHeight);
-            const imgPerRow = (this.toolPixelDim[0] / this.imgWidth);
+            const imgPerColumn = (this.toolPixelDim[1] / this.toolBar.toolRenderDim[1]);
+            const imgPerRow = (this.toolPixelDim[0] / this.toolBar.toolRenderDim[0]);
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            for (let i = 0; i < this.toolArray.length; i++) {
-                if (this.toolArray[i].image())
-                    this.toolArray[i].drawImage(this.ctx, Math.floor(i / imgPerColumn) * this.imgWidth, i * this.toolArray[i].image().height % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
-            }
-            this.ctx.strokeRect(Math.floor(this.selectedTool / imgPerColumn) * this.imgWidth, this.selectedTool * this.imgHeight % (imgPerColumn * this.imgHeight), this.imgWidth, this.imgHeight);
+            this.toolBar.refresh();
+            this.toolBar.draw(this.ctx, 0, 0);
             if (this.tool()) {
-                this.tool().drawOptionPanel(this.ctx, this.imgWidth * imgPerRow, 0);
+                this.toolBar.tools[this.selected()].drawOptionPanel(this.ctx, this.toolBar.toolRenderDim[0] * imgPerRow, 0);
             }
         }
     }
@@ -1999,8 +2007,8 @@ class ToolSelector {
         return null;
     }
     tool() {
-        if (this.selectedTool >= 0 && this.selectedTool < this.toolArray.length) {
-            return this.toolArray[this.selectedTool];
+        if (this.selected() >= 0 && this.selected() < this.toolBar.tools.length) {
+            return this.toolBar.tools[this.selected()];
         }
         return null;
     }
