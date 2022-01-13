@@ -1313,6 +1313,7 @@ class PenTool extends ExtendedTool {
         return this.lineWidth;
     }
 }
+PenTool.checkboxSprayPaint = new GuiCheckBox(null, 40, 40);
 PenTool.checkDrawCircular = new GuiCheckBox(null, 40, 40);
 ;
 class ColorPickerTool extends ExtendedTool {
@@ -1542,11 +1543,60 @@ class CopyPasteTool extends ExtendedTool {
     }
 }
 ;
+class GuiToolBar {
+    constructor(renderDim, tools = []) {
+        this.focused = false;
+        this.vertical = false;
+        this.toolRenderDim = [renderDim[0], renderDim[1]];
+        this.tools = tools;
+        this.canvas = document.createElement("canvas");
+        this.canvas.height = this.height();
+        this.canvas.width = this.width();
+        this.ctx = this.canvas.getContext("2d");
+    }
+    resize(width = this.width(), height = this.height()) {
+        this.canvas.width = width;
+        this.canvas.height = height;
+    }
+    active() {
+        return this.focused;
+    }
+    deactivate() {
+        this.focused = false;
+    }
+    activate() {
+        this.focused = true;
+    }
+    width() {
+        if (this.vertical)
+            return this.toolRenderDim[0] * Math.floor(this.tools.length / this.toolsPerRow);
+        else
+            return this.toolRenderDim[0] * this.toolsPerRow;
+    }
+    height() {
+        if (this.vertical)
+            return this.toolRenderDim[1] * this.toolsPerRow;
+        return this.toolRenderDim[1] * Math.floor(this.tools.length / this.toolsPerRow);
+    }
+    refresh() {
+    }
+    draw(ctx, x, y, offsetX, offsetY) {
+    }
+    handleKeyBoardEvents(type, e) {
+    }
+    handleTouchEvents(type, e) {
+    }
+    isLayoutManager() {
+        return false;
+    }
+}
+;
 // To do refactor tools to make sure they load in the same order every time
 class ToolSelector {
     constructor(field, keyboardHandler, imgWidth = 50, imgHeight = 50) {
         this.imgWidth = imgWidth;
         this.lastDrawTime = Date.now();
+        this.sprayPaint = false;
         this.repaint = false;
         this.imgHeight = imgHeight;
         this.selectedTool = 0;
@@ -1775,11 +1825,11 @@ class ToolSelector {
                         break;
                     case ("pen"):
                         if (e.deltaX === 0 && e.deltaY === 0) {
-                            field.handleTap(e.touchPos[0], e.touchPos[1]);
+                            field.handleTap(e.touchPos[0], e.touchPos[1], field);
                         }
                         break;
                     case ("eraser"):
-                        field.handleTap(e.touchPos[0], e.touchPos[1]);
+                        field.handleTap(e.touchPos[0], e.touchPos[1], field);
                         field.color.copy(colorBackup);
                         break;
                     case ("rotate"):
@@ -1802,7 +1852,7 @@ class ToolSelector {
                         const x1 = e.touchPos[0] - e.deltaX;
                         const y1 = e.touchPos[1] - e.deltaY;
                         if (e.deltaX === 0 && e.deltaY === 0) {
-                            field.handleTap(e.touchPos[0], e.touchPos[1]);
+                            field.handleTap(e.touchPos[0], e.touchPos[1], field);
                         }
                         field.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                         break;
@@ -2038,7 +2088,47 @@ class DrawingScreen {
             this.screenBufUnlocked = true;
         }
     }
-    handleTap(px, py) {
+    handleTap(px, py, drawingScreen) {
+        const gx = Math.floor((px - drawingScreen.offset.first) / drawingScreen.bounds.first * drawingScreen.dimensions.first);
+        const gy = Math.floor((py - drawingScreen.offset.second) / drawingScreen.bounds.second * drawingScreen.dimensions.second);
+        if (gx < drawingScreen.dimensions.first && gy < drawingScreen.dimensions.second && drawingScreen.screenBufUnlocked) {
+            drawingScreen.screenBufUnlocked = false;
+            const radius = drawingScreen.lineWidth * 0.5;
+            if (drawingScreen.drawCircular) {
+                const radius = drawingScreen.lineWidth * 0.5;
+                for (let i = -0.5 * drawingScreen.lineWidth; i < radius; i++) {
+                    for (let j = -0.5 * drawingScreen.lineWidth; j < radius; j++) {
+                        const ngx = gx + Math.round(j);
+                        const ngy = (gy + Math.round(i));
+                        const dx = ngx - gx;
+                        const dy = ngy - gy;
+                        const pixel = drawingScreen.screenBuffer[ngx + ngy * drawingScreen.dimensions.first];
+                        if (pixel && !pixel.compare(drawingScreen.color) && Math.sqrt(dx * dx + dy * dy) <= radius) {
+                            drawingScreen.updatesStack.get(drawingScreen.updatesStack.length() - 1).push(new Pair(ngx + ngy * drawingScreen.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
+                            pixel.copy(drawingScreen.color);
+                        }
+                    }
+                }
+            }
+            else {
+                const radius = drawingScreen.lineWidth * 0.5;
+                for (let i = -0.5 * drawingScreen.lineWidth; i < radius; i++) {
+                    for (let j = -0.5 * drawingScreen.lineWidth; j < radius; j++) {
+                        const ngx = gx + Math.round(j);
+                        const ngy = (gy + Math.round(i));
+                        const pixel = drawingScreen.screenBuffer[ngx + ngy * drawingScreen.dimensions.first];
+                        if (pixel && !pixel.compare(drawingScreen.color)) {
+                            drawingScreen.updatesStack.get(drawingScreen.updatesStack.length() - 1).push(new Pair(ngx + ngy * drawingScreen.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
+                            pixel.copy(drawingScreen.color);
+                        }
+                    }
+                }
+            }
+            drawingScreen.repaint = true;
+            drawingScreen.screenBufUnlocked = true;
+        }
+    }
+    handleTapSprayPaint(px, py) {
         const gx = Math.floor((px - this.offset.first) / this.bounds.first * this.dimensions.first);
         const gy = Math.floor((py - this.offset.second) / this.bounds.second * this.dimensions.second);
         if (gx < this.dimensions.first && gy < this.dimensions.second && this.screenBufUnlocked) {
@@ -2224,16 +2314,16 @@ class DrawingScreen {
         }
         this.dragData.second = data;
     }
-    drawRect(start, end) {
-        this.drawLine(start, [start[0], end[1]]);
-        this.drawLine(start, [end[0], start[1]]);
-        this.drawLine([start[0], end[1]], end);
-        this.drawLine([end[0], start[1]], end);
+    drawRect(start, end, drawPoint = this.handleTap) {
+        this.drawLine(start, [start[0], end[1]], drawPoint);
+        this.drawLine(start, [end[0], start[1]], drawPoint);
+        this.drawLine([start[0], end[1]], end, drawPoint);
+        this.drawLine([end[0], start[1]], end, drawPoint);
     }
-    drawLine(start, end) {
-        this.handleDraw(start[0], end[0], start[1], end[1]);
+    drawLine(start, end, drawPoint = this.handleTap) {
+        this.handleDraw(start[0], end[0], start[1], end[1], drawPoint);
     }
-    handleDraw(x1, x2, y1, y2) {
+    handleDraw(x1, x2, y1, y2, drawPoint = this.handleTap) {
         //draw line from current touch pos to the touchpos minus the deltas
         //calc equation for line
         const deltaY = y2 - y1;
@@ -2246,7 +2336,7 @@ class DrawingScreen {
             const max = Math.max(x1, x2);
             for (let x = min; x < max; x += delta) {
                 const y = m * x + b;
-                this.handleTap(x, y);
+                drawPoint(x, y, this);
             }
         }
         else {
@@ -2254,12 +2344,12 @@ class DrawingScreen {
             const max = Math.max(y1, y2);
             for (let y = min; y < max; y += delta) {
                 const x = Math.abs(deltaX) > 0 ? (y - b) / m : x2;
-                this.handleTap(x, y);
+                drawPoint(x, y, this);
             }
         }
         this.repaint = true;
     }
-    handleEllipse(event) {
+    handleEllipse(event, drawPoint = this.handleTap) {
         const start_x = Math.min(event.touchPos[0] - event.deltaX, event.touchPos[0]);
         const end_x = Math.max(event.touchPos[0] - event.deltaX, event.touchPos[0]);
         const min_y = Math.min(event.touchPos[1] - event.deltaY, event.touchPos[1]);
@@ -2271,7 +2361,7 @@ class DrawingScreen {
         let last = [h + width * Math.cos(0), k + height * Math.sin(0)];
         for (let x = -0.1; x < 2 * Math.PI; x += 0.05) {
             const cur = [h + width * Math.cos(x), k + height * Math.sin(x)];
-            this.drawLine([last[0], last[1]], [cur[0], cur[1]]);
+            this.drawLine([last[0], last[1]], [cur[0], cur[1]], drawPoint);
             last = cur;
         }
     }
@@ -2968,8 +3058,8 @@ class Sprite {
         ctx.putImageData(idata, 0, 0);
     }
     fillRect(color, x, y, width, height) {
-        for (let xi = x; xi < x + width; xi++) {
-            for (let yi = y; yi < y + height; yi++) {
+        for (let yi = y; yi < y + height; yi++) {
+            for (let xi = x; xi < x + width; xi++) {
                 let index = (xi << 2) + (yi * this.width << 2);
                 this.pixels[index] = color.red();
                 this.pixels[++index] = color.green();
@@ -2979,8 +3069,8 @@ class Sprite {
         }
     }
     fillRectAlphaBlend(source, color, x, y, width, height) {
-        for (let xi = x; xi < x + width; xi++) {
-            for (let yi = y; yi < y + height; yi++) {
+        for (let yi = y; yi < y + height; yi++) {
+            for (let xi = x; xi < x + width; xi++) {
                 let index = (xi << 2) + (yi * this.width << 2);
                 source.color = (this.pixels[index] << 24) | (this.pixels[index + 1] << 16) |
                     (this.pixels[index + 2] << 8) | this.pixels[index + 3];

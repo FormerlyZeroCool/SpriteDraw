@@ -1579,6 +1579,7 @@ class PenTool extends ExtendedTool {
     layoutManager:SimpleGridLayoutManager;
     tbSize:GuiTextBox;
     btUpdate:GuiButton;
+    static checkboxSprayPaint:GuiCheckBox = new GuiCheckBox(null, 40, 40);
     static checkDrawCircular:GuiCheckBox = new GuiCheckBox(null, 40, 40);
     constructor(strokeWith:number, toolName:string = "pen", pathToImage:string = "images/penSprite.png", optionPanes:SimpleGridLayoutManager[])
     {
@@ -1902,6 +1903,65 @@ class CopyPasteTool extends ExtendedTool {
 
     }
 };
+class GuiToolBar implements GuiElement {
+    tools:Tool[];
+    focused:boolean;
+    toolRenderDim:number[];
+    toolsPerRow:number;//could also be per column depending on render settings
+    canvas:HTMLCanvasElement;
+    ctx:CanvasRenderingContext2D;
+    vertical:boolean
+    constructor(renderDim:number[], tools:Tool[] = []) {
+        this.focused = false;
+        this.vertical = false;
+        this.toolRenderDim = [renderDim[0], renderDim[1]];
+        this.tools = tools;
+        this.canvas = document.createElement("canvas");
+        this.canvas.height = this.height();
+        this.canvas.width = this.width();
+        this.ctx = this.canvas.getContext("2d");
+    }
+    resize(width:number = this.width(), height:number = this.height()):void
+    {
+        this.canvas.width = width;
+        this.canvas.height = height;
+    }
+    active():boolean {
+        return this.focused;
+    }
+    deactivate():void {
+        this.focused = false;
+    }
+    activate():void {
+        this.focused = true;
+    }
+    width():number {
+        if(this.vertical)
+            return this.toolRenderDim[0] * Math.floor(this.tools.length / this.toolsPerRow);
+        else
+            return this.toolRenderDim[0] * this.toolsPerRow;
+    }
+    height():number {
+        if(this.vertical)
+            return this.toolRenderDim[1] * this.toolsPerRow;
+        return this.toolRenderDim[1] * Math.floor(this.tools.length / this.toolsPerRow);
+    }
+    refresh():void {
+
+    }
+    draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number, offsetY:number) {
+
+    }
+    handleKeyBoardEvents(type:string, e:any):void {
+
+    }
+    handleTouchEvents(type:string, e:any):void {
+
+    }
+    isLayoutManager():boolean {
+        return false;
+    }
+};
 // To do refactor tools to make sure they load in the same order every time
 class ToolSelector {
     toolArray:Tool[];
@@ -1925,10 +1985,12 @@ class ToolSelector {
     repaint:boolean;
     lastDrawTime:number;
     copyTool:CopyPasteTool;
+    sprayPaint:boolean;
     constructor(field:DrawingScreen, keyboardHandler:KeyboardHandler, imgWidth:number = 50, imgHeight:number = 50)
     {
         this.imgWidth = imgWidth;
         this.lastDrawTime = Date.now();
+        this.sprayPaint = false;
         this.repaint = false;
         this.imgHeight = imgHeight;
         this.selectedTool = 0;
@@ -2173,11 +2235,11 @@ class ToolSelector {
                 case("pen"):
                 if(e.deltaX === 0 && e.deltaY === 0)
                 {
-                    field.handleTap(e.touchPos[0], e.touchPos[1]);
+                    field.handleTap(e.touchPos[0], e.touchPos[1], field);
                 }
                 break;
                 case("eraser"):
-                    field.handleTap(e.touchPos[0], e.touchPos[1]);
+                    field.handleTap(e.touchPos[0], e.touchPos[1], field);
                     field.color.copy(colorBackup);
                 break;
                 case("rotate"):
@@ -2202,7 +2264,7 @@ class ToolSelector {
                     const y1:number = e.touchPos[1] - e.deltaY;
                     if(e.deltaX === 0 && e.deltaY === 0)
                     {
-                        field.handleTap(e.touchPos[0], e.touchPos[1]);
+                        field.handleTap(e.touchPos[0], e.touchPos[1], field);
                     }
                     field.handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
                 break;
@@ -2357,6 +2419,7 @@ class DrawingScreen {
     blendAlphaOnPaste:boolean;
     blendAlphaOnPutSelectedPixels:boolean;
     antiAliasRotation:boolean;
+    sprayPaintFactor:number;
 
     constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, palette:Pallette, offset:Array<number>, dimensions:Array<number>)
     {
@@ -2508,7 +2571,54 @@ class DrawingScreen {
         }
     }
 
-    handleTap(px:number, py:number):void
+    handleTap(px:number, py:number, drawingScreen:DrawingScreen):void
+    {
+        const gx:number = Math.floor((px-drawingScreen.offset.first)/drawingScreen.bounds.first*drawingScreen.dimensions.first);
+        const gy:number = Math.floor((py-drawingScreen.offset.second)/drawingScreen.bounds.second*drawingScreen.dimensions.second);
+        if(gx < drawingScreen.dimensions.first && gy < drawingScreen.dimensions.second && drawingScreen.screenBufUnlocked){
+            drawingScreen.screenBufUnlocked = false;
+            const radius:number = drawingScreen.lineWidth * 0.5;
+            if(drawingScreen.drawCircular)
+            {
+                const radius:number = drawingScreen.lineWidth * 0.5;
+                for(let i = -0.5*drawingScreen.lineWidth; i < radius; i++)
+                {
+                    for(let j = -0.5*drawingScreen.lineWidth;  j < radius; j++)
+                    {
+                        const ngx:number = gx+Math.round(j);
+                        const ngy:number = (gy+Math.round(i));
+                        const dx:number = ngx - gx;
+                        const dy:number = ngy - gy;
+                        const pixel:RGB = drawingScreen.screenBuffer[ngx + ngy*drawingScreen.dimensions.first];
+                        if(pixel && !pixel.compare(drawingScreen.color) && Math.sqrt(dx*dx+dy*dy) <= radius){
+                            drawingScreen.updatesStack.get(drawingScreen.updatesStack.length()-1).push(new Pair(ngx + ngy*drawingScreen.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
+                            pixel.copy(drawingScreen.color);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                const radius:number = drawingScreen.lineWidth * 0.5;
+                for(let i = -0.5*drawingScreen.lineWidth; i < radius; i++)
+                {
+                    for(let j = -0.5*drawingScreen.lineWidth;  j < radius; j++)
+                    {
+                        const ngx:number = gx+Math.round(j);
+                        const ngy:number = (gy+Math.round(i));
+                        const pixel:RGB = drawingScreen.screenBuffer[ngx + ngy*drawingScreen.dimensions.first];
+                        if(pixel && !pixel.compare(drawingScreen.color)){
+                            drawingScreen.updatesStack.get(drawingScreen.updatesStack.length()-1).push(new Pair(ngx + ngy*drawingScreen.dimensions.first, new RGB(pixel.red(),pixel.green(),pixel.blue(), pixel.alpha()))); 
+                            pixel.copy(drawingScreen.color);
+                        }
+                    }
+                }
+            }
+            drawingScreen.repaint = true;
+            drawingScreen.screenBufUnlocked = true;
+        }
+    }
+    handleTapSprayPaint(px:number, py:number):void
     {
         const gx:number = Math.floor((px-this.offset.first)/this.bounds.first*this.dimensions.first);
         const gy:number = Math.floor((py-this.offset.second)/this.bounds.second*this.dimensions.second);
@@ -2716,18 +2826,18 @@ class DrawingScreen {
         }
         this.dragData.second = data;
     }
-    drawRect(start:Array<number>, end:Array<number>):void
+    drawRect(start:Array<number>, end:Array<number>, drawPoint:(x:number, y:number, screen:DrawingScreen) => void = this.handleTap):void
     {
-        this.drawLine(start, [start[0], end[1]]);
-        this.drawLine(start, [end[0], start[1]]);
-        this.drawLine([start[0], end[1]], end);
-        this.drawLine([end[0], start[1]], end);
+        this.drawLine(start, [start[0], end[1]], drawPoint);
+        this.drawLine(start, [end[0], start[1]], drawPoint);
+        this.drawLine([start[0], end[1]], end, drawPoint);
+        this.drawLine([end[0], start[1]], end, drawPoint);
     }
-    drawLine(start:Array<number>, end:Array<number>):void
+    drawLine(start:Array<number>, end:Array<number>, drawPoint:(x:number, y:number, screen:DrawingScreen) => void = this.handleTap):void
     {
-        this.handleDraw(start[0], end[0], start[1], end[1]);
+        this.handleDraw(start[0], end[0], start[1], end[1], drawPoint);
     }
-    handleDraw(x1:number, x2:number, y1:number, y2:number):void
+    handleDraw(x1:number, x2:number, y1:number, y2:number, drawPoint:(x:number, y:number, screen:DrawingScreen) => void = this.handleTap):void
     {
         //draw line from current touch pos to the touchpos minus the deltas
         //calc equation for line
@@ -2743,7 +2853,7 @@ class DrawingScreen {
             for(let x = min; x < max; x+=delta)
             {
                 const y:number = m*x + b;
-                this.handleTap(x, y);
+                drawPoint(x, y, this);
             }
         }
         else
@@ -2753,12 +2863,12 @@ class DrawingScreen {
             for(let y = min; y < max; y+=delta)
             {
                 const x:number = Math.abs(deltaX)>0?(y - b)/m:x2;
-                this.handleTap(x, y);
+                drawPoint(x, y, this);
             }
         }
         this.repaint = true;
     }
-    handleEllipse(event):void
+    handleEllipse(event, drawPoint:(x:number, y:number, screen:DrawingScreen) => void = this.handleTap):void
     {
         const start_x:number = Math.min(event.touchPos[0] - event.deltaX, event.touchPos[0]);
         const end_x:number = Math.max(event.touchPos[0] - event.deltaX, event.touchPos[0]);
@@ -2773,7 +2883,7 @@ class DrawingScreen {
         for(let x = -0.1; x < 2*Math.PI; x += 0.05)
         { 
             const cur = [h + width*Math.cos(x), k + height*Math.sin(x)];
-            this.drawLine([last[0], last[1]], [cur[0], cur[1]]);
+            this.drawLine([last[0], last[1]], [cur[0], cur[1]], drawPoint);
             last = cur;
         }
     }
@@ -3642,9 +3752,9 @@ class Sprite {
     }
     fillRect(color:RGB, x:number, y:number, width:number, height:number)
     {
-        for(let xi = x; xi < x+width; xi++)
+        for(let yi = y; yi < y+height; yi++)
         {
-            for(let yi = y; yi < y+height; yi++)
+            for(let xi = x; xi < x+width; xi++)
             {
                 let index:number = (xi<<2) + (yi*this.width<<2);
                 this.pixels[index] = color.red();
@@ -3656,9 +3766,9 @@ class Sprite {
     }
     fillRectAlphaBlend(source:RGB, color:RGB, x:number, y:number, width:number, height:number)
     {
-        for(let xi = x; xi < x+width; xi++)
+        for(let yi = y; yi < y+height; yi++)
         {
-            for(let yi = y; yi < y+height; yi++)
+            for(let xi = x; xi < x+width; xi++)
             {
                 let index:number = (xi<<2) + (yi*this.width<<2);
                 source.color = (this.pixels[index] << 24) | (this.pixels[index+1] << 16) |
