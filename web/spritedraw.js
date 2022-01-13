@@ -1561,12 +1561,14 @@ class GuiToolBar {
         this.canvas.width = this.width();
         this.ctx = this.canvas.getContext("2d");
         this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.strokeStyle = "#000000";
     }
     resize(width = this.width(), height = this.height()) {
         this.canvas.width = width;
         this.canvas.height = height;
         this.ctx = this.canvas.getContext("2d");
         this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.strokeStyle = "#000000";
     }
     active() {
         return this.focused;
@@ -1613,7 +1615,7 @@ class GuiToolBar {
                 console.log("Still loading image for: ", this.tools[i].name());
             }
             if (this.selected === i) {
-                this.ctx.strokeRect(pixelX, pixelY, this.toolRenderDim[0], this.toolRenderDim[1]);
+                this.ctx.strokeRect(pixelX + 1, pixelY + 1, this.toolRenderDim[0] - 2, this.toolRenderDim[1] - 2);
             }
         }
     }

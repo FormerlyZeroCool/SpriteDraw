@@ -1929,6 +1929,7 @@ class GuiToolBar implements GuiElement {
         this.canvas.width = this.width();
         this.ctx = this.canvas.getContext("2d");
         this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.strokeStyle = "#000000";
     }
     resize(width:number = this.width(), height:number = this.height()):void
     {
@@ -1936,6 +1937,7 @@ class GuiToolBar implements GuiElement {
         this.canvas.height = height;
         this.ctx = this.canvas.getContext("2d");
         this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.strokeStyle = "#000000";
     }
     active():boolean {
         return this.focused;
@@ -1988,7 +1990,7 @@ class GuiToolBar implements GuiElement {
             }
             if(this.selected === i)
             {
-                this.ctx.strokeRect(pixelX, pixelY, this.toolRenderDim[0], this.toolRenderDim[1]);
+                this.ctx.strokeRect(pixelX + 1, pixelY + 1, this.toolRenderDim[0] - 2, this.toolRenderDim[1] - 2);
             }
         }
     }
@@ -2025,11 +2027,11 @@ class GuiToolBar implements GuiElement {
 class ToolSelector {
     toolBar:GuiToolBar;
     canvas:HTMLCanvasElement;
-    toolPixelDim:number[];
     ctx:CanvasRenderingContext2D;
     touchListener:SingleTouchListener;
     drawingScreenListener:SingleTouchListener;
     keyboardHandler:KeyboardHandler;
+    toolPixelDim:number[];
     penTool:PenTool;
     eraserTool:PenTool;
     settingsTool:DrawingScreenSettingsTool;
