@@ -1357,7 +1357,7 @@ class GuiLabel extends GuiTextBox {
 GuiTextBox.initGlobalText();
 GuiTextBox.initGlobalNumbers();
 GuiTextBox.initGlobalSpecialChars();
-abstract class Tool {
+class ToolBarItem {
     toolImage:ImageContainer;
     constructor(toolName:string, toolImagePath:string)
     {
@@ -1385,6 +1385,12 @@ abstract class Tool {
         {
             ctx.drawImage(this.toolImage.image, x, y, width, height);
         }
+    }
+};
+abstract class Tool extends ToolBarItem{
+    constructor(toolName:string, toolImagePath:string)
+    {
+        super(toolName, toolImagePath);
     }
     abstract optionPanelSize():number[];
     abstract activateOptionPanel():void;
@@ -1545,7 +1551,7 @@ class UndoRedoTool extends SingleCheckBoxTool {
     stackFrameCountLabel:GuiLabel;
     constructor(toolSelector:ToolSelector, name:string, imagePath:string, callback: () => void)
     {
-        super("Slow mode:", name, imagePath, callback);
+        super("Slow mode(undo/redo):", name, imagePath, callback);
         this.stackFrameCountLabel = new GuiLabel(`Redoable actions: ${0}\nUndoable actions: ${0}`, 200, 16, GuiTextBox.bottom, 40), 15;
         this.getOptionPanel().matrixDim[1] += 5;
         this.getOptionPanel().setHeight(this.stackFrameCountLabel.height() + this.getOptionPanel().height());
@@ -1904,15 +1910,17 @@ class CopyPasteTool extends ExtendedTool {
     }
 };
 class GuiToolBar implements GuiElement {
-    tools:Tool[];
+    tools:ToolBarItem[];
     focused:boolean;
     toolRenderDim:number[];
     toolsPerRow:number;//could also be per column depending on render settings
     canvas:HTMLCanvasElement;
     ctx:CanvasRenderingContext2D;
     vertical:boolean
+    selected:number;
     constructor(renderDim:number[], tools:Tool[] = []) {
         this.focused = false;
+        this.selected = 0;
         this.vertical = false;
         this.toolRenderDim = [renderDim[0], renderDim[1]];
         this.tools = tools;
@@ -1944,19 +1952,62 @@ class GuiToolBar implements GuiElement {
     height():number {
         if(this.vertical)
             return this.toolRenderDim[1] * this.toolsPerRow;
-        return this.toolRenderDim[1] * Math.floor(this.tools.length / this.toolsPerRow);
+        else
+            return this.toolRenderDim[1] * Math.floor(this.tools.length / this.toolsPerRow);
     }
     refresh():void {
-
+        for(let i = 0; i < this.tools.length; i++)
+        {
+            let gridX:number = 0;
+            let gridY:number = 0;
+            if(this.vertical)
+            {
+                const toolsPerColumn:number = this.toolsPerRow;
+                gridX = Math.floor(i / toolsPerColumn);
+                gridY = i % toolsPerColumn;
+            }
+            else
+            {   
+                gridX = i % this.toolsPerRow;
+                gridY = Math.floor(i / this.toolsPerRow);
+            }
+            const pixelX:number = gridX * this.toolRenderDim[0];
+            const pixelY:number = gridY * this.toolRenderDim[1];
+            const image:HTMLImageElement = this.tools[i].toolImage.image;
+            if(image)
+            {
+                this.ctx.drawImage(image, pixelX, pixelY, this.toolRenderDim[0], this.toolRenderDim[1]);
+            }
+            else
+            {
+                console.log("Still loading image for: ", this.tools[i].name());
+            }
+        }
     }
-    draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number, offsetY:number) {
-
+    draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0) {
+        ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
     }
     handleKeyBoardEvents(type:string, e:any):void {
 
     }
+    tool():ToolBarItem {
+        return this.tools[this.selected];
+    }
     handleTouchEvents(type:string, e:any):void {
-
+        if(this.active())
+        {
+            switch(type){
+                case("touchstart"):
+                const x:number = Math.floor(e.touchPos[0] / this.toolRenderDim[0]);
+                const y:number = Math.floor(e.touchPos[1] / this.toolRenderDim[1]);
+                const clicked:number = this.vertical?y + x * this.toolsPerRow : x + y * this.toolsPerRow;
+                if(clicked >= 0 && clicked < this.tools.length)
+                {
+                    this.selected = clicked;
+                }
+            }
+            this.refresh();
+        }
     }
     isLayoutManager():boolean {
         return false;
