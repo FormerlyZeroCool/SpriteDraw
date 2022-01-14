@@ -1330,7 +1330,7 @@ class ColorPickerTool extends ExtendedTool {
         this.setColorText();
         this.btUpdate = new GuiButton(() => {
             this.field.layer().palette.setSelectedColor(this.tbColor.text);
-            this.field.layer().color = this.field.layer().palette.calcColor();
+            this.field.layer().state.color = this.field.layer().palette.calcColor();
         }, "Update", 75, this.tbColor.height(), 16);
         this.tbColor.submissionButton = this.btUpdate;
         this.localLayout.addElement(new GuiLabel("Color:", 150, 16));
@@ -1338,7 +1338,7 @@ class ColorPickerTool extends ExtendedTool {
         this.localLayout.addElement(this.btUpdate);
     }
     color() {
-        return this.field.layer().color;
+        return this.field.layer().state.color;
     }
     setColorText() {
         if (this.color())
@@ -1398,7 +1398,7 @@ class DrawingScreenSettingsTool extends Tool {
         if (this.tbY.asNumber.get())
             y = this.tbY.asNumber.get();
         this.dim = [x, y];
-        this.field.setDim(this.dim);
+        this.field.setDimOnCurrent(this.dim);
     }
     optionPanelSize() {
         return [this.layoutManager.width(), this.layoutManager.height()];
@@ -1769,7 +1769,6 @@ class ToolSelector {
             this.drawingScreenListener = drawingScreenListener;
             this.drawingScreenListener.registerCallBack("touchstart", e => true, e => {
                 //save for undo
-                console.log("hi");
                 if (field.layer().updatesStack.length() === 0 || field.layer().updatesStack.get(field.layer().updatesStack.length() - 1).length) {
                     if (field.layer().toolSelector.selectedToolName() !== "redo" && field.layer().toolSelector.selectedToolName() !== "undo") {
                         field.layer().updatesStack.push(new Array());
@@ -1787,29 +1786,29 @@ class ToolSelector {
                 const gy = Math.floor((e.touchPos[1] - field.layer().offset.second) / field.layer().bounds.second * field.layer().dimensions.second);
                 switch (field.layer().toolSelector.selectedToolName()) {
                     case ("eraser"):
-                        colorBackup.copy(field.layer().color);
+                        colorBackup.copy(field.layer().state.color);
                         {
                             const eraser = field.layer().toolSelector.eraserTool;
-                            field.layer().lineWidth = eraser.lineWidth;
-                            eraser.tbSize.setText(String(field.layer().lineWidth));
-                            field.layer().color.copy(field.layer().noColor);
+                            field.layer().state.lineWidth = eraser.lineWidth;
+                            eraser.tbSize.setText(String(field.layer().state.lineWidth));
+                            field.layer().state.color.copy(field.layer().noColor);
                         }
                         break;
                     case ("fill"):
                         break;
                     case ("rotate"):
-                        if (field.layer().antiAliasRotation)
+                        if (field.layer().state.antiAliasRotation)
                             field.layer().saveDragDataToScreenAntiAliased();
                         else
                             field.layer().saveDragDataToScreen();
-                        if (field.layer().rotateOnlyOneColor || this.keyboardHandler.keysHeld["AltLeft"])
+                        if (field.layer().state.rotateOnlyOneColor || this.keyboardHandler.keysHeld["AltLeft"])
                             field.layer().dragData = field.layer().getSelectedPixelGroup(new Pair(gx, gy), true);
                         else
                             field.layer().dragData = field.layer().getSelectedPixelGroup(new Pair(gx, gy), false);
                         break;
                     case ("drag"):
                         field.layer().saveDragDataToScreen();
-                        if (field.layer().dragOnlyOneColor || this.keyboardHandler.keysHeld["AltLeft"])
+                        if (field.layer().state.dragOnlyOneColor || this.keyboardHandler.keysHeld["AltLeft"])
                             field.layer().dragData = field.layer().getSelectedPixelGroup(new Pair(gx, gy), true);
                         else
                             field.layer().dragData = field.layer().getSelectedPixelGroup(new Pair(gx, gy), false);
@@ -1828,7 +1827,7 @@ class ToolSelector {
                         field.layer().pasteRect = [e.touchPos[0] - field.layer().pasteRect[2] / 2, e.touchPos[1] - field.layer().pasteRect[3] / 2, field.layer().pasteRect[2], field.layer().pasteRect[3]];
                         break;
                     case ("colorPicker"):
-                        field.layer().color.copy(field.layer().screenBuffer[gx + gy * field.layer().dimensions.first]);
+                        field.state.color.copy(field.layer().screenBuffer[gx + gy * field.layer().dimensions.first]);
                         // for Gui lib
                         field.layer().toolSelector.updateColorPickerTextBox();
                         break;
@@ -1854,7 +1853,7 @@ class ToolSelector {
                     case ("rotate"):
                         let angle = Math.PI / 2;
                         let moveCountBeforeRotation = 10;
-                        if (field.layer().antiAliasRotation) {
+                        if (field.state.antiAliasRotation) {
                             angle = Math.PI / 32;
                             moveCountBeforeRotation = 2;
                         }
@@ -1865,7 +1864,7 @@ class ToolSelector {
                             else if (e.deltaY < 0)
                                 field.layer().rotateSelectedPixelGroup(-angle, [(this.drawingScreenListener.startTouchPos[0] / field.layer().bounds.first) * field.layer().dimensions.first,
                                     (this.drawingScreenListener.startTouchPos[1] / field.layer().bounds.second) * field.layer().dimensions.second]);
-                        if (field.layer().antiAliasRotation) {
+                        if (field.state.antiAliasRotation) {
                             field.layer().dragData.second;
                         }
                         break;
@@ -1888,7 +1887,7 @@ class ToolSelector {
                         field.layer().pasteRect[1] += e.deltaY;
                         break;
                     case ("colorPicker"):
-                        field.layer().color.copy(field.layer().screenBuffer[gx + gy * field.layer().dimensions.first]);
+                        field.state.color.copy(field.layer().screenBuffer[gx + gy * field.layer().dimensions.first]);
                         field.layer().toolSelector.updateColorPickerTextBox();
                         repaint = false;
                         break;
@@ -1909,10 +1908,10 @@ class ToolSelector {
                         break;
                     case ("eraser"):
                         field.layer().handleTap(e.touchPos[0], e.touchPos[1], field.layer());
-                        field.layer().color.copy(colorBackup);
+                        field.state.color.copy(colorBackup);
                         break;
                     case ("rotate"):
-                        if (field.layer().antiAliasRotation)
+                        if (field.state.antiAliasRotation)
                             field.layer().saveDragDataToScreenAntiAliased();
                         else
                             field.layer().saveDragDataToScreen();
@@ -1955,20 +1954,20 @@ class ToolSelector {
                 field.layer().repaint = repaint;
             });
         }
-        this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.layer().slow = !field.layer().slow);
+        this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.state.slow = !field.state.slow);
         this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png", [this.undoTool.getOptionPanel()]);
-        this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.layer().rotateOnlyOneColor = this.rotateTool.checkBox.checked, () => field.layer().antiAliasRotation = this.rotateTool.checkBoxAntiAlias.checked, [this.undoTool.getOptionPanel()]);
-        this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.layer().dragOnlyOneColor = this.dragTool.checkBox.checked, () => field.layer().blendAlphaOnPutSelectedPixels = this.dragTool.checkBox_blendAlpha.checked, [this.undoTool.getOptionPanel()]);
-        this.settingsTool = new DrawingScreenSettingsTool([524, 524], field.layer(), "ScreenSettings", "images/settingsSprite.png");
-        this.copyTool = new CopyPasteTool("copy", "images/copySprite.png", [this.undoTool.getOptionPanel()], field.layer().clipBoard, () => field.layer().blendAlphaOnPaste = this.copyTool.blendAlpha.checked);
+        this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.state.rotateOnlyOneColor = this.rotateTool.checkBox.checked, () => field.state.antiAliasRotation = this.rotateTool.checkBoxAntiAlias.checked, [this.undoTool.getOptionPanel()]);
+        this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.state.dragOnlyOneColor = this.dragTool.checkBox.checked, () => field.state.blendAlphaOnPutSelectedPixels = this.dragTool.checkBox_blendAlpha.checked, [this.undoTool.getOptionPanel()]);
+        this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings", "images/settingsSprite.png");
+        this.copyTool = new CopyPasteTool("copy", "images/copySprite.png", [this.undoTool.getOptionPanel()], field.layer().clipBoard, () => field.state.blendAlphaOnPaste = this.copyTool.blendAlpha.checked);
         PenTool.checkDrawCircular.checked = true;
         PenTool.checkDrawCircular.refresh();
         this.penTool = new PenTool(field.layer().suggestedLineWidth(), "pen", "images/penSprite.png", [this.colorPickerTool.getOptionPanel()]);
         this.penTool.activateOptionPanel();
         this.eraserTool = new PenTool(field.layer().suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png", [this.undoTool.getOptionPanel()]);
-        PenTool.checkDrawCircular.callback = () => field.layer().drawCircular = PenTool.checkDrawCircular.checked;
+        PenTool.checkDrawCircular.callback = () => field.state.drawCircular = PenTool.checkDrawCircular.checked;
         this.fillTool = new FillTool("fill", "images/fillSprite.png", [this.colorPickerTool.getOptionPanel()], () => {
-            field.layer().ignoreAlphaInFill = this.fillTool.checkIgnoreAlpha.checked;
+            field.layer().state.ignoreAlphaInFill = this.fillTool.checkIgnoreAlpha.checked;
         });
         this.toolBar.tools = [];
         this.toolBar.tools.push(this.penTool);
@@ -2040,11 +2039,8 @@ class ToolSelector {
     }
 }
 ;
-class DrawingScreen {
-    constructor(canvas, keyboardHandler, palette, offset, dimensions, toolSelector) {
-        const bounds = [dim[0], dim[1]];
-        this.palette = palette;
-        this.noColor = new RGB(255, 255, 255, 0);
+class DrawingScreenState {
+    constructor(lineWidth) {
         this.antiAliasRotation = true;
         this.screenBufUnlocked = true;
         this.blendAlphaOnPutSelectedPixels = true;
@@ -2052,9 +2048,19 @@ class DrawingScreen {
         this.dragOnlyOneColor = false;
         this.rotateOnlyOneColor = false;
         this.drawCircular = true;
-        this.repaint = true;
         this.slow = false;
         this.blendAlphaOnPaste = true;
+        this.lineWidth = lineWidth; //dimensions[0] / bounds[0] * 4;
+    }
+}
+;
+class DrawingScreen {
+    constructor(canvas, keyboardHandler, palette, offset, dimensions, toolSelector, state) {
+        const bounds = [dim[0], dim[1]];
+        this.palette = palette;
+        this.noColor = new RGB(255, 255, 255, 0);
+        this.state = state;
+        this.repaint = true;
         this.dimensions = new Pair(dimensions[0], dimensions[1]);
         this.offset = new Pair(offset[0], offset[1]);
         this.bounds = new Pair(bounds[0], bounds[1]);
@@ -2064,7 +2070,6 @@ class DrawingScreen {
         this.dragDataMaxPoint = 0;
         this.canvas = canvas;
         this.dragData = null;
-        this.lineWidth = dimensions[0] / bounds[0] * 4;
         this.spriteScreenBuf = new Sprite([], this.canvas.width, this.canvas.height, false);
         this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), keyboardHandler, dimensions[0], dimensions[1]);
         this.toolSelector = toolSelector;
@@ -2078,7 +2083,7 @@ class DrawingScreen {
             this.screenBuffer.push(new RGB(this.noColor.red(), this.noColor.green(), this.noColor.blue(), this.noColor.alpha()));
         }
         const colorBackup = new RGB(this.noColor.red(), this.noColor.green(), this.noColor.blue(), this.noColor.alpha());
-        this.color = new RGB(0, 0, 0, 255);
+        this.state.color = new RGB(0, 0, 0, 255);
         this.setDim(dim);
     }
     updateLabelUndoRedoCount() {
@@ -2089,8 +2094,8 @@ class DrawingScreen {
     }
     setLineWidthPen() {
         const pen = this.toolSelector.penTool;
-        this.lineWidth = pen.penSize();
-        pen.tbSize.setText(String(this.lineWidth));
+        this.state.lineWidth = pen.penSize();
+        pen.tbSize.setText(String(this.state.lineWidth));
     }
     saveToBuffer(selectionRect, buffer) {
         if (selectionRect[2] < 0) {
@@ -2119,14 +2124,14 @@ class DrawingScreen {
         return new Pair(width, height);
     }
     paste() {
-        if (this.screenBufUnlocked) {
-            this.screenBufUnlocked = false;
+        if (this.state.screenBufUnlocked) {
+            this.state.screenBufUnlocked = false;
             const dest_x = Math.floor((this.pasteRect[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
             const dest_y = Math.floor((this.pasteRect[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
             const width = this.clipBoard.currentDim[0];
             const height = this.clipBoard.currentDim[1];
             const initialIndex = dest_x + dest_y * this.dimensions.first;
-            const blendAlpha = this.blendAlphaOnPaste;
+            const blendAlpha = this.state.blendAlphaOnPaste;
             for (let i = 0; i < this.clipBoard.clipBoardBuffer.length; i++) {
                 const copyAreaX = i % width;
                 const copyAreaY = Math.floor(i / width);
@@ -2146,94 +2151,94 @@ class DrawingScreen {
                     }
                 }
             }
-            this.screenBufUnlocked = true;
+            this.state.screenBufUnlocked = true;
         }
     }
     handleTap(px, py, drawingScreen) {
         const gx = Math.floor((px - drawingScreen.offset.first) / drawingScreen.bounds.first * drawingScreen.dimensions.first);
         const gy = Math.floor((py - drawingScreen.offset.second) / drawingScreen.bounds.second * drawingScreen.dimensions.second);
-        if (gx < drawingScreen.dimensions.first && gy < drawingScreen.dimensions.second && drawingScreen.screenBufUnlocked) {
-            drawingScreen.screenBufUnlocked = false;
-            const radius = drawingScreen.lineWidth * 0.5;
-            if (drawingScreen.drawCircular) {
-                const radius = drawingScreen.lineWidth * 0.5;
-                for (let i = -0.5 * drawingScreen.lineWidth; i < radius; i++) {
-                    for (let j = -0.5 * drawingScreen.lineWidth; j < radius; j++) {
+        if (gx < drawingScreen.dimensions.first && gy < drawingScreen.dimensions.second && drawingScreen.state.screenBufUnlocked) {
+            drawingScreen.state.screenBufUnlocked = false;
+            const radius = drawingScreen.state.lineWidth * 0.5;
+            if (drawingScreen.state.drawCircular) {
+                const radius = drawingScreen.state.lineWidth * 0.5;
+                for (let i = -0.5 * drawingScreen.state.lineWidth; i < radius; i++) {
+                    for (let j = -0.5 * drawingScreen.state.lineWidth; j < radius; j++) {
                         const ngx = gx + Math.round(j);
                         const ngy = (gy + Math.round(i));
                         const dx = ngx - gx;
                         const dy = ngy - gy;
                         const pixel = drawingScreen.screenBuffer[ngx + ngy * drawingScreen.dimensions.first];
-                        if (pixel && !pixel.compare(drawingScreen.color) && Math.sqrt(dx * dx + dy * dy) <= radius) {
+                        if (pixel && !pixel.compare(drawingScreen.state.color) && Math.sqrt(dx * dx + dy * dy) <= radius) {
                             drawingScreen.updatesStack.get(drawingScreen.updatesStack.length() - 1).push(new Pair(ngx + ngy * drawingScreen.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
-                            pixel.copy(drawingScreen.color);
+                            pixel.copy(drawingScreen.state.color);
                         }
                     }
                 }
             }
             else {
-                const radius = drawingScreen.lineWidth * 0.5;
-                for (let i = -0.5 * drawingScreen.lineWidth; i < radius; i++) {
-                    for (let j = -0.5 * drawingScreen.lineWidth; j < radius; j++) {
+                const radius = drawingScreen.state.lineWidth * 0.5;
+                for (let i = -0.5 * drawingScreen.state.lineWidth; i < radius; i++) {
+                    for (let j = -0.5 * drawingScreen.state.lineWidth; j < radius; j++) {
                         const ngx = gx + Math.round(j);
                         const ngy = (gy + Math.round(i));
                         const pixel = drawingScreen.screenBuffer[ngx + ngy * drawingScreen.dimensions.first];
-                        if (pixel && !pixel.compare(drawingScreen.color)) {
+                        if (pixel && !pixel.compare(drawingScreen.state.color)) {
                             drawingScreen.updatesStack.get(drawingScreen.updatesStack.length() - 1).push(new Pair(ngx + ngy * drawingScreen.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
-                            pixel.copy(drawingScreen.color);
+                            pixel.copy(drawingScreen.state.color);
                         }
                     }
                 }
             }
             drawingScreen.repaint = true;
-            drawingScreen.screenBufUnlocked = true;
+            drawingScreen.state.screenBufUnlocked = true;
         }
     }
     handleTapSprayPaint(px, py) {
         const gx = Math.floor((px - this.offset.first) / this.bounds.first * this.dimensions.first);
         const gy = Math.floor((py - this.offset.second) / this.bounds.second * this.dimensions.second);
-        if (gx < this.dimensions.first && gy < this.dimensions.second && this.screenBufUnlocked) {
-            this.screenBufUnlocked = false;
-            const radius = this.lineWidth * 0.5;
-            if (this.drawCircular) {
-                const radius = this.lineWidth * 0.5;
-                for (let i = -0.5 * this.lineWidth; i < radius; i++) {
-                    for (let j = -0.5 * this.lineWidth; j < radius; j++) {
+        if (gx < this.dimensions.first && gy < this.dimensions.second && this.state.screenBufUnlocked) {
+            this.state.screenBufUnlocked = false;
+            const radius = this.state.lineWidth * 0.5;
+            if (this.state.drawCircular) {
+                const radius = this.state.lineWidth * 0.5;
+                for (let i = -0.5 * this.state.lineWidth; i < radius; i++) {
+                    for (let j = -0.5 * this.state.lineWidth; j < radius; j++) {
                         const ngx = gx + Math.round(j);
                         const ngy = (gy + Math.round(i));
                         const dx = ngx - gx;
                         const dy = ngy - gy;
                         const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
-                        if (pixel && !pixel.compare(this.color) && Math.sqrt(dx * dx + dy * dy) <= radius) {
+                        if (pixel && !pixel.compare(this.state.color) && Math.sqrt(dx * dx + dy * dy) <= radius) {
                             this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
-                            pixel.copy(this.color);
+                            pixel.copy(this.state.color);
                         }
                     }
                 }
             }
             else {
-                const radius = this.lineWidth * 0.5;
-                for (let i = -0.5 * this.lineWidth; i < radius; i++) {
-                    for (let j = -0.5 * this.lineWidth; j < radius; j++) {
+                const radius = this.state.lineWidth * 0.5;
+                for (let i = -0.5 * this.state.lineWidth; i < radius; i++) {
+                    for (let j = -0.5 * this.state.lineWidth; j < radius; j++) {
                         const ngx = gx + Math.round(j);
                         const ngy = (gy + Math.round(i));
                         const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
-                        if (pixel && !pixel.compare(this.color)) {
+                        if (pixel && !pixel.compare(this.state.color)) {
                             this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
-                            pixel.copy(this.color);
+                            pixel.copy(this.state.color);
                         }
                     }
                 }
             }
             this.repaint = true;
-            this.screenBufUnlocked = true;
+            this.state.screenBufUnlocked = true;
         }
     }
     fillArea(startCoordinate) {
-        if (this.screenBufUnlocked) {
-            this.screenBufUnlocked = false;
+        if (this.state.screenBufUnlocked) {
+            this.state.screenBufUnlocked = false;
             let stack;
-            if (this.slow) //possibly more visiually appealling algo (bfs), 
+            if (this.state.slow) //possibly more visiually appealling algo (bfs), 
                 //but slower because it makes much worse use of the cache with very high random access
                 stack = new Queue();
             else
@@ -2248,11 +2253,11 @@ class DrawingScreen {
                 const cur = stack.pop();
                 const pixelColor = this.screenBuffer[cur];
                 if (cur >= 0 && cur < length &&
-                    (pixelColor.compare(spc) || (this.ignoreAlphaInFill && pixelColor.alpha() === 0)) && !checkedMap[cur]) {
+                    (pixelColor.compare(spc) || (this.state.ignoreAlphaInFill && pixelColor.alpha() === 0)) && !checkedMap[cur]) {
                     checkedMap[cur] = true;
-                    if (!pixelColor.compare(this.color)) {
+                    if (!pixelColor.compare(this.state.color)) {
                         this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(cur, new RGB(pixelColor.red(), pixelColor.green(), pixelColor.blue(), pixelColor.alpha())));
-                        pixelColor.copy(this.color);
+                        pixelColor.copy(this.state.color);
                     }
                     stack.push(cur + this.dimensions.first);
                     stack.push(cur - this.dimensions.first);
@@ -2260,15 +2265,15 @@ class DrawingScreen {
                     stack.push(cur + 1);
                 }
             }
-            this.screenBufUnlocked = true;
+            this.state.screenBufUnlocked = true;
             this.repaint = true;
         }
     }
     //Pair<offset point>, Map of colors encoded as numbers by location>
     getSelectedPixelGroup(startCoordinate, countColor) {
         const data = [];
-        if (this.screenBufUnlocked) {
-            this.screenBufUnlocked = false;
+        if (this.state.screenBufUnlocked) {
+            this.state.screenBufUnlocked = false;
             const stack = [];
             const defaultColor = this.noColor;
             const checkedMap = new Array(this.dimensions.first * this.dimensions.second).fill(false);
@@ -2322,7 +2327,7 @@ class DrawingScreen {
                 }
             }
             this.updatesStack.push([]);
-            this.screenBufUnlocked = true;
+            this.state.screenBufUnlocked = true;
         }
         return new Pair(new Pair(0, 0), data);
     }
@@ -2349,7 +2354,7 @@ class DrawingScreen {
         const data = [];
         for (let i = 0; i < this.dragData.second.length; i += 9) {
             for (let j = i; j < i + 8; j += 2) {
-                if (this.antiAliasRotation) {
+                if (this.state.antiAliasRotation) {
                     vec[0] = this.dragData.second[j];
                     vec[1] = this.dragData.second[j + 1];
                 }
@@ -2387,7 +2392,7 @@ class DrawingScreen {
         const deltaX = x2 - x1;
         const m = deltaY / deltaX;
         const b = y2 - m * x2;
-        const delta = this.lineWidth <= 2 ? 0.1 : 1;
+        const delta = this.state.lineWidth <= 2 ? 0.1 : 1;
         if (Math.abs(deltaX) > Math.abs(deltaY)) {
             const min = Math.min(x1, x2);
             const max = Math.max(x1, x2);
@@ -2423,8 +2428,8 @@ class DrawingScreen {
         }
     }
     async undoLast() {
-        if (this.updatesStack.length() && this.screenBufUnlocked) {
-            this.screenBufUnlocked = false;
+        if (this.updatesStack.length() && this.state.screenBufUnlocked) {
+            this.state.screenBufUnlocked = false;
             const data = this.updatesStack.pop();
             const backedUpFrame = [];
             const divisor = 60 * 10;
@@ -2437,22 +2442,22 @@ class DrawingScreen {
                 const color = (this.screenBuffer[el.first]).color;
                 this.screenBuffer[el.first].copy(el.second);
                 el.second.color = color;
-                if (intervalCounter % interval === 0 && this.slow) {
+                if (intervalCounter % interval === 0 && this.state.slow) {
                     await sleep(1);
                     this.repaint = true;
                 }
             }
             this.undoneUpdatesStack.push(backedUpFrame);
             this.repaint = true;
-            this.screenBufUnlocked = true;
+            this.state.screenBufUnlocked = true;
         }
         else {
             console.log("Error, nothing to undo");
         }
     }
     async redoLast() {
-        if (this.undoneUpdatesStack.length() && this.screenBufUnlocked) {
-            this.screenBufUnlocked = false;
+        if (this.undoneUpdatesStack.length() && this.state.screenBufUnlocked) {
+            this.state.screenBufUnlocked = false;
             const data = this.undoneUpdatesStack.pop();
             const backedUpFrame = [];
             const divisor = 60 * 10;
@@ -2465,14 +2470,14 @@ class DrawingScreen {
                 const color = this.screenBuffer[el.first].color;
                 this.screenBuffer[el.first].copy(el.second);
                 el.second.color = color;
-                if (intervalCounter % interval === 0 && this.slow) {
+                if (intervalCounter % interval === 0 && this.state.slow) {
                     await sleep(1);
                     this.repaint = true;
                 }
             }
             this.repaint = true;
             this.updatesStack.push(backedUpFrame);
-            this.screenBufUnlocked = true;
+            this.state.screenBufUnlocked = true;
         }
         else {
             console.log("Error, nothing to redo");
@@ -2541,7 +2546,7 @@ class DrawingScreen {
                 let key = this.reboundKey(x + y * this.dimensions.first);
                 color.color = dragDataColors[i + 8];
                 this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
-                if (color.alpha() != 255 && this.blendAlphaOnPutSelectedPixels)
+                if (color.alpha() != 255 && this.state.blendAlphaOnPutSelectedPixels)
                     this.screenBuffer[key].blendAlphaCopy(color);
                 else
                     this.screenBuffer[key].color = color.color;
@@ -2668,7 +2673,7 @@ class DrawingScreen {
                     source.color = this.clipBoard.clipBoardBuffer[i].first.color;
                     if (this.screenBuffer[destIndex]) {
                         toCopy.color = this.screenBuffer[destIndex].color;
-                        if (this.blendAlphaOnPaste)
+                        if (this.state.blendAlphaOnPaste)
                             spriteScreenBuf.fillRectAlphaBlend(toCopy, source, x * cellWidth, y * cellHeight, cellWidth, cellHeight);
                         else
                             spriteScreenBuf.fillRect(source, x * cellWidth, y * cellHeight, cellWidth, cellHeight);
@@ -2683,7 +2688,7 @@ class DrawingScreen {
                 }
                 ctx.lineWidth = 6;
                 ctx.beginPath();
-                ctx.strokeStyle = this.color.htmlRBGA();
+                ctx.strokeStyle = this.state.color.htmlRBGA();
                 ctx.moveTo(touchStart[0], touchStart[1]);
                 ctx.lineTo(this.toolSelector.drawingScreenListener.touchPos[0], this.toolSelector.drawingScreenListener.touchPos[1]);
                 ctx.stroke();
@@ -2708,30 +2713,30 @@ class DrawingScreen {
                 else if (this.toolSelector.selectedToolName() !== "oval") {
                     ctx.strokeStyle = "#FFFFFF";
                     ctx.strokeRect(this.selectionRect[0] + 2, this.selectionRect[1] + 2, this.selectionRect[2] - 4, this.selectionRect[3] - 4);
-                    ctx.strokeStyle = this.color.htmlRBG();
+                    ctx.strokeStyle = this.state.color.htmlRBG();
                     ctx.strokeRect(this.selectionRect[0], this.selectionRect[1], this.selectionRect[2], this.selectionRect[3]);
                 }
                 else if (this.selectionRect[2] / 2 > 0 && this.selectionRect[3] / 2 > 0) {
                     ctx.beginPath();
-                    ctx.strokeStyle = this.color.htmlRBG();
+                    ctx.strokeStyle = this.state.color.htmlRBG();
                     ctx.ellipse(this.selectionRect[0] + xr, this.selectionRect[1] + yr, xr, yr, 0, 0, 2 * Math.PI);
                     ctx.stroke();
                 }
                 else if (this.selectionRect[2] < 0 && this.selectionRect[3] >= 0) {
                     ctx.beginPath();
-                    ctx.strokeStyle = this.color.htmlRBG();
+                    ctx.strokeStyle = this.state.color.htmlRBG();
                     ctx.ellipse(this.selectionRect[0] - xr, this.selectionRect[1] + yr, xr, yr, 0, 0, 2 * Math.PI);
                     ctx.stroke();
                 }
                 else if (this.selectionRect[2] < 0 && this.selectionRect[3] < 0) {
                     ctx.beginPath();
-                    ctx.strokeStyle = this.color.htmlRBG();
+                    ctx.strokeStyle = this.state.color.htmlRBG();
                     ctx.ellipse(this.selectionRect[0] - xr, this.selectionRect[1] - yr, xr, yr, 0, 0, 2 * Math.PI);
                     ctx.stroke();
                 }
                 else if (this.selectionRect[2] != 0 && this.selectionRect[3] != 0) {
                     ctx.beginPath();
-                    ctx.strokeStyle = this.color.htmlRBG();
+                    ctx.strokeStyle = this.state.color.htmlRBG();
                     ctx.ellipse(this.selectionRect[0] + xr, this.selectionRect[1] - yr, xr, yr, 0, 0, 2 * Math.PI);
                     ctx.stroke();
                 }
@@ -2740,13 +2745,14 @@ class DrawingScreen {
     }
     drawToContext(ctx, x, y, width = this.dimensions.first, height = this.dimensions.second) {
         this.draw();
-        ctx.drawImage(this.canvas, x, y); //, width, height);
+        ctx.drawImage(this.canvas, x, y, width, height);
     }
 }
 ;
 class LayeredDrawingScreen {
     constructor(keyboardHandler, pallette) {
         this.canvas = document.createElement("canvas");
+        this.state = new DrawingScreenState(3);
         this.dim = [524, 524];
         this.canvas.width = this.dim[0];
         this.canvas.height = this.dim[1];
@@ -2764,11 +2770,21 @@ class LayeredDrawingScreen {
         }
         return repaint;
     }
+    setDimOnCurrent(dim) {
+        if (this.layer()) {
+            this.layer().setDim(dim);
+            const bounds = [this.layer().bounds.first, this.layer().bounds.second];
+            this.dim = [bounds[0], bounds[1]];
+            this.canvas.width = bounds[0];
+            this.canvas.height = bounds[1];
+            this.ctx.fillStyle = "#FFFFFF";
+        }
+    }
     layer() {
         return this.layers[this.selected];
     }
     addBlankLayer() {
-        this.layers.push(new DrawingScreen(document.createElement("canvas"), this.keyboardHandler, this.pallette, [0, 0], [this.dim[0], this.dim[1]], this.toolSelector));
+        this.layers.push(new DrawingScreen(document.createElement("canvas"), this.keyboardHandler, this.pallette, [0, 0], [this.dim[0], this.dim[1]], this.toolSelector, this.state));
     }
     width() {
         return this.dim[0];
@@ -2776,18 +2792,24 @@ class LayeredDrawingScreen {
     height() {
         return this.dim[1];
     }
-    draw(ctx, x, y) {
+    draw(canvas, ctx, x, y, width, height) {
+        if (width !== this.width() || height !== this.height()) {
+            canvas.width = this.width();
+            canvas.height = this.height();
+            width = this.width();
+            height = this.height();
+        }
         if (this.repaint()) {
             this.ctx.fillRect(0, 0, this.width(), this.height());
             for (let i = 0; i < this.layers.length; i++) {
                 const layer = this.layers[i];
-                layer.repaint = true;
-                layer.drawToContext(this.ctx, 0, 0); //, this.width(), this.height());
+                layer.drawToContext(this.ctx, 0, 0, width, height);
             }
         }
-        //else
         {
-            ctx.drawImage(this.canvas, x, y);
+            //this.ctx.scale(this.width() / width, this.height() / height);
+            ctx.drawImage(this.canvas, x, y, width, height);
+            //this.ctx.scale(width / this.width(), height / this.height());
         }
     }
 }
@@ -3369,7 +3391,7 @@ class SpriteSelector {
                 this.selectedSprite = clickedSprite;
                 const sprite = this.sprites()[clickedSprite];
                 if (sprite.width !== this.drawingField.layer().spriteScreenBuf.width || sprite.height !== this.drawingField.layer().spriteScreenBuf.height) {
-                    this.drawingField.layer().setDim([sprite.width, sprite.height]);
+                    this.drawingField.setDimOnCurrent([sprite.width, sprite.height]);
                 }
                 this.drawingField.layer().loadSprite(sprite);
             }
@@ -3495,7 +3517,7 @@ class AnimationGroup {
                 if (this.spriteSelector.sprites().length) {
                     const sprite = this.spriteSelector.sprites()[0];
                     if (sprite.width !== this.drawingField.layer().spriteScreenBuf.width || sprite.height !== this.drawingField.layer().spriteScreenBuf.height) {
-                        this.drawingField.layer().setDim([sprite.width, sprite.height]);
+                        this.drawingField.setDimOnCurrent([sprite.width, sprite.height]);
                     }
                     sprite.copyToBuffer(this.drawingField.layer().screenBuffer);
                 }
@@ -3915,10 +3937,10 @@ async function main() {
         animationGroupSelector.cloneSelectedAnimationGroup();
     });
     pallette.canvas.addEventListener("mouseup", e => {
-        field.layer().color = pallette.calcColor();
+        field.layer().state.color = pallette.calcColor();
         field.layer().toolSelector.colorPickerTool.tbColor.setText(pallette.calcColor().htmlRBGA());
     });
-    pallette.listeners.registerCallBack("touchend", e => true, e => { field.layer().color = pallette.calcColor(); });
+    pallette.listeners.registerCallBack("touchend", e => true, e => { field.layer().state.color = pallette.calcColor(); });
     const add_animationButton = document.getElementById("add_animation");
     const add_animationTouchListener = new SingleTouchListener(add_animationButton, false, true);
     add_animationTouchListener.registerCallBack("touchstart", e => true, e => {
@@ -3953,7 +3975,7 @@ async function main() {
     if (save_serverButton)
         save_serverButton.addEventListener("mousedown", e => animationGroupSelector.save());
     keyboardHandler.registerCallBack("keydown", e => true, e => {
-        field.layer().color.copy(pallette.calcColor());
+        field.layer().state.color.copy(pallette.calcColor());
         if ((document.getElementById('body') === document.activeElement || document.getElementById('screen') === document.activeElement)) {
             if (e.code.substring(0, "Digit".length) === "Digit") {
                 const numTyped = e.code.substring("Digit".length, e.code.length);
@@ -3962,7 +3984,7 @@ async function main() {
         }
     });
     keyboardHandler.registerCallBack("keyup", e => true, e => {
-        field.layer().color.copy(pallette.calcColor());
+        field.layer().state.color.copy(pallette.calcColor());
     });
     const fps = 27;
     const goalSleep = 1000 / fps;
@@ -3970,7 +3992,7 @@ async function main() {
     while (true) {
         const start = Date.now();
         toolSelector.draw();
-        field.draw(ctx, 0, 0);
+        field.draw(canvas, ctx, 0, 0, canvas.width, canvas.height);
         if (animationGroupSelector.animationGroup())
             animationGroupSelector.draw();
         if (counter++ % 3 === 0) {
