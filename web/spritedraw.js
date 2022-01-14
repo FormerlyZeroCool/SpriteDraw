@@ -1537,7 +1537,7 @@ class ClipBoard {
 ;
 class CopyPasteTool extends ExtendedTool {
     constructor(name, path, optionPanes, clipBoard, updateBlendAlpha) {
-        super(name, path, optionPanes, [200, clipBoard.height() + 200 + 200], [2, 8]);
+        super(name, path, optionPanes, [200, clipBoard.height() + 200], [2, 8], [1, 5]);
         this.blendAlpha = new GuiCheckBox(updateBlendAlpha, 40, 40);
         this.blendAlpha.checked = true;
         this.blendAlpha.refresh();
@@ -1545,7 +1545,6 @@ class CopyPasteTool extends ExtendedTool {
         this.localLayout.addElement(clipBoard);
         this.localLayout.addElement(new GuiLabel("Preserve\ntransparency:", 200, 16, GuiTextBox.bottom | GuiTextBox.left, 40));
         this.localLayout.addElement(this.blendAlpha);
-        this.localLayout.refresh();
     }
 }
 ;
