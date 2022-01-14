@@ -258,7 +258,6 @@ class ImageContainer {
 }
 ;
 ;
-;
 class LexicoGraphicNumericPair extends Pair {
     constructor(rollOver) {
         super(0, 0);
@@ -472,6 +471,22 @@ class SimpleGridLayoutManager {
     }
 }
 ;
+class GuiListItem extends SimpleGridLayoutManager {
+    constructor(text, state, pixelDim, fontSize = 16, callBack = () => 0) {
+        super([20, 1], pixelDim);
+        this.checkBox = new GuiCheckBox(callBack, fontSize * 2, fontSize * 2);
+        this.textBox = new GuiTextBox(true, pixelDim[0] - fontSize * 2 - 10);
+        this.textBox.setText(text);
+        this.checkBox.checked = state;
+        this.checkBox.refresh();
+        this.addElement(this.checkBox);
+        this.addElement(this.textBox);
+    }
+    state() {
+        return this.checkBox.checked;
+    }
+}
+;
 class GuiButton {
     constructor(callBack, text, width = 200, height = 50, fontSize = 12, pressedColor = new RGB(150, 150, 200, 1), unPressedColor = new RGB(255, 255, 255), fontName = "button_font") {
         this.text = text;
@@ -607,6 +622,7 @@ class GuiCheckBox {
                         this.drawInternal();
                         break;
                     case ("keyup"):
+                        e.checkBox = this;
                         this.callback(e);
                         this.pressed = false;
                         this.drawInternal();
@@ -629,6 +645,7 @@ class GuiCheckBox {
                 case ("touchend"):
                     this.checked = !this.checked;
                     this.pressed = false;
+                    e.checkBox = this;
                     this.callback(e);
                     this.drawInternal();
                     break;
@@ -1645,6 +1662,53 @@ class GuiToolBar {
     }
 }
 ;
+class LayerManagerTool extends Tool {
+    constructor(name, path, field) {
+        super(name, path);
+        this.field = field;
+        this.layoutManager = new SimpleGridLayoutManager([1, 24], [200, 500]);
+        this.list = new SimpleGridLayoutManager([1, 24], [200, 400]);
+        this.layoutManager.addElement(new GuiLabel("Layers list:", 200));
+        this.layoutManager.addElement(this.list);
+        for (let i = 0; i < field.layers.length; i++) {
+            this.pushList(`layer${i}`);
+        }
+    }
+    pushList(text) {
+        let layer;
+        if (this.field.layers.length <= this.list.elements.length)
+            layer = this.field.addBlankLayer();
+        else if (this.field.layers[this.list.elements.length])
+            layer = this.field.layers[this.list.elements.length];
+        else
+            console.log("Error field layers out of sync with layers tool");
+        this.list.addElement(new GuiListItem(text, true, [200, 50], 16, (e) => {
+            const index = this.field.layers.indexOf(layer);
+            console.log(index, this.field.layersState);
+            if (this.field.layers[index]) {
+                this.field.layersState[index] = e.checkBox.checked;
+                this.field.layer().repaint = true;
+            }
+            else
+                console.log("Error changing layer state");
+        }));
+    }
+    activateOptionPanel() { this.layoutManager.activate(); }
+    deactivateOptionPanel() { this.layoutManager.deactivate(); }
+    getOptionPanel() {
+        return this.layoutManager;
+    }
+    optionPanelSize() {
+        return [this.layoutManager.canvas.width, this.layoutManager.canvas.height];
+    }
+    drawOptionPanel(ctx, x, y) {
+        const optionPanel = this.getOptionPanel();
+        optionPanel.x = x;
+        optionPanel.y = y;
+        optionPanel.draw(ctx, x, y);
+    }
+}
+;
 // To do refactor tools to make sure they load in the same order every time
 class ToolSelector {
     constructor(pallette, keyboardHandler, drawingScreenListener, imgWidth = 50, imgHeight = 50) {
@@ -1954,6 +2018,7 @@ class ToolSelector {
                 field.layer().repaint = repaint;
             });
         }
+        this.layersTool = new LayerManagerTool("layers", "/images/layersSprite.png", field);
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.state.slow = !field.state.slow);
         this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png", [this.undoTool.getOptionPanel()]);
         this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.state.rotateOnlyOneColor = this.rotateTool.checkBox.checked, () => field.state.antiAliasRotation = this.rotateTool.checkBoxAntiAlias.checked, [this.undoTool.getOptionPanel()]);
@@ -1983,6 +2048,7 @@ class ToolSelector {
         this.toolBar.tools.push(this.colorPickerTool);
         this.toolBar.tools.push(this.eraserTool);
         this.toolBar.tools.push(this.rotateTool);
+        this.toolBar.tools.push(this.layersTool);
         this.toolBar.tools.push(this.settingsTool);
         this.toolBar.resize();
         this.ctx = this.canvas.getContext("2d");
@@ -2509,7 +2575,7 @@ class DrawingScreen {
             if (this.screenBuffer.length != newDim[0] * newDim[1]) {
                 this.screenBuffer = [];
                 for (let i = this.screenBuffer.length; i < newDim[0] * newDim[1]; i++)
-                    this.screenBuffer.push(new RGB(this.noColor.red(), this.noColor.green(), this.noColor.blue(), this.noColor.alpha));
+                    this.screenBuffer.push(new RGB(this.noColor.red(), this.noColor.green(), this.noColor.blue(), this.noColor.alpha()));
                 this.spriteScreenBuf = new Sprite([], this.bounds.first, this.bounds.second);
             }
             this.dimensions = new Pair(newDim[0], newDim[1]);
@@ -2760,6 +2826,7 @@ class LayeredDrawingScreen {
         this.ctx.fillStyle = "#FFFFFF";
         this.selected = 0;
         this.layers = [];
+        this.layersState = [];
         this.keyboardHandler = keyboardHandler;
         this.pallette = pallette;
         this.setDimOnCurrent(this.dim);
@@ -2789,6 +2856,8 @@ class LayeredDrawingScreen {
         const layer = new DrawingScreen(document.createElement("canvas"), this.keyboardHandler, this.pallette, [0, 0], [this.dim[0], this.dim[1]], this.toolSelector, this.state, this.clipBoard);
         layer.setDim(this.dim);
         this.layers.push(layer);
+        this.layersState.push(true);
+        return layer;
     }
     width() {
         return this.dim[0];
@@ -2806,8 +2875,10 @@ class LayeredDrawingScreen {
         if (this.repaint()) {
             this.ctx.fillRect(0, 0, this.width(), this.height());
             for (let i = 0; i < this.layers.length; i++) {
-                const layer = this.layers[i];
-                layer.drawToContext(this.ctx, 0, 0, width, height);
+                if (this.layersState[i]) {
+                    const layer = this.layers[i];
+                    layer.drawToContext(this.ctx, 0, 0, width, height);
+                }
             }
         }
         {
