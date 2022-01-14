@@ -1696,7 +1696,8 @@ class LayerManagerTool extends Tool {
                 console.log("Error field layers out of sync with layers tool");
             this.list.addElement(new GuiListItem(text, true, [200, 25], 16, (e) => {
                 const index = this.field.layers.indexOf(layer);
-                this.field.selected = index;
+                if (e.checkBox.checked)
+                    this.field.selected = index;
                 if (this.field.layers[index]) {
                     this.field.layersState[index] = e.checkBox.checked;
                     this.field.layer().repaint = true;
