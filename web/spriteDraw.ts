@@ -2461,7 +2461,7 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
             field.layer().repaint = repaint;
         });
         }
-        this.layersTool = new LayerManagerTool("layers", "/images/layersSprite.png", field);
+        this.layersTool = new LayerManagerTool("layers", "images/layersSprite.png", field);
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.state.slow = !field.state.slow);
         this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png", [this.undoTool.getOptionPanel()]);
         this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.state.rotateOnlyOneColor = this.rotateTool.checkBox.checked, 
