@@ -2864,14 +2864,8 @@ class DrawingScreen {
         {
             for(let j = i; j < i+8; j += 2)
             {
-                if(this.state.antiAliasRotation){
-                    vec[0] = this.dragData.second[j];
-                    vec[1] = this.dragData.second[j+1];
-                }
-                else {
-                    vec[0] = Math.round(this.dragData.second[j]);
-                    vec[1] = Math.round(this.dragData.second[j+1]);
-                }
+                vec[0] = this.dragData.second[j];
+                vec[1] = this.dragData.second[j+1];
                 vec[2] = 1;
                 let transformed:number[] = matByVec(finalTransformationMatrix, vec);
                 const point:number =  Math.floor(transformed[0]) + Math.floor(transformed[1]) * this.dimensions.first;
@@ -2879,8 +2873,14 @@ class DrawingScreen {
                     this.dragDataMinPoint = point;
                 if(point > this.dragDataMaxPoint)
                     this.dragDataMaxPoint = point;
-                data.push(transformed[0]);
-                data.push(transformed[1]);
+                if(this.state.antiAliasRotation){
+                    data.push(transformed[0]);
+                    data.push(transformed[1]);
+                }
+                else {
+                    data.push(Math.round(transformed[0]));
+                    data.push(Math.round(transformed[1]));
+                }
             }
             data.push(this.dragData.second[i+8]);
         }
