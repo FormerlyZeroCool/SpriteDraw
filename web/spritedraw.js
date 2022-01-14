@@ -1537,7 +1537,7 @@ class ClipBoard {
 ;
 class CopyPasteTool extends ExtendedTool {
     constructor(name, path, optionPanes, clipBoard, updateBlendAlpha) {
-        super(name, path, optionPanes, [200, clipBoard.height() + 200], [2, 8]);
+        super(name, path, optionPanes, [200, clipBoard.height() + 200 + 200], [2, 8]);
         this.blendAlpha = new GuiCheckBox(updateBlendAlpha, 40, 40);
         this.blendAlpha.checked = true;
         this.blendAlpha.refresh();
@@ -2056,8 +2056,9 @@ class DrawingScreenState {
 }
 ;
 class DrawingScreen {
-    constructor(canvas, keyboardHandler, palette, offset, dimensions, toolSelector, state) {
+    constructor(canvas, keyboardHandler, palette, offset, dimensions, toolSelector, state, clipBoard) {
         const bounds = [dim[0], dim[1]];
+        this.clipBoard = clipBoard;
         this.palette = palette;
         this.noColor = new RGB(255, 255, 255, 0);
         this.state = state;
@@ -2072,7 +2073,6 @@ class DrawingScreen {
         this.canvas = canvas;
         this.dragData = null;
         this.spriteScreenBuf = new Sprite([], this.canvas.width, this.canvas.height, false);
-        this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), keyboardHandler, dimensions[0], dimensions[1]);
         this.toolSelector = toolSelector;
         this.updatesStack = new RollingStack();
         this.undoneUpdatesStack = new RollingStack();
@@ -2764,6 +2764,7 @@ class LayeredDrawingScreen {
         this.keyboardHandler = keyboardHandler;
         this.pallette = pallette;
         this.setDimOnCurrent(this.dim);
+        this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), keyboardHandler, 128, 128);
     }
     repaint() {
         let repaint = false;
@@ -2786,7 +2787,7 @@ class LayeredDrawingScreen {
         return this.layers[this.selected];
     }
     addBlankLayer() {
-        const layer = new DrawingScreen(document.createElement("canvas"), this.keyboardHandler, this.pallette, [0, 0], [this.dim[0], this.dim[1]], this.toolSelector, this.state);
+        const layer = new DrawingScreen(document.createElement("canvas"), this.keyboardHandler, this.pallette, [0, 0], [this.dim[0], this.dim[1]], this.toolSelector, this.state, this.clipBoard);
         layer.setDim(this.dim);
         this.layers.push(layer);
     }
@@ -2811,9 +2812,7 @@ class LayeredDrawingScreen {
             }
         }
         {
-            //this.ctx.scale(this.width() / width, this.height() / height);
             ctx.drawImage(this.canvas, x, y, width, height);
-            //this.ctx.scale(width / this.width(), height / this.height());
         }
     }
 }
