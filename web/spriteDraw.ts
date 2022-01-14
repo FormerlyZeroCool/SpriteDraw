@@ -1905,6 +1905,7 @@ class CopyPasteTool extends ExtendedTool {
         this.localLayout.addElement(clipBoard);
         this.localLayout.addElement(new GuiLabel("Preserve\ntransparency:", 200, 16, GuiTextBox.bottom | GuiTextBox.left, 40));
         this.localLayout.addElement(this.blendAlpha);
+        this.localLayout.refresh();
 
     }
 };
@@ -3353,6 +3354,7 @@ class LayeredDrawingScreen {
         this.layers = [];
         this.keyboardHandler = keyboardHandler;
         this.pallette = pallette;
+        this.setDimOnCurrent(this.dim);
     }
     repaint():boolean {
         let repaint:boolean = false;
@@ -3378,9 +3380,10 @@ class LayeredDrawingScreen {
     }
     addBlankLayer():void
     {
-        this.layers.push(
-            new DrawingScreen(
-                document.createElement("canvas"), this.keyboardHandler, this.pallette, [0, 0], [this.dim[0], this.dim[1]], this.toolSelector, this.state));
+        const layer:DrawingScreen = new DrawingScreen(
+            document.createElement("canvas"), this.keyboardHandler, this.pallette, [0, 0], [this.dim[0], this.dim[1]], this.toolSelector, this.state);
+        layer.setDim(this.dim);
+        this.layers.push(layer);
     }
     width():number {
         return this.dim[0];
