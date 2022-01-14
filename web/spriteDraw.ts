@@ -2811,7 +2811,7 @@ class DrawingScreen {
                     data.push(Math.floor(cur / this.dimensions.first) + 1);
 
                     data.push(pixelColor.color);
-                    pixelColor.color = defaultColor.color;
+                    pixelColor.copy(defaultColor);
                     if(cur > this.dragDataMaxPoint)
                         this.dragDataMaxPoint = cur;
                     if(cur < this.dragDataMinPoint)
@@ -3048,7 +3048,7 @@ class DrawingScreen {
             {
                 this.screenBuffer = [];
                 for(let i = this.screenBuffer.length; i < newDim[0]*newDim[1]; i++)
-                    this.screenBuffer.push(new RGB(0, 0, 0, 0));
+                    this.screenBuffer.push(new RGB(this.noColor.red(), this.noColor.green(), this.noColor.blue(), this.noColor.alpha));
                 this.spriteScreenBuf = new Sprite([], this.bounds.first, this.bounds.second); 
             }
             this.dimensions = new Pair(newDim[0], newDim[1]);
