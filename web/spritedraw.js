@@ -474,8 +474,9 @@ class SimpleGridLayoutManager {
 class GuiListItem extends SimpleGridLayoutManager {
     constructor(text, state, pixelDim, fontSize = 16, callBack = () => 0) {
         super([20, 1], pixelDim);
-        this.checkBox = new GuiCheckBox(callBack, fontSize * 2, fontSize * 2);
-        this.textBox = new GuiTextBox(true, pixelDim[0] - fontSize * 2 - 10);
+        this.selected = false;
+        this.checkBox = new GuiCheckBox(callBack, pixelDim[1], pixelDim[1]);
+        this.textBox = new GuiTextBox(true, pixelDim[0] - fontSize * 2 - 10, null, fontSize, pixelDim[1]);
         this.textBox.setText(text);
         this.checkBox.checked = state;
         this.checkBox.refresh();
@@ -1663,35 +1664,47 @@ class GuiToolBar {
 }
 ;
 class LayerManagerTool extends Tool {
-    constructor(name, path, field) {
+    constructor(name, path, field, limit = 12) {
         super(name, path);
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager([1, 24], [200, 500]);
+        this.layersLimit = limit;
+        this.layoutManager = new SimpleGridLayoutManager([2, 24], [200, 500]);
         this.list = new SimpleGridLayoutManager([1, 24], [200, 400]);
+        this.buttonAddLayer = new GuiButton(() => { this.pushList(`layer${this.runningId++}`); }, "Add Layer", 100, 40, 16);
         this.layoutManager.addElement(new GuiLabel("Layers list:", 200));
         this.layoutManager.addElement(this.list);
+        this.layoutManager.addElement(this.buttonAddLayer);
         for (let i = 0; i < field.layers.length; i++) {
             this.pushList(`layer${i}`);
         }
+        this.runningId = field.layers.length;
+    }
+    deleteItem(index = this.field.selected) {
+        if (this.field.layers[index]) {
+            this.list.elements.splice(index, 1);
+            this.field.deleteLayer(index);
+        }
     }
     pushList(text) {
-        let layer;
-        if (this.field.layers.length <= this.list.elements.length)
-            layer = this.field.addBlankLayer();
-        else if (this.field.layers[this.list.elements.length])
-            layer = this.field.layers[this.list.elements.length];
-        else
-            console.log("Error field layers out of sync with layers tool");
-        this.list.addElement(new GuiListItem(text, true, [200, 50], 16, (e) => {
-            const index = this.field.layers.indexOf(layer);
-            console.log(index, this.field.layersState);
-            if (this.field.layers[index]) {
-                this.field.layersState[index] = e.checkBox.checked;
-                this.field.layer().repaint = true;
-            }
+        if (this.list.elements.length < this.layersLimit) {
+            let layer;
+            if (this.field.layers.length <= this.list.elements.length)
+                layer = this.field.addBlankLayer();
+            else if (this.field.layers[this.list.elements.length])
+                layer = this.field.layers[this.list.elements.length];
             else
-                console.log("Error changing layer state");
-        }));
+                console.log("Error field layers out of sync with layers tool");
+            this.list.addElement(new GuiListItem(text, true, [200, 25], 16, (e) => {
+                const index = this.field.layers.indexOf(layer);
+                this.field.selected = index;
+                if (this.field.layers[index]) {
+                    this.field.layersState[index] = e.checkBox.checked;
+                    this.field.layer().repaint = true;
+                }
+                else
+                    console.log("Error changing layer state");
+            }));
+        }
     }
     activateOptionPanel() { this.layoutManager.activate(); }
     deactivateOptionPanel() { this.layoutManager.deactivate(); }
@@ -2851,6 +2864,10 @@ class LayeredDrawingScreen {
     }
     layer() {
         return this.layers[this.selected];
+    }
+    deleteLayer(index) {
+        this.layers.splice(index, 1);
+        this.layersState.splice(index, 1);
     }
     addBlankLayer() {
         const layer = new DrawingScreen(document.createElement("canvas"), this.keyboardHandler, this.pallette, [0, 0], [this.dim[0], this.dim[1]], this.toolSelector, this.state, this.clipBoard);
