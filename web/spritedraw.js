@@ -504,9 +504,11 @@ class GuiCheckList {
     constructor(matrixDim, pixelDim, fontSize) {
         this.focused = true;
         this.fontSize = fontSize;
-        this.layoutManager = new SimpleGridLayoutManager(matrixDim, pixelDim);
+        this.layoutManager = new SimpleGridLayoutManager([1, matrixDim[1]], pixelDim);
         this.list = [];
         this.limit = 0;
+        this.dragItem = null;
+        this.dragItemLocation = [0, 0];
     }
     push(text, state = true, checkBoxCallback, onClickGeneral) {
         this.list.push(new GuiListItem(text, state, [this.width(),
@@ -561,8 +563,28 @@ class GuiCheckList {
     }
     handleTouchEvents(type, e) {
         this.layoutManager.handleTouchEvents(type, e);
-        if (this.selectedItem())
-            this.selectedItem().callBack(e);
+        switch (type) {
+            case ("touchend"):
+                if (this.dragItem) {
+                    this.list.splice(0, 0, this.dragItem);
+                    this.dragItem = null;
+                }
+                if (this.selectedItem())
+                    this.selectedItem().callBack(e);
+                break;
+            case ("touchmove"):
+                console.log(this.selectedItem(), this.list.length, this.selected());
+                if (e.moveCount === 1 && this.selectedItem() && this.list.length > 1) {
+                    this.dragItem = this.list.splice(this.selected(), 1)[0];
+                    this.dragItemLocation[0] = e.touchPos[0];
+                    this.dragItemLocation[1] = e.touchPos[1];
+                }
+                else if (e.moveCount > 1) {
+                    this.dragItemLocation[0] += e.deltaX;
+                    this.dragItemLocation[1] += e.deltaY;
+                }
+                break;
+        }
     }
     isLayoutManager() {
         return false;
@@ -963,7 +985,7 @@ class GuiTextBox {
         if (this.active()) {
             switch (type) {
                 case ("touchend"):
-                    if (isTouchSupported()) {
+                    if (isTouchSupported() && this.handleKeyEvents) {
                         const value = prompt(this.promptText, this.text);
                         if (value) {
                             this.setText(value);
