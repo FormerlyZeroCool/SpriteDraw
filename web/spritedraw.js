@@ -288,6 +288,7 @@ class RowRecord {
 }
 class SimpleGridLayoutManager {
     constructor(matrixDim, pixelDim, x = 0, y = 0) {
+        this.lastTouched = 0;
         this.matrixDim = matrixDim;
         this.pixelDim = pixelDim;
         this.focused = false;
@@ -326,13 +327,17 @@ class SimpleGridLayoutManager {
         if (e.touchPos[0] >= 0 && e.touchPos[0] < this.width() &&
             e.touchPos[1] >= 0 && e.touchPos[1] < this.height()) {
             let record = null;
+            let index = 0;
+            let runningNumber = 0;
             this.elementsPositions.forEach(el => {
                 el.element.deactivate();
                 el.element.refresh();
                 if (e.touchPos[0] >= el.x && e.touchPos[0] < el.x + el.element.width() &&
                     e.touchPos[1] >= el.y && e.touchPos[1] < el.y + el.element.height()) {
                     record = el;
+                    index = runningNumber;
                 }
+                runningNumber++;
             });
             if (record) {
                 e.preventDefault();
@@ -344,6 +349,7 @@ class SimpleGridLayoutManager {
                 if (e.repaint) {
                     this.refreshCanvas();
                 }
+                this.lastTouched = index;
             }
         }
     }
@@ -472,19 +478,94 @@ class SimpleGridLayoutManager {
 }
 ;
 class GuiListItem extends SimpleGridLayoutManager {
-    constructor(text, state, pixelDim, fontSize = 16, callBack = () => 0) {
+    constructor(text, state, pixelDim, fontSize = 16, callBack = () => null, genericCallBack = () => null) {
         super([20, 1], pixelDim);
+        this.callBack = genericCallBack;
         this.selected = false;
         this.checkBox = new GuiCheckBox(callBack, pixelDim[1], pixelDim[1]);
-        this.textBox = new GuiTextBox(true, pixelDim[0] - fontSize * 2 - 10, null, fontSize, pixelDim[1]);
+        this.textBox = new GuiTextBox(false, pixelDim[0] - fontSize * 2 - 10, null, fontSize, pixelDim[1]);
         this.textBox.setText(text);
         this.checkBox.checked = state;
         this.checkBox.refresh();
         this.addElement(this.checkBox);
         this.addElement(this.textBox);
     }
+    handleTouchEvents(type, e) {
+        super.handleTouchEvents(type, e);
+        if (this.active() && type === "touchstart")
+            this.callBack(e);
+    }
     state() {
         return this.checkBox.checked;
+    }
+}
+;
+class GuiCheckList {
+    constructor(matrixDim, pixelDim, fontSize) {
+        this.focused = true;
+        this.fontSize = fontSize;
+        this.layoutManager = new SimpleGridLayoutManager(matrixDim, pixelDim);
+        this.list = [];
+        this.limit = 0;
+    }
+    push(text, state = true, checkBoxCallback, onClickGeneral) {
+        this.list.push(new GuiListItem(text, state, [this.width(),
+            this.height() / this.layoutManager.matrixDim[1] - 5], this.fontSize, checkBoxCallback, onClickGeneral));
+    }
+    selected() {
+        return this.layoutManager.lastTouched;
+    }
+    selectedItem() {
+        if (this.selected())
+            return this.list[this.selected()];
+        else
+            return null;
+    }
+    get(index) {
+        if (this.list[index])
+            return this.list[index];
+        else
+            return null;
+    }
+    isChecked(index) {
+        return this.list[index] ? this.list[index].checkBox.checked : null;
+    }
+    delete(index) {
+        if (this.list[index])
+            this.list.splice(index, 0);
+    }
+    active() {
+        return this.focused;
+    }
+    deactivate() {
+        this.focused = false;
+    }
+    activate() {
+        this.focused = true;
+    }
+    width() {
+        return this.layoutManager.width();
+    }
+    height() {
+        return this.layoutManager.height();
+    }
+    refresh() {
+        this.layoutManager.elements = this.list;
+        this.layoutManager.refresh();
+    }
+    draw(ctx, x, y, offsetX, offsetY) {
+        this.layoutManager.draw(ctx, x, y, offsetX, offsetY);
+    }
+    handleKeyBoardEvents(type, e) {
+        this.layoutManager.handleKeyBoardEvents(type, e);
+    }
+    handleTouchEvents(type, e) {
+        this.layoutManager.handleTouchEvents(type, e);
+        if (this.selectedItem())
+            this.selectedItem().callBack(e);
+    }
+    isLayoutManager() {
+        return false;
     }
 }
 ;
@@ -720,6 +801,7 @@ class Optional {
 ;
 class GuiTextBox {
     constructor(keyListener, width, submit = null, fontSize = 16, height = 2 * fontSize, flags = GuiTextBox.default, selectedColor = new RGB(80, 80, 220), unSelectedColor = new RGB(100, 100, 100), fontName = "textBox_default", customFontFace = null) {
+        this.handleKeyEvents = keyListener;
         GuiTextBox.textBoxRunningNumber++;
         this.textBoxId = GuiTextBox.textBoxRunningNumber;
         this.cursor = 0;
@@ -796,7 +878,7 @@ class GuiTextBox {
     }
     handleKeyBoardEvents(type, e) {
         let preventDefault = false;
-        if (this.active()) {
+        if (this.active() && this.handleKeyEvents) {
             preventDefault = true;
             switch (type) {
                 case ("keydown"):
@@ -1044,7 +1126,7 @@ class GuiTextBox {
         rows.forEach(row => this.ctx.fillText(row.text, row.x, row.y, row.width));
     }
     drawCursor() {
-        if (this.active()) {
+        if (this.active() && this.handleKeyEvents) {
             this.ctx.fillStyle = "#000000";
             this.ctx.fillRect(this.scaledCursorPos[0], this.scaledCursorPos[1] - this.fontSize + 3, 2, this.fontSize - 2);
         }
@@ -1105,6 +1187,103 @@ class GuiLabel extends GuiTextBox {
 GuiTextBox.initGlobalText();
 GuiTextBox.initGlobalNumbers();
 GuiTextBox.initGlobalSpecialChars();
+class GuiToolBar {
+    constructor(renderDim, tools = []) {
+        this.focused = false;
+        this.selected = 0;
+        this.vertical = true;
+        this.toolsPerRow = 10;
+        this.toolRenderDim = [renderDim[0], renderDim[1]];
+        this.tools = tools;
+        this.canvas = document.createElement("canvas");
+        this.canvas.height = this.height();
+        this.canvas.width = this.width();
+        this.ctx = this.canvas.getContext("2d");
+        this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.strokeStyle = "#000000";
+    }
+    resize(width = this.width(), height = this.height()) {
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this.ctx = this.canvas.getContext("2d");
+        this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.strokeStyle = "#000000";
+    }
+    active() {
+        return this.focused;
+    }
+    deactivate() {
+        this.focused = false;
+    }
+    activate() {
+        this.focused = true;
+    }
+    width() {
+        if (this.vertical)
+            return this.toolRenderDim[0] * (1 + Math.floor(this.tools.length / this.toolsPerRow));
+        else
+            return this.toolRenderDim[0] * this.toolsPerRow;
+    }
+    height() {
+        if (this.vertical)
+            return this.toolRenderDim[1] * this.toolsPerRow;
+        else
+            return this.toolRenderDim[1] * (1 + Math.floor(this.tools.length / this.toolsPerRow));
+    }
+    refresh() {
+        this.ctx.fillRect(0, 0, this.width(), this.height());
+        for (let i = 0; i < this.tools.length; i++) {
+            let gridX = 0;
+            let gridY = 0;
+            if (this.vertical) {
+                const toolsPerColumn = this.toolsPerRow;
+                gridX = Math.floor(i / toolsPerColumn);
+                gridY = i % toolsPerColumn;
+            }
+            else {
+                gridX = i % this.toolsPerRow;
+                gridY = Math.floor(i / this.toolsPerRow);
+            }
+            const pixelX = gridX * this.toolRenderDim[0];
+            const pixelY = gridY * this.toolRenderDim[1];
+            const image = this.tools[i].image();
+            if (image) {
+                this.ctx.drawImage(image, pixelX, pixelY, this.toolRenderDim[0], this.toolRenderDim[1]);
+            }
+            else {
+                console.log("Still loading image for: ", this.tools[i].name());
+            }
+            if (this.selected === i) {
+                this.ctx.strokeRect(pixelX + 1, pixelY + 1, this.toolRenderDim[0] - 2, this.toolRenderDim[1] - 2);
+            }
+        }
+    }
+    draw(ctx, x, y, offsetX = 0, offsetY = 0) {
+        ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
+    }
+    handleKeyBoardEvents(type, e) { }
+    tool() {
+        return this.tools[this.selected];
+    }
+    handleTouchEvents(type, e) {
+        if (this.active()) {
+            switch (type) {
+                case ("touchstart"):
+                    const x = Math.floor(e.touchPos[0] / this.toolRenderDim[0]);
+                    const y = Math.floor(e.touchPos[1] / this.toolRenderDim[1]);
+                    const clicked = this.vertical ? y + x * this.toolsPerRow : x + y * this.toolsPerRow;
+                    if (clicked >= 0 && clicked < this.tools.length) {
+                        this.selected = clicked;
+                    }
+            }
+            this.refresh();
+        }
+    }
+    isLayoutManager() {
+        return false;
+    }
+}
+;
 class ToolBarItem {
     constructor(toolName, toolImagePath) {
         this.toolImage = new ImageContainer(toolName, toolImagePath);
@@ -1566,110 +1745,13 @@ class CopyPasteTool extends ExtendedTool {
     }
 }
 ;
-class GuiToolBar {
-    constructor(renderDim, tools = []) {
-        this.focused = false;
-        this.selected = 0;
-        this.vertical = true;
-        this.toolsPerRow = 10;
-        this.toolRenderDim = [renderDim[0], renderDim[1]];
-        this.tools = tools;
-        this.canvas = document.createElement("canvas");
-        this.canvas.height = this.height();
-        this.canvas.width = this.width();
-        this.ctx = this.canvas.getContext("2d");
-        this.ctx.fillStyle = "#FFFFFF";
-        this.ctx.strokeStyle = "#000000";
-    }
-    resize(width = this.width(), height = this.height()) {
-        this.canvas.width = width;
-        this.canvas.height = height;
-        this.ctx = this.canvas.getContext("2d");
-        this.ctx.fillStyle = "#FFFFFF";
-        this.ctx.strokeStyle = "#000000";
-    }
-    active() {
-        return this.focused;
-    }
-    deactivate() {
-        this.focused = false;
-    }
-    activate() {
-        this.focused = true;
-    }
-    width() {
-        if (this.vertical)
-            return this.toolRenderDim[0] * (1 + Math.floor(this.tools.length / this.toolsPerRow));
-        else
-            return this.toolRenderDim[0] * this.toolsPerRow;
-    }
-    height() {
-        if (this.vertical)
-            return this.toolRenderDim[1] * this.toolsPerRow;
-        else
-            return this.toolRenderDim[1] * (1 + Math.floor(this.tools.length / this.toolsPerRow));
-    }
-    refresh() {
-        this.ctx.fillRect(0, 0, this.width(), this.height());
-        for (let i = 0; i < this.tools.length; i++) {
-            let gridX = 0;
-            let gridY = 0;
-            if (this.vertical) {
-                const toolsPerColumn = this.toolsPerRow;
-                gridX = Math.floor(i / toolsPerColumn);
-                gridY = i % toolsPerColumn;
-            }
-            else {
-                gridX = i % this.toolsPerRow;
-                gridY = Math.floor(i / this.toolsPerRow);
-            }
-            const pixelX = gridX * this.toolRenderDim[0];
-            const pixelY = gridY * this.toolRenderDim[1];
-            const image = this.tools[i].image();
-            if (image) {
-                this.ctx.drawImage(image, pixelX, pixelY, this.toolRenderDim[0], this.toolRenderDim[1]);
-            }
-            else {
-                console.log("Still loading image for: ", this.tools[i].name());
-            }
-            if (this.selected === i) {
-                this.ctx.strokeRect(pixelX + 1, pixelY + 1, this.toolRenderDim[0] - 2, this.toolRenderDim[1] - 2);
-            }
-        }
-    }
-    draw(ctx, x, y, offsetX = 0, offsetY = 0) {
-        ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
-    }
-    handleKeyBoardEvents(type, e) { }
-    tool() {
-        return this.tools[this.selected];
-    }
-    handleTouchEvents(type, e) {
-        if (this.active()) {
-            switch (type) {
-                case ("touchstart"):
-                    const x = Math.floor(e.touchPos[0] / this.toolRenderDim[0]);
-                    const y = Math.floor(e.touchPos[1] / this.toolRenderDim[1]);
-                    const clicked = this.vertical ? y + x * this.toolsPerRow : x + y * this.toolsPerRow;
-                    if (clicked >= 0 && clicked < this.tools.length) {
-                        this.selected = clicked;
-                    }
-            }
-            this.refresh();
-        }
-    }
-    isLayoutManager() {
-        return false;
-    }
-}
-;
 class LayerManagerTool extends Tool {
     constructor(name, path, field, limit = 12) {
         super(name, path);
         this.field = field;
         this.layersLimit = limit;
         this.layoutManager = new SimpleGridLayoutManager([2, 24], [200, 500]);
-        this.list = new SimpleGridLayoutManager([1, 24], [200, 400]);
+        this.list = new GuiCheckList([1, 12], [200, 400], 16);
         this.buttonAddLayer = new GuiButton(() => { this.pushList(`layer${this.runningId++}`); }, "Add Layer", 100, 40, 16);
         this.layoutManager.addElement(new GuiLabel("Layers list:", 200));
         this.layoutManager.addElement(this.list);
@@ -1678,24 +1760,26 @@ class LayerManagerTool extends Tool {
             this.pushList(`layer${i}`);
         }
         this.runningId = field.layers.length;
+        this.list.refresh();
     }
     deleteItem(index = this.field.selected) {
         if (this.field.layers[index]) {
-            this.list.elements.splice(index, 1);
+            this.list.delete(index);
             this.field.deleteLayer(index);
         }
     }
     pushList(text) {
-        if (this.list.elements.length < this.layersLimit) {
+        if (this.field.layers.length < this.layersLimit) {
             let layer;
-            if (this.field.layers.length <= this.list.elements.length)
+            if (this.field.layers.length <= this.list.list.length)
                 layer = this.field.addBlankLayer();
-            else if (this.field.layers[this.list.elements.length])
-                layer = this.field.layers[this.list.elements.length];
+            else if (this.field.layers[this.list.list.length])
+                layer = this.field.layers[this.list.list.length];
             else
                 console.log("Error field layers out of sync with layers tool");
-            this.list.addElement(new GuiListItem(text, true, [200, 25], 16, (e) => {
+            this.list.push(text, true, (e) => {
                 const index = this.field.layers.indexOf(layer);
+                this.list.get(index).textBox.activate();
                 if (e.checkBox.checked)
                     this.field.selected = index;
                 if (this.field.layers[index]) {
@@ -1704,7 +1788,10 @@ class LayerManagerTool extends Tool {
                 }
                 else
                     console.log("Error changing layer state");
-            }));
+            }, (e) => {
+                this.field.selected = this.list.selected();
+            });
+            this.list.refresh();
         }
     }
     activateOptionPanel() { this.layoutManager.activate(); }

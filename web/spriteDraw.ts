@@ -383,8 +383,10 @@ class SimpleGridLayoutManager implements GuiElement {
     pixelDim:number[];
     elementsPositions:RowRecord[];
     focused:boolean;
+    lastTouched:number;
     constructor(matrixDim:number[], pixelDim:number[], x:number = 0, y:number = 0)
     {
+        this.lastTouched = 0;
         this.matrixDim = matrixDim;
         this.pixelDim = pixelDim;
         this.focused = false;
@@ -435,6 +437,8 @@ class SimpleGridLayoutManager implements GuiElement {
             e.touchPos[1] >= 0 && e.touchPos[1] < this.height())
         {
             let record:RowRecord = null;
+            let index:number = 0;
+            let runningNumber:number = 0;
             this.elementsPositions.forEach(el => {
                 el.element.deactivate();
                 el.element.refresh();
@@ -442,7 +446,9 @@ class SimpleGridLayoutManager implements GuiElement {
                     e.touchPos[1] >= el.y && e.touchPos[1] < el.y + el.element.height())
                 {
                     record = el;
+                    index = runningNumber;
                 }
+                runningNumber++;
             });
             if(record)
             {
@@ -456,6 +462,7 @@ class SimpleGridLayoutManager implements GuiElement {
                 {
                     this.refreshCanvas();
                 }
+                this.lastTouched = index;
             }
         }
     }
@@ -609,20 +616,117 @@ class GuiListItem extends SimpleGridLayoutManager {
     textBox:GuiTextBox;
     checkBox:GuiCheckBox;
     selected:boolean;
-    constructor(text:string, state:boolean, pixelDim:number[], fontSize:number = 16, callBack:(e) => void = () => 0)
+    callBack:(e) => void;
+    constructor(text:string, state:boolean, pixelDim:number[], fontSize:number = 16, callBack:(e) => void = () => null, genericCallBack:(e) => void = () => null)
     {
         super([20, 1], pixelDim);
+        this.callBack = genericCallBack;
         this.selected = false;
         this.checkBox = new GuiCheckBox(callBack, pixelDim[1], pixelDim[1]);
-        this.textBox = new GuiTextBox(true, pixelDim[0] - fontSize * 2 - 10, null, fontSize, pixelDim[1]);
+        this.textBox = new GuiTextBox(false, pixelDim[0] - fontSize * 2 - 10, null, fontSize, pixelDim[1]);
         this.textBox.setText(text);
         this.checkBox.checked = state;
         this.checkBox.refresh();
         this.addElement(this.checkBox);
         this.addElement(this.textBox);
     }
+    handleTouchEvents(type: string, e: any): void {
+        super.handleTouchEvents(type, e);
+        if(this.active() && type === "touchstart")
+            this.callBack(e);
+    }
     state():boolean {
         return this.checkBox.checked;
+    }
+};
+class GuiCheckList implements GuiElement {
+    limit:number;
+    list:GuiListItem[];
+    layoutManager:SimpleGridLayoutManager;
+    fontSize:number;
+    focused:boolean;
+    constructor(matrixDim:number[], pixelDim:number[], fontSize:number)
+    {
+        this.focused = true;
+        this.fontSize = fontSize;
+        this.layoutManager = new SimpleGridLayoutManager (matrixDim, pixelDim);
+        this.list = [];
+        this.limit = 0;
+    }
+    push(text:string, state:boolean = true, checkBoxCallback:(event) => void, onClickGeneral:(event) => void): void
+    {
+        this.list.push(new GuiListItem(text, state, [this.width(),
+            this.height() / this.layoutManager.matrixDim[1] - 5], this.fontSize, checkBoxCallback, onClickGeneral));
+    }
+    selected():number
+    {
+        return this.layoutManager.lastTouched;
+    }
+    selectedItem():GuiListItem
+    {
+        if(this.selected())
+            return this.list[this.selected()];
+        else
+            return null;
+    }
+    get(index:number):GuiListItem
+    {
+        if(this.list[index])
+            return this.list[index];
+        else
+            return null;
+    }
+    isChecked(index:number):boolean
+    {
+        return this.list[index] ? this.list[index].checkBox.checked : null;
+    }
+    delete(index:number):void 
+    {
+        if(this.list[index])
+            this.list.splice(index, 0);
+    }
+    active():boolean
+    {
+        return this.focused;
+    }
+    deactivate():void 
+    {
+        this.focused = false;
+    }
+    activate():void
+    {
+        this.focused = true;
+    }
+    width():number
+    {
+        return this.layoutManager.width();
+    }
+    height():number
+    {
+        return this.layoutManager.height();
+    }
+    refresh():void
+    {
+        this.layoutManager.elements = this.list;
+        this.layoutManager.refresh();
+    }
+    draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number, offsetY:number)
+    {
+        this.layoutManager.draw(ctx, x, y, offsetX, offsetY);
+    }
+    handleKeyBoardEvents(type:string, e:any):void
+    {
+        this.layoutManager.handleKeyBoardEvents(type, e);
+    }
+    handleTouchEvents(type:string, e:any):void
+    {
+        this.layoutManager.handleTouchEvents(type, e);
+        if(this.selectedItem())
+            this.selectedItem().callBack(e);
+    }
+    isLayoutManager():boolean
+    {
+        return false;
     }
 };
 class GuiButton implements GuiElement {
@@ -944,9 +1048,11 @@ class GuiTextBox implements GuiElement {
     promptText:string;
     font:FontFace;
     fontName:string;
+    handleKeyEvents:boolean
     constructor(keyListener:boolean, width:number, submit:GuiButton = null, fontSize:number = 16, height:number = 2*fontSize, flags:number = GuiTextBox.default,
         selectedColor:RGB = new RGB(80, 80, 220), unSelectedColor:RGB = new RGB(100, 100, 100), fontName = "textBox_default", customFontFace:FontFace = null)
     {
+        this.handleKeyEvents = keyListener;
         GuiTextBox.textBoxRunningNumber++;
         this.textBoxId = GuiTextBox.textBoxRunningNumber;
         this.cursor = 0;
@@ -1027,7 +1133,7 @@ class GuiTextBox implements GuiElement {
     handleKeyBoardEvents(type:string, e:any):void
     {
         let preventDefault:boolean = false;
-        if(this.active()) {
+        if(this.active() && this.handleKeyEvents) {
             preventDefault = true;
             switch(type)
             {
@@ -1323,7 +1429,7 @@ class GuiTextBox implements GuiElement {
         rows.forEach(row => this.ctx.fillText(row.text, row.x, row.y, row.width));
     }
     drawCursor():void{
-        if(this.active())
+        if(this.active() && this.handleKeyEvents)
         {
             this.ctx.fillStyle = "#000000";
             this.ctx.fillRect(this.scaledCursorPos[0], this.scaledCursorPos[1] - this.fontSize+3, 2, this.fontSize-2);
@@ -1374,6 +1480,119 @@ class GuiLabel extends GuiTextBox {
 GuiTextBox.initGlobalText();
 GuiTextBox.initGlobalNumbers();
 GuiTextBox.initGlobalSpecialChars();
+class GuiToolBar implements GuiElement {
+    tools:ToolBarItem[];
+    focused:boolean;
+    toolRenderDim:number[];
+    toolsPerRow:number;//could also be per column depending on render settings
+    canvas:HTMLCanvasElement;
+    ctx:CanvasRenderingContext2D;
+    vertical:boolean
+    selected:number;
+    constructor(renderDim:number[], tools:Tool[] = []) {
+        this.focused = false;
+        this.selected = 0;
+        this.vertical = true;
+        this.toolsPerRow = 10;
+        this.toolRenderDim = [renderDim[0], renderDim[1]];
+        this.tools = tools;
+        this.canvas = document.createElement("canvas");
+        this.canvas.height = this.height();
+        this.canvas.width = this.width();
+        this.ctx = this.canvas.getContext("2d");
+        this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.strokeStyle = "#000000";
+    }
+    resize(width:number = this.width(), height:number = this.height()):void
+    {
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this.ctx = this.canvas.getContext("2d");
+        this.ctx.fillStyle = "#FFFFFF";
+        this.ctx.strokeStyle = "#000000";
+    }
+    active():boolean {
+        return this.focused;
+    }
+    deactivate():void {
+        this.focused = false;
+    }
+    activate():void {
+        this.focused = true;
+    }
+    width():number {
+        if(this.vertical)
+            return this.toolRenderDim[0] * (1+Math.floor(this.tools.length / this.toolsPerRow));
+        else
+            return this.toolRenderDim[0] * this.toolsPerRow;
+    }
+    height():number {
+        if(this.vertical)
+            return this.toolRenderDim[1] * this.toolsPerRow;
+        else
+            return this.toolRenderDim[1] * (1+Math.floor(this.tools.length / this.toolsPerRow));
+    }
+    refresh():void {
+        this.ctx.fillRect(0, 0, this.width(), this.height());
+        for(let i = 0; i < this.tools.length; i++)
+        {
+            let gridX:number = 0;
+            let gridY:number = 0;
+            if(this.vertical)
+            {
+                const toolsPerColumn:number = this.toolsPerRow;
+                gridX = Math.floor(i / toolsPerColumn);
+                gridY = i % toolsPerColumn;
+            }
+            else
+            {   
+                gridX = i % this.toolsPerRow;
+                gridY = Math.floor(i / this.toolsPerRow);
+            }
+            const pixelX:number = gridX * this.toolRenderDim[0];
+            const pixelY:number = gridY * this.toolRenderDim[1];
+            const image:HTMLImageElement = this.tools[i].image();
+            if(image)
+            {
+                this.ctx.drawImage(image, pixelX, pixelY, this.toolRenderDim[0], this.toolRenderDim[1]);
+            }
+            else
+            {
+                console.log("Still loading image for: ", this.tools[i].name());
+            }
+            if(this.selected === i)
+            {
+                this.ctx.strokeRect(pixelX + 1, pixelY + 1, this.toolRenderDim[0] - 2, this.toolRenderDim[1] - 2);
+            }
+        }
+    }
+    draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0) {
+        ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
+    }
+    handleKeyBoardEvents(type:string, e:any):void {}
+    tool():ToolBarItem {
+        return this.tools[this.selected];
+    }
+    handleTouchEvents(type:string, e:any):void {
+        if(this.active())
+        {
+            switch(type){
+                case("touchstart"):
+                const x:number = Math.floor(e.touchPos[0] / this.toolRenderDim[0]);
+                const y:number = Math.floor(e.touchPos[1] / this.toolRenderDim[1]);
+                const clicked:number = this.vertical?y + x * this.toolsPerRow : x + y * this.toolsPerRow;
+                if(clicked >= 0 && clicked < this.tools.length)
+                {
+                    this.selected = clicked;
+                }
+            }
+            this.refresh();
+        }
+    }
+    isLayoutManager():boolean {
+        return false;
+    }
+};
 class ToolBarItem {
     toolImage:ImageContainer;
     constructor(toolName:string, toolImagePath:string)
@@ -1926,121 +2145,8 @@ class CopyPasteTool extends ExtendedTool {
 
     }
 };
-class GuiToolBar implements GuiElement {
-    tools:ToolBarItem[];
-    focused:boolean;
-    toolRenderDim:number[];
-    toolsPerRow:number;//could also be per column depending on render settings
-    canvas:HTMLCanvasElement;
-    ctx:CanvasRenderingContext2D;
-    vertical:boolean
-    selected:number;
-    constructor(renderDim:number[], tools:Tool[] = []) {
-        this.focused = false;
-        this.selected = 0;
-        this.vertical = true;
-        this.toolsPerRow = 10;
-        this.toolRenderDim = [renderDim[0], renderDim[1]];
-        this.tools = tools;
-        this.canvas = document.createElement("canvas");
-        this.canvas.height = this.height();
-        this.canvas.width = this.width();
-        this.ctx = this.canvas.getContext("2d");
-        this.ctx.fillStyle = "#FFFFFF";
-        this.ctx.strokeStyle = "#000000";
-    }
-    resize(width:number = this.width(), height:number = this.height()):void
-    {
-        this.canvas.width = width;
-        this.canvas.height = height;
-        this.ctx = this.canvas.getContext("2d");
-        this.ctx.fillStyle = "#FFFFFF";
-        this.ctx.strokeStyle = "#000000";
-    }
-    active():boolean {
-        return this.focused;
-    }
-    deactivate():void {
-        this.focused = false;
-    }
-    activate():void {
-        this.focused = true;
-    }
-    width():number {
-        if(this.vertical)
-            return this.toolRenderDim[0] * (1+Math.floor(this.tools.length / this.toolsPerRow));
-        else
-            return this.toolRenderDim[0] * this.toolsPerRow;
-    }
-    height():number {
-        if(this.vertical)
-            return this.toolRenderDim[1] * this.toolsPerRow;
-        else
-            return this.toolRenderDim[1] * (1+Math.floor(this.tools.length / this.toolsPerRow));
-    }
-    refresh():void {
-        this.ctx.fillRect(0, 0, this.width(), this.height());
-        for(let i = 0; i < this.tools.length; i++)
-        {
-            let gridX:number = 0;
-            let gridY:number = 0;
-            if(this.vertical)
-            {
-                const toolsPerColumn:number = this.toolsPerRow;
-                gridX = Math.floor(i / toolsPerColumn);
-                gridY = i % toolsPerColumn;
-            }
-            else
-            {   
-                gridX = i % this.toolsPerRow;
-                gridY = Math.floor(i / this.toolsPerRow);
-            }
-            const pixelX:number = gridX * this.toolRenderDim[0];
-            const pixelY:number = gridY * this.toolRenderDim[1];
-            const image:HTMLImageElement = this.tools[i].image();
-            if(image)
-            {
-                this.ctx.drawImage(image, pixelX, pixelY, this.toolRenderDim[0], this.toolRenderDim[1]);
-            }
-            else
-            {
-                console.log("Still loading image for: ", this.tools[i].name());
-            }
-            if(this.selected === i)
-            {
-                this.ctx.strokeRect(pixelX + 1, pixelY + 1, this.toolRenderDim[0] - 2, this.toolRenderDim[1] - 2);
-            }
-        }
-    }
-    draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0) {
-        ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
-    }
-    handleKeyBoardEvents(type:string, e:any):void {}
-    tool():ToolBarItem {
-        return this.tools[this.selected];
-    }
-    handleTouchEvents(type:string, e:any):void {
-        if(this.active())
-        {
-            switch(type){
-                case("touchstart"):
-                const x:number = Math.floor(e.touchPos[0] / this.toolRenderDim[0]);
-                const y:number = Math.floor(e.touchPos[1] / this.toolRenderDim[1]);
-                const clicked:number = this.vertical?y + x * this.toolsPerRow : x + y * this.toolsPerRow;
-                if(clicked >= 0 && clicked < this.tools.length)
-                {
-                    this.selected = clicked;
-                }
-            }
-            this.refresh();
-        }
-    }
-    isLayoutManager():boolean {
-        return false;
-    }
-};
 class LayerManagerTool extends Tool {
-    list:SimpleGridLayoutManager;
+    list:GuiCheckList;
     layoutManager:SimpleGridLayoutManager;
     field:LayeredDrawingScreen;
     buttonAddLayer:GuiButton;
@@ -2052,7 +2158,7 @@ class LayerManagerTool extends Tool {
         this.field = field;
         this.layersLimit = limit;
         this.layoutManager = new SimpleGridLayoutManager([2, 24], [200, 500]);
-        this.list = new SimpleGridLayoutManager([1, 24], [200, 400]);
+        this.list = new GuiCheckList([1, 12], [200, 400], 16);
         this.buttonAddLayer = new GuiButton(() => { this.pushList(`layer${this.runningId++}`); }, "Add Layer", 100, 40, 16);
         this.layoutManager.addElement(new GuiLabel("Layers list:", 200));
         this.layoutManager.addElement(this.list);
@@ -2062,35 +2168,42 @@ class LayerManagerTool extends Tool {
             this.pushList(`layer${i}`);
         }
         this.runningId = field.layers.length;
+        this.list.refresh();
     }
     deleteItem(index:number = this.field.selected):void
     {
         if(this.field.layers[index]){
-            this.list.elements.splice(index, 1);
+            this.list.delete(index);
             this.field.deleteLayer(index);
         }
     }
     pushList(text:string): void {
-        if(this.list.elements.length < this.layersLimit)
+        if(this.field.layers.length < this.layersLimit)
         {
             let layer:DrawingScreen;
-            if(this.field.layers.length <= this.list.elements.length)
+            if(this.field.layers.length <= this.list.list.length)
                 layer = this.field.addBlankLayer();
-            else if(this.field.layers[this.list.elements.length])
-                layer = this.field.layers[this.list.elements.length];
+            else if(this.field.layers[this.list.list.length])
+                layer = this.field.layers[this.list.list.length];
             else
                 console.log("Error field layers out of sync with layers tool");
-            this.list.addElement(new GuiListItem(text, true, [200, 25], 16, (e) => {
-                const index:number = this.field.layers.indexOf(layer);
-                if(e.checkBox.checked)
-                    this.field.selected = index;
-                if(this.field.layers[index]) {
-                    this.field.layersState[index] = e.checkBox.checked;
-                    this.field.layer().repaint = true;
-                }
-                else
-                    console.log("Error changing layer state");
-            }));
+            
+            this.list.push(text, true, (e) => {
+                    const index:number = this.field.layers.indexOf(layer);
+                    this.list.get(index).textBox.activate();
+                    if(e.checkBox.checked)
+                        this.field.selected = index;
+                    if(this.field.layers[index]) {
+                        this.field.layersState[index] = e.checkBox.checked;
+                        this.field.layer().repaint = true;
+                    }
+                    else
+                        console.log("Error changing layer state");
+                },
+                (e) => {
+                    this.field.selected = this.list.selected();
+                });
+                this.list.refresh();
         }
     }
     activateOptionPanel():void { this.layoutManager.activate(); }
