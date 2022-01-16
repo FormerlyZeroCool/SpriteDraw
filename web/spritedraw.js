@@ -538,8 +538,10 @@ class GuiCheckList {
         return this.list[index] ? this.list[index].checkBox.checked : null;
     }
     delete(index) {
-        if (this.list[index])
-            this.list.splice(index, 0);
+        if (this.list[index]) {
+            this.list.splice(index, 1);
+            this.refresh();
+        }
     }
     active() {
         return this.focused;
@@ -1804,10 +1806,11 @@ class LayerManagerTool extends Tool {
             this.field.swapLayers(x1, x2);
             this.field.layer().repaint = true;
         });
-        this.buttonAddLayer = new GuiButton(() => { this.pushList(`layer${this.runningId++}`); }, "Add Layer", 100, 40, 16);
+        this.buttonAddLayer = new GuiButton(() => { this.pushList(`layer${this.runningId++}`); }, "Add Layer", 99, 40, 16);
         this.layoutManager.addElement(new GuiLabel("Layers list:", 200));
         this.layoutManager.addElement(this.list);
         this.layoutManager.addElement(this.buttonAddLayer);
+        this.layoutManager.addElement(new GuiButton(() => this.deleteItem(), "Delete", 99, 40, 16));
         for (let i = 0; i < field.layers.length; i++) {
             this.pushList(`layer${i}`);
         }
