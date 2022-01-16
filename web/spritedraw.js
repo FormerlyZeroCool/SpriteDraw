@@ -528,6 +528,14 @@ class GuiCheckList {
         else
             return null;
     }
+    findBasedOnCheckbox(checkBox) {
+        let index = 0;
+        for (; index < this.list.length; index++) {
+            if (this.list[index].checkBox === checkBox)
+                break;
+        }
+        return index;
+    }
     get(index) {
         if (this.list[index])
             return this.list[index];
@@ -1833,7 +1841,7 @@ class LayerManagerTool extends Tool {
             else
                 console.log("Error field layers out of sync with layers tool");
             this.list.push(text, true, (e) => {
-                const index = Math.floor((e.touchPos[1] / this.height()) * this.layoutManager.matrixDim[1]);
+                const index = this.list.findBasedOnCheckbox(e.checkBox);
                 //this.list.get(index).textBox.activate();
                 if (e.checkBox.checked)
                     this.field.selected = index;
@@ -2981,6 +2989,7 @@ class LayeredDrawingScreen {
         this.dim = [524, 524];
         this.canvas.width = this.dim[0];
         this.canvas.height = this.dim[1];
+        this.spriteTest = new Sprite([], this.dim[0], this.dim[1], false);
         this.ctx = this.canvas.getContext("2d");
         this.ctx.fillStyle = "#FFFFFF";
         this.selected = 0;
@@ -3011,8 +3020,11 @@ class LayeredDrawingScreen {
     swapLayers(x1, x2) {
         if (this.layers[x1] && this.layers[x2]) {
             const temp = this.layers[x1];
+            const temp2 = this.layersState[x1];
             this.layers[x1] = this.layers[x2];
             this.layers[x2] = temp;
+            this.layersState[x1] = this.layersState[x2];
+            this.layersState[x2] = temp2;
         }
     }
     layer() {
@@ -3034,6 +3046,12 @@ class LayeredDrawingScreen {
     }
     height() {
         return this.dim[1];
+    }
+    toSprite() {
+        const sprite = new Sprite([], this.dim[0], this.dim[1], false);
+        sprite.pixels = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height).data;
+        sprite.refreshImage();
+        return sprite;
     }
     draw(canvas, ctx, x, y, width, height) {
         if (width !== this.width() || height !== this.height()) {

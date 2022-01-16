@@ -681,6 +681,16 @@ class GuiCheckList implements GuiElement {
         else
             return null;
     }
+    findBasedOnCheckbox(checkBox:GuiCheckBox):number
+    {
+        let index:number = 0;
+        for(; index < this.list.length; index++)
+        {
+            if(this.list[index].checkBox === checkBox)
+                break;
+        }
+        return index;
+    }
     get(index:number):GuiListItem
     {
         if(this.list[index])
@@ -2257,7 +2267,7 @@ class LayerManagerTool extends Tool {
                 console.log("Error field layers out of sync with layers tool");
             
             this.list.push(text, true, (e) => {
-                    const index:number = Math.floor((e.touchPos[1] / this.height()) * this.layoutManager.matrixDim[1]);
+                    const index:number = this.list.findBasedOnCheckbox(e.checkBox);
                     //this.list.get(index).textBox.activate();
                     if(e.checkBox.checked)
                         this.field.selected = index;
@@ -3613,6 +3623,7 @@ class LayeredDrawingScreen {
     selected:number;
     clipBoard:ClipBoard;
     canvas:HTMLCanvasElement;
+    spriteTest:Sprite;
     dim:number[];
     ctx:CanvasRenderingContext2D;
     redraw:boolean;
@@ -3625,6 +3636,7 @@ class LayeredDrawingScreen {
         this.dim = [524, 524];
         this.canvas.width = this.dim[0];
         this.canvas.height = this.dim[1];
+        this.spriteTest = new Sprite([], this.dim[0], this.dim[1], false);
         this.ctx = this.canvas.getContext("2d");
         this.ctx.fillStyle = "#FFFFFF";
         this.selected = 0;
@@ -3659,8 +3671,11 @@ class LayeredDrawingScreen {
         if(this.layers[x1] && this.layers[x2])
         {
             const temp:DrawingScreen = this.layers[x1];
+            const temp2:boolean = this.layersState[x1];
             this.layers[x1] = this.layers[x2];
             this.layers[x2] = temp;
+            this.layersState[x1] = this.layersState[x2];
+            this.layersState[x2] = temp2;
         }
     }
     layer():DrawingScreen {
@@ -3685,6 +3700,13 @@ class LayeredDrawingScreen {
     }
     height():number {
         return this.dim[1];
+    }
+    toSprite():Sprite
+    {
+        const sprite:Sprite = new Sprite([], this.dim[0], this.dim[1], false);
+        sprite.pixels = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height).data;
+        sprite.refreshImage();
+        return sprite;
     }
     draw(canvas:HTMLCanvasElement, ctx:CanvasRenderingContext2D, x:number, y:number, width:number, height:number):void 
     {
