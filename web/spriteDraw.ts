@@ -453,7 +453,8 @@ class SimpleGridLayoutManager implements GuiElement {
             if(record)
             {
                 e.preventDefault();
-                record.element.activate();
+                if(type !== "touchmove")
+                    record.element.activate();
                 e.translateEvent(e, -record.x , -record.y);
                 record.element.handleTouchEvents(type, e);
                 e.translateEvent(e, record.x , record.y);
@@ -615,13 +616,13 @@ class SimpleGridLayoutManager implements GuiElement {
 class GuiListItem extends SimpleGridLayoutManager {
     textBox:GuiTextBox;
     checkBox:GuiCheckBox;
-    selected:boolean;
+    callBackType:string;
     callBack:(e) => void;
-    constructor(text:string, state:boolean, pixelDim:number[], fontSize:number = 16, callBack:(e) => void = () => null, genericCallBack:(e) => void = () => null)
+    constructor(text:string, state:boolean, pixelDim:number[], fontSize:number = 16, callBack:(e) => void = () => null, genericCallBack:(e) => void = () => null, genericTouchType:string = "touchend")
     {
         super([20, 1], pixelDim);
+        this.callBackType = genericTouchType;
         this.callBack = genericCallBack;
-        this.selected = false;
         this.checkBox = new GuiCheckBox(callBack, pixelDim[1], pixelDim[1]);
         this.textBox = new GuiTextBox(false, pixelDim[0] - fontSize * 2 - 10, null, fontSize, pixelDim[1]);
         this.textBox.setText(text);
@@ -632,8 +633,11 @@ class GuiListItem extends SimpleGridLayoutManager {
     }
     handleTouchEvents(type: string, e: any): void {
         super.handleTouchEvents(type, e);
-        if(this.active() && type === "touchstart")
+        if(this.active() && type === this.callBackType)
+        {
+            e.item = this;
             this.callBack(e);
+        }
     }
     state():boolean {
         return this.checkBox.checked;
@@ -644,10 +648,12 @@ class GuiCheckList implements GuiElement {
     list:GuiListItem[];
     dragItem:GuiListItem;
     dragItemLocation:number[];
+    dragItemInitialIndex:number;
     layoutManager:SimpleGridLayoutManager;
     fontSize:number;
     focused:boolean;
-    constructor(matrixDim:number[], pixelDim:number[], fontSize:number)
+    swapElementsInParallelArray:(x1, x2) => void;
+    constructor(matrixDim:number[], pixelDim:number[], fontSize:number, swap:(x1, x2) => void = null)
     {
         this.focused = true;
         this.fontSize = fontSize;
@@ -655,7 +661,9 @@ class GuiCheckList implements GuiElement {
         this.list = [];
         this.limit = 0;
         this.dragItem = null;
-        this.dragItemLocation = [0, 0];
+        this.dragItemLocation = [-1, -1];
+        this.dragItemInitialIndex = -1;
+        this.swapElementsInParallelArray = swap;
     }
     push(text:string, state:boolean = true, checkBoxCallback:(event) => void, onClickGeneral:(event) => void): void
     {
@@ -668,7 +676,7 @@ class GuiCheckList implements GuiElement {
     }
     selectedItem():GuiListItem
     {
-        if(this.selected())
+        if(this.selected() !== -1)
             return this.list[this.selected()];
         else
             return null;
@@ -716,7 +724,20 @@ class GuiCheckList implements GuiElement {
     }
     draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number, offsetY:number)
     {
-        this.layoutManager.draw(ctx, x, y, offsetX, offsetY);
+        //this.layoutManager.draw(ctx, x, y, offsetX, offsetY);
+        const itemsPositions:RowRecord[] = this.layoutManager.elementsPositions;
+        let offsetI:number = 0;
+        for(let i = 0; i < itemsPositions.length; i++)
+        {
+            if(this.dragItemLocation[1] !== -1 && i === Math.floor((this.dragItemLocation[1] / this.height()) * this.layoutManager.matrixDim[1]))
+            {
+                offsetI++;
+            }
+            this.list[i].draw(ctx, x, y + offsetI * (this.height() / this.layoutManager.matrixDim[1]), offsetX, offsetY);
+            offsetI++;
+        }
+        if(this.dragItem)
+            this.dragItem.draw(ctx, x + this.dragItemLocation[0] - this.dragItem.width() / 2, y + this.dragItemLocation[1] - this.dragItem.height() / 2, offsetX, offsetY);
     }
     handleKeyBoardEvents(type:string, e:any):void
     {
@@ -725,26 +746,38 @@ class GuiCheckList implements GuiElement {
     handleTouchEvents(type:string, e:any):void
     {
         this.layoutManager.handleTouchEvents(type, e);
+        const clicked:number = Math.floor((e.touchPos[1] / this.height()) * this.layoutManager.matrixDim[1]);
+        this.layoutManager.lastTouched = clicked > this.list.length ? this.list.length - 1 : clicked;
         switch(type)
         {
             case("touchend"):
             if(this.dragItem)
             {
-                this.list.splice(0, 0, this.dragItem);
+                this.list.splice(clicked, 0, this.dragItem);
+                if(this.swapElementsInParallelArray && this.dragItemInitialIndex !== -1)
+                {
+                    if(clicked > this.list.length)
+                        this.swapElementsInParallelArray(this.dragItemInitialIndex, this.list.length - 1);
+                    else
+                    this.swapElementsInParallelArray(this.dragItemInitialIndex, clicked);
+                }
                 this.dragItem = null;
+                this.dragItemInitialIndex = -1;
+                this.dragItemLocation[0] = -1;
+                this.dragItemLocation[1] = -1;
             }
             if(this.selectedItem())
                 this.selectedItem().callBack(e);
             break;
             case("touchmove"):
-            console.log(this.selectedItem(), this.list.length, this.selected());
-            if(e.moveCount === 1 && this.selectedItem() && this.list.length > 1)
+            if(e.moveCount === 2 && this.selectedItem() && this.list.length > 1)
             {
                 this.dragItem = this.list.splice(this.selected(), 1)[0];
+                this.dragItemInitialIndex = this.selected();
                 this.dragItemLocation[0] = e.touchPos[0];
                 this.dragItemLocation[1] = e.touchPos[1];
             }
-            else if(e.moveCount > 1)
+            else if(e.moveCount > 2)
             {
                 this.dragItemLocation[0] += e.deltaX;
                 this.dragItemLocation[1] += e.deltaY;
@@ -2186,7 +2219,10 @@ class LayerManagerTool extends Tool {
         this.field = field;
         this.layersLimit = limit;
         this.layoutManager = new SimpleGridLayoutManager([2, 24], [200, 500]);
-        this.list = new GuiCheckList([1, 12], [200, 400], 16);
+        this.list = new GuiCheckList([1, 12], [200, 400], 16, (x1, x2) => {
+            this.field.swapLayers(x1, x2);
+            this.field.layer().repaint = true;
+        });
         this.buttonAddLayer = new GuiButton(() => { this.pushList(`layer${this.runningId++}`); }, "Add Layer", 100, 40, 16);
         this.layoutManager.addElement(new GuiLabel("Layers list:", 200));
         this.layoutManager.addElement(this.list);
@@ -2217,8 +2253,8 @@ class LayerManagerTool extends Tool {
                 console.log("Error field layers out of sync with layers tool");
             
             this.list.push(text, true, (e) => {
-                    const index:number = this.field.layers.indexOf(layer);
-                    this.list.get(index).textBox.activate();
+                    const index:number = Math.floor((e.touchPos[1] / this.height()) * this.layoutManager.matrixDim[1]);
+                    //this.list.get(index).textBox.activate();
                     if(e.checkBox.checked)
                         this.field.selected = index;
                     if(this.field.layers[index]) {
@@ -2230,6 +2266,10 @@ class LayerManagerTool extends Tool {
                 },
                 (e) => {
                     this.field.selected = this.list.selected();
+                    this.list.list.forEach(el => el.textBox.deactivate());
+                    if(this.list.selectedItem())
+                        this.list.selectedItem().textBox.activate();
+
                 });
                 this.list.refresh();
         }
@@ -3608,6 +3648,15 @@ class LayeredDrawingScreen {
             this.canvas.width = bounds[0];
             this.canvas.height = bounds[1];
             this.ctx.fillStyle = "#FFFFFF";
+        }
+    }
+    swapLayers(x1:number, x2:number):void
+    {
+        if(this.layers[x1] && this.layers[x2])
+        {
+            const temp:DrawingScreen = this.layers[x1];
+            this.layers[x1] = this.layers[x2];
+            this.layers[x2] = temp;
         }
     }
     layer():DrawingScreen {

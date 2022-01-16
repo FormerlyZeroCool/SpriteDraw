@@ -341,7 +341,8 @@ class SimpleGridLayoutManager {
             });
             if (record) {
                 e.preventDefault();
-                record.element.activate();
+                if (type !== "touchmove")
+                    record.element.activate();
                 e.translateEvent(e, -record.x, -record.y);
                 record.element.handleTouchEvents(type, e);
                 e.translateEvent(e, record.x, record.y);
@@ -478,10 +479,10 @@ class SimpleGridLayoutManager {
 }
 ;
 class GuiListItem extends SimpleGridLayoutManager {
-    constructor(text, state, pixelDim, fontSize = 16, callBack = () => null, genericCallBack = () => null) {
+    constructor(text, state, pixelDim, fontSize = 16, callBack = () => null, genericCallBack = () => null, genericTouchType = "touchend") {
         super([20, 1], pixelDim);
+        this.callBackType = genericTouchType;
         this.callBack = genericCallBack;
-        this.selected = false;
         this.checkBox = new GuiCheckBox(callBack, pixelDim[1], pixelDim[1]);
         this.textBox = new GuiTextBox(false, pixelDim[0] - fontSize * 2 - 10, null, fontSize, pixelDim[1]);
         this.textBox.setText(text);
@@ -492,8 +493,10 @@ class GuiListItem extends SimpleGridLayoutManager {
     }
     handleTouchEvents(type, e) {
         super.handleTouchEvents(type, e);
-        if (this.active() && type === "touchstart")
+        if (this.active() && type === this.callBackType) {
+            e.item = this;
             this.callBack(e);
+        }
     }
     state() {
         return this.checkBox.checked;
@@ -501,14 +504,16 @@ class GuiListItem extends SimpleGridLayoutManager {
 }
 ;
 class GuiCheckList {
-    constructor(matrixDim, pixelDim, fontSize) {
+    constructor(matrixDim, pixelDim, fontSize, swap = null) {
         this.focused = true;
         this.fontSize = fontSize;
         this.layoutManager = new SimpleGridLayoutManager([1, matrixDim[1]], pixelDim);
         this.list = [];
         this.limit = 0;
         this.dragItem = null;
-        this.dragItemLocation = [0, 0];
+        this.dragItemLocation = [-1, -1];
+        this.dragItemInitialIndex = -1;
+        this.swapElementsInParallelArray = swap;
     }
     push(text, state = true, checkBoxCallback, onClickGeneral) {
         this.list.push(new GuiListItem(text, state, [this.width(),
@@ -518,7 +523,7 @@ class GuiCheckList {
         return this.layoutManager.lastTouched;
     }
     selectedItem() {
-        if (this.selected())
+        if (this.selected() !== -1)
             return this.list[this.selected()];
         else
             return null;
@@ -556,30 +561,52 @@ class GuiCheckList {
         this.layoutManager.refresh();
     }
     draw(ctx, x, y, offsetX, offsetY) {
-        this.layoutManager.draw(ctx, x, y, offsetX, offsetY);
+        //this.layoutManager.draw(ctx, x, y, offsetX, offsetY);
+        const itemsPositions = this.layoutManager.elementsPositions;
+        let offsetI = 0;
+        for (let i = 0; i < itemsPositions.length; i++) {
+            if (this.dragItemLocation[1] !== -1 && i === Math.floor((this.dragItemLocation[1] / this.height()) * this.layoutManager.matrixDim[1])) {
+                offsetI++;
+            }
+            this.list[i].draw(ctx, x, y + offsetI * (this.height() / this.layoutManager.matrixDim[1]), offsetX, offsetY);
+            offsetI++;
+        }
+        if (this.dragItem)
+            this.dragItem.draw(ctx, x + this.dragItemLocation[0] - this.dragItem.width() / 2, y + this.dragItemLocation[1] - this.dragItem.height() / 2, offsetX, offsetY);
     }
     handleKeyBoardEvents(type, e) {
         this.layoutManager.handleKeyBoardEvents(type, e);
     }
     handleTouchEvents(type, e) {
         this.layoutManager.handleTouchEvents(type, e);
+        const clicked = Math.floor((e.touchPos[1] / this.height()) * this.layoutManager.matrixDim[1]);
+        this.layoutManager.lastTouched = clicked > this.list.length ? this.list.length - 1 : clicked;
         switch (type) {
             case ("touchend"):
                 if (this.dragItem) {
-                    this.list.splice(0, 0, this.dragItem);
+                    this.list.splice(clicked, 0, this.dragItem);
+                    if (this.swapElementsInParallelArray && this.dragItemInitialIndex !== -1) {
+                        if (clicked > this.list.length)
+                            this.swapElementsInParallelArray(this.dragItemInitialIndex, this.list.length - 1);
+                        else
+                            this.swapElementsInParallelArray(this.dragItemInitialIndex, clicked);
+                    }
                     this.dragItem = null;
+                    this.dragItemInitialIndex = -1;
+                    this.dragItemLocation[0] = -1;
+                    this.dragItemLocation[1] = -1;
                 }
                 if (this.selectedItem())
                     this.selectedItem().callBack(e);
                 break;
             case ("touchmove"):
-                console.log(this.selectedItem(), this.list.length, this.selected());
-                if (e.moveCount === 1 && this.selectedItem() && this.list.length > 1) {
+                if (e.moveCount === 2 && this.selectedItem() && this.list.length > 1) {
                     this.dragItem = this.list.splice(this.selected(), 1)[0];
+                    this.dragItemInitialIndex = this.selected();
                     this.dragItemLocation[0] = e.touchPos[0];
                     this.dragItemLocation[1] = e.touchPos[1];
                 }
-                else if (e.moveCount > 1) {
+                else if (e.moveCount > 2) {
                     this.dragItemLocation[0] += e.deltaX;
                     this.dragItemLocation[1] += e.deltaY;
                 }
@@ -1773,7 +1800,10 @@ class LayerManagerTool extends Tool {
         this.field = field;
         this.layersLimit = limit;
         this.layoutManager = new SimpleGridLayoutManager([2, 24], [200, 500]);
-        this.list = new GuiCheckList([1, 12], [200, 400], 16);
+        this.list = new GuiCheckList([1, 12], [200, 400], 16, (x1, x2) => {
+            this.field.swapLayers(x1, x2);
+            this.field.layer().repaint = true;
+        });
         this.buttonAddLayer = new GuiButton(() => { this.pushList(`layer${this.runningId++}`); }, "Add Layer", 100, 40, 16);
         this.layoutManager.addElement(new GuiLabel("Layers list:", 200));
         this.layoutManager.addElement(this.list);
@@ -1800,8 +1830,8 @@ class LayerManagerTool extends Tool {
             else
                 console.log("Error field layers out of sync with layers tool");
             this.list.push(text, true, (e) => {
-                const index = this.field.layers.indexOf(layer);
-                this.list.get(index).textBox.activate();
+                const index = Math.floor((e.touchPos[1] / this.height()) * this.layoutManager.matrixDim[1]);
+                //this.list.get(index).textBox.activate();
                 if (e.checkBox.checked)
                     this.field.selected = index;
                 if (this.field.layers[index]) {
@@ -1812,6 +1842,9 @@ class LayerManagerTool extends Tool {
                     console.log("Error changing layer state");
             }, (e) => {
                 this.field.selected = this.list.selected();
+                this.list.list.forEach(el => el.textBox.deactivate());
+                if (this.list.selectedItem())
+                    this.list.selectedItem().textBox.activate();
             });
             this.list.refresh();
         }
@@ -2970,6 +3003,13 @@ class LayeredDrawingScreen {
             this.canvas.width = bounds[0];
             this.canvas.height = bounds[1];
             this.ctx.fillStyle = "#FFFFFF";
+        }
+    }
+    swapLayers(x1, x2) {
+        if (this.layers[x1] && this.layers[x2]) {
+            const temp = this.layers[x1];
+            this.layers[x1] = this.layers[x2];
+            this.layers[x2] = temp;
         }
     }
     layer() {
