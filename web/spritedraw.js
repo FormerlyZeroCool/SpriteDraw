@@ -3514,8 +3514,11 @@ class Sprite {
             this.pixels = new Uint8ClampedArray(sprite.pixels.length);
         this.width = sprite.width;
         this.height = sprite.height;
-        for (let i = 0; i < this.pixels.length; i++) {
-            this.pixels[i] = sprite.pixels[i];
+        for (let i = 0; i < this.pixels.length;) {
+            this.pixels[i] = sprite.pixels[i++];
+            this.pixels[i] = sprite.pixels[i++];
+            this.pixels[i] = sprite.pixels[i++];
+            this.pixels[i] = sprite.pixels[i++];
         }
     }
     copySpriteBlendAlpha(sprite) {
@@ -3710,8 +3713,10 @@ class SpriteSelector {
     pushSelectedToCanvas() {
         const spriteWidth = this.drawingField.layer().dimensions.first;
         const spriteHeight = this.drawingField.layer().dimensions.second;
-        if (this.selectedSpriteVal())
-            this.selectedSpriteVal().copy(this.drawingField.layer().screenBuffer, spriteWidth, spriteHeight);
+        if (this.selectedSpriteVal()) {
+            this.selectedSpriteVal().copySprite(this.drawingField.toSprite());
+            this.selectedSpriteVal().refreshImage();
+        }
     }
     selectedSpriteVal() {
         if (this.sprites())
@@ -3830,7 +3835,7 @@ class AnimationGroup {
         else {
             const sprites = this.animations[this.selectedAnimation].sprites;
             this.spriteSelector.selectedSprite = sprites.length - 1;
-            sprites.push(new Sprite(this.drawingField.layer().screenBuffer, this.drawingField.layer().dimensions.first, this.drawingField.layer().dimensions.second));
+            sprites.push(this.drawingField.toSprite());
             this.spriteSelector.loadSprite();
         }
     }
