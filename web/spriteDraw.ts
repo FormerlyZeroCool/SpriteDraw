@@ -618,13 +618,13 @@ class GuiListItem extends SimpleGridLayoutManager {
     checkBox:GuiCheckBox;
     callBackType:string;
     callBack:(e) => void;
-    constructor(text:string, state:boolean, pixelDim:number[], fontSize:number = 16, callBack:(e) => void = () => null, genericCallBack:(e) => void = () => null, genericTouchType:string = "touchend")
+    constructor(text:string, state:boolean, pixelDim:number[], fontSize:number = 16, callBack:(e) => void = () => null, genericCallBack:(e) => void = () => null, flags:number = GuiTextBox.center | GuiTextBox.hcenter, genericTouchType:string = "touchend")
     {
         super([20, 1], pixelDim);
         this.callBackType = genericTouchType;
         this.callBack = genericCallBack;
         this.checkBox = new GuiCheckBox(callBack, pixelDim[1], pixelDim[1]);
-        this.textBox = new GuiTextBox(false, pixelDim[0] - fontSize * 2 - 10, null, fontSize, pixelDim[1]);
+        this.textBox = new GuiTextBox(false, pixelDim[0] - fontSize * 2 - 10, null, fontSize, pixelDim[1], flags);
         this.textBox.setText(text);
         this.checkBox.checked = state;
         this.checkBox.refresh();
@@ -783,14 +783,14 @@ class GuiCheckList implements GuiElement {
                 this.selectedItem().callBack(e);
             break;
             case("touchmove"):
-            if(e.moveCount === 2 && this.selectedItem() && this.list.length > 1)
+            if(e.moveCount === 10 && this.selectedItem() && this.list.length > 1)
             {
                 this.dragItem = this.list.splice(this.selected(), 1)[0];
                 this.dragItemInitialIndex = this.selected();
                 this.dragItemLocation[0] = e.touchPos[0];
                 this.dragItemLocation[1] = e.touchPos[1];
             }
-            else if(e.moveCount > 2)
+            else if(e.moveCount > 10)
             {
                 this.dragItemLocation[0] += e.deltaX;
                 this.dragItemLocation[1] += e.deltaY;
@@ -2232,7 +2232,7 @@ class LayerManagerTool extends Tool {
         this.field = field;
         this.layersLimit = limit;
         this.layoutManager = new SimpleGridLayoutManager([2, 24], [200, 500]);
-        this.list = new GuiCheckList([1, 12], [200, 400], 16, (x1, x2) => {
+        this.list = new GuiCheckList([1, 9], [200, 400], 20, (x1, x2) => {
             this.field.swapLayers(x1, x2);
             this.field.layer().repaint = true;
         });
@@ -4720,7 +4720,10 @@ class AnimationGroup {
         { 
             const sprites:Sprite[] = this.animations[this.selectedAnimation].sprites;
             this.spriteSelector.selectedSprite = sprites.length - 1;
-            sprites.push(this.drawingField.toSprite());
+            const copy:Sprite = new Sprite([], 0, 0, false);
+            copy.copySprite(this.drawingField.toSprite());
+            copy.refreshImage();
+            sprites.push(copy);
             this.spriteSelector.loadSprite();
         }
     }
