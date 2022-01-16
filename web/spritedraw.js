@@ -1854,7 +1854,7 @@ class LayerManagerTool extends Tool {
             }, (e) => {
                 this.field.selected = this.list.selected();
                 this.list.list.forEach(el => el.textBox.deactivate());
-                if (this.list.selectedItem())
+                if (this.list.selectedItem() && this.list.selectedItem().checkBox.checked)
                     this.list.selectedItem().textBox.activate();
             });
             this.list.refresh();
@@ -1998,7 +1998,7 @@ class ToolSelector {
             //field.layer() listeners
             const colorBackup = new RGB(0, 0, 0, 0);
             this.drawingScreenListener = drawingScreenListener;
-            this.drawingScreenListener.registerCallBack("touchstart", e => true, e => {
+            this.drawingScreenListener.registerCallBack("touchstart", e => this.layersTool.list.selectedItem() && this.layersTool.list.selectedItem().checkBox.checked, e => {
                 //save for undo
                 if (field.layer().updatesStack.length() === 0 || field.layer().updatesStack.get(field.layer().updatesStack.length() - 1).length) {
                     if (field.layer().toolSelector.selectedToolName() !== "redo" && field.layer().toolSelector.selectedToolName() !== "undo") {
@@ -2064,7 +2064,7 @@ class ToolSelector {
                         break;
                 }
             });
-            this.drawingScreenListener.registerCallBack("touchmove", e => true, e => {
+            this.drawingScreenListener.registerCallBack("touchmove", e => this.layersTool.list.selectedItem() && this.layersTool.list.selectedItem().checkBox.checked, e => {
                 const x1 = e.touchPos[0] - e.deltaX;
                 const y1 = e.touchPos[1] - e.deltaY;
                 const gx = Math.floor((e.touchPos[0] - field.layer().offset.first) / field.layer().bounds.first * field.layer().dimensions.first);
@@ -2125,7 +2125,7 @@ class ToolSelector {
                 }
                 field.layer().repaint = repaint;
             });
-            this.drawingScreenListener.registerCallBack("touchend", e => true, async (e) => {
+            this.drawingScreenListener.registerCallBack("touchend", e => this.layersTool.list.selectedItem() && this.layersTool.list.selectedItem().checkBox.checked, e => {
                 let repaint = true;
                 switch (field.layer().toolSelector.selectedToolName()) {
                     case ("oval"):
