@@ -479,7 +479,7 @@ class SimpleGridLayoutManager {
 }
 ;
 class GuiListItem extends SimpleGridLayoutManager {
-    constructor(text, state, pixelDim, fontSize = 16, callBack = () => null, genericCallBack = () => null, flags = GuiTextBox.center | GuiTextBox.hcenter, genericTouchType = "touchend") {
+    constructor(text, state, pixelDim, fontSize = 16, callBack = () => null, genericCallBack = () => null, flags = GuiTextBox.left | GuiTextBox.bottom, genericTouchType = "touchend") {
         super([20, 1], pixelDim);
         this.callBackType = genericTouchType;
         this.callBack = genericCallBack;
@@ -1808,9 +1808,9 @@ class LayerManagerTool extends Tool {
     constructor(name, path, field, limit = 12) {
         super(name, path);
         this.field = field;
-        this.layersLimit = limit;
+        this.layersLimit = isTouchSupported() ? limit - Math.floor(limit / 4) : limit;
         this.layoutManager = new SimpleGridLayoutManager([2, 24], [200, 500]);
-        this.list = new GuiCheckList([1, 9], [200, 400], 20, (x1, x2) => {
+        this.list = new GuiCheckList([1, this.layersLimit], [200, 400], 20, (x1, x2) => {
             this.field.swapLayers(x1, x2);
             this.field.layer().repaint = true;
         });
