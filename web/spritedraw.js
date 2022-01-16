@@ -3033,6 +3033,7 @@ class LayeredDrawingScreen {
     deleteLayer(index) {
         this.layers.splice(index, 1);
         this.layersState.splice(index, 1);
+        this.layer().repaint = true;
     }
     addBlankLayer() {
         const layer = new DrawingScreen(document.createElement("canvas"), this.keyboardHandler, this.pallette, [0, 0], [this.dim[0], this.dim[1]], this.toolSelector, this.state, this.clipBoard);
