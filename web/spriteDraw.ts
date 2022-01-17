@@ -3636,8 +3636,10 @@ class LayeredDrawingScreen {
     keyboardHandler:KeyboardHandler;
     pallette:Pallette;
     toolSelector:ToolSelector;
+    offscreenCanvas:HTMLCanvasElement;
     constructor(keyboardHandler:KeyboardHandler, pallette:Pallette) {
         this.canvas = document.createElement("canvas");
+        this.offscreenCanvas = document.createElement("canvas");
         this.state = new DrawingScreenState(3);
         this.dim = [524, 524];
         this.canvas.width = this.dim[0];
@@ -3710,9 +3712,17 @@ class LayeredDrawingScreen {
     }
     toSprite():Sprite
     {
-        const sprite:Sprite = new Sprite([], this.dim[0], this.dim[1], false);
-        sprite.pixels = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height).data;
+        //set offscreen canvas state, and get ctx for rescale
+        this.offscreenCanvas.width = this.layer().dimensions.first;
+        this.offscreenCanvas.height = this.layer().dimensions.second;
+        const ctx:CanvasRenderingContext2D = this.offscreenCanvas.getContext("2d");
+        //rescale main canvas with offscreen canvas
+        ctx.drawImage(this.canvas, 0, 0, this.layer().dimensions.first, this.layer().dimensions.second);
+        //save rescaled offscreen canvas to sprite
+        const sprite:Sprite = new Sprite([], this.layer().dimensions.first, this.layer().dimensions.second, false);
+        sprite.pixels = ctx.getImageData(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height).data;
         sprite.refreshImage();
+
         return sprite;
     }
     draw(canvas:HTMLCanvasElement, ctx:CanvasRenderingContext2D, x:number, y:number, width:number, height:number):void 
