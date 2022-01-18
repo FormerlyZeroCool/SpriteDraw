@@ -2526,15 +2526,15 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
                 case("oval"):
                 case("rect"):
                 case("copy"):
-                field.layer().selectionRect = [touchPos[0], touchPos[1],0,0];
                 case("line"):
+                field.layer().selectionRect = [touchPos[0], touchPos[1],0,0];
                 case("pen"):
                 {
                     field.layer().setLineWidthPen();            
                 }
                 break;
                 case("paste"):                
-                field.layer().pasteRect = [touchPos[0] - field.layer().pasteRect[2]/2, e.touchPos[1] - field.layer().pasteRect[3]/2,field.layer().pasteRect[2],field.layer().pasteRect[3]];
+                field.layer().pasteRect = [touchPos[0] - field.layer().pasteRect[2]/2, touchPos[1] - field.layer().pasteRect[3]/2,field.layer().pasteRect[2],field.layer().pasteRect[3]];
                 break;
                 case("colorPicker"):
                 field.state.color.copy(field.layer().screenBuffer[gx + gy*field.layer().dimensions.first]);
@@ -2593,6 +2593,7 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
                 case("fill"):
                 field.layer().fillArea(new Pair<number>(gx, gy));
                 break;
+                case("line"):
                 case("oval"):
                 case("rect"):
                 field.layer().selectionRect[2] += (deltaX);
@@ -2633,7 +2634,11 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
             switch (field.layer().toolSelector.selectedToolName())
             {
                 case("oval"):
-                field.layer().handleEllipse(e);
+                const start_x:number = Math.min(touchPos[0] - deltaX, touchPos[0]);
+                const end_x:number = Math.max(touchPos[0] - deltaX, touchPos[0]);
+                const min_y:number = Math.min(touchPos[1] - deltaY, touchPos[1]);
+                const max_y:number = Math.max(touchPos[1] - deltaY, touchPos[1]);
+                field.layer().handleEllipse(start_x, end_x, min_y, max_y);
                 field.layer().selectionRect = [0,0,0,0];
                 break;
                 case("pen"):
@@ -2664,11 +2669,12 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
                     field.layer().fillArea(new Pair<number>(gx, gy));
                 break;
                 case("line"):
-                    if(e.deltaX === 0 && e.deltaY === 0)
+                    if(deltaX === 0 && deltaY === 0)
                     {
                         field.layer().handleTap(touchPos[0], touchPos[1], field.layer());
                     }
                     field.layer().handleDraw(x1, touchPos[0], y1, touchPos[1]);
+                    field.layer().selectionRect = [0,0,0,0];
                 break;
                 case("copy"):
                     const bounds:Pair<number> = field.layer().saveToBuffer(field.layer().selectionRect, field.layer().clipBoard.clipBoardBuffer);
@@ -3250,12 +3256,12 @@ class DrawingScreen {
         }
         this.repaint = true;
     }
-    handleEllipse(event, drawPoint:(x:number, y:number, screen:DrawingScreen) => void = this.handleTap):void
+    handleEllipse(sx:number, ex:number, mx:number, my:number, drawPoint:(x:number, y:number, screen:DrawingScreen) => void = this.handleTap):void
     {
-        const start_x:number = Math.min(event.touchPos[0] - event.deltaX, event.touchPos[0]);
-        const end_x:number = Math.max(event.touchPos[0] - event.deltaX, event.touchPos[0]);
-        const min_y:number = Math.min(event.touchPos[1] - event.deltaY, event.touchPos[1]);
-        const max_y:number = Math.max(event.touchPos[1] - event.deltaY, event.touchPos[1]);
+        const start_x:number = sx;
+        const end_x:number = ex;
+        const min_y:number = mx;
+        const max_y:number = my;
         const height:number = (max_y - min_y) / 2;
         const width:number = (end_x - start_x) / 2;
         const h:number = start_x + (end_x - start_x) / 2;
@@ -3574,26 +3580,15 @@ class DrawingScreen {
             spriteScreenBuf.putPixels(ctx);
             if(this.toolSelector.drawingScreenListener.registeredTouch && this.toolSelector.selectedToolName() === "line")
             {
-                let touchStart = [this.toolSelector.drawingScreenListener.touchStart["offsetX"], this.toolSelector.drawingScreenListener.touchStart["offsetY"]];
-                if (!touchStart[0]) {
-                    touchStart = [this.toolSelector.drawingScreenListener.touchStart["clientX"] - this.canvas.getBoundingClientRect().left, this.toolSelector.drawingScreenListener.touchStart["clientY"] - this.canvas.getBoundingClientRect().top];
-                }
+                let touchStart = [this.selectionRect[0], this.selectionRect[1]];
                 ctx.lineWidth = 6;
                 ctx.beginPath();
                 ctx.strokeStyle = this.state.color.htmlRBGA();
                 ctx.moveTo(touchStart[0], touchStart[1]);
-                ctx.lineTo(this.toolSelector.drawingScreenListener.touchPos[0], this.toolSelector.drawingScreenListener.touchPos[1]);
+                ctx.lineTo(this.selectionRect[2] + touchStart[0], this.selectionRect[3] + touchStart[1]);
                 ctx.stroke();
             }
-            if(this.pasteRect[3] !== 0)
-            {
-                ctx.lineWidth = 6;
-                ctx.strokeStyle = "#FFFFFF";
-                ctx.strokeRect(this.pasteRect[0]+2, this.pasteRect[1]+2, this.pasteRect[2]-4, this.pasteRect[3]-4);
-                ctx.strokeStyle = "#0000FF";
-                ctx.strokeRect(this.pasteRect[0], this.pasteRect[1], this.pasteRect[2], this.pasteRect[3]);
-            }
-            if(this.selectionRect[3] !== 0)
+            else if(this.selectionRect[3] !== 0)
             {
                 ctx.lineWidth = 6;
                 const xr:number = Math.abs(this.selectionRect[2]/2);
@@ -3642,6 +3637,14 @@ class DrawingScreen {
                     ctx.stroke();
                 }
             }
+            if(this.pasteRect[3] !== 0)
+            {
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = "#FFFFFF";
+                ctx.strokeRect(this.pasteRect[0]+2, this.pasteRect[1]+2, this.pasteRect[2]-4, this.pasteRect[3]-4);
+                ctx.strokeStyle = "#0000FF";
+                ctx.strokeRect(this.pasteRect[0], this.pasteRect[1], this.pasteRect[2], this.pasteRect[3]);
+            }
         }
 
         
@@ -3672,11 +3675,11 @@ class ZoomState {
     }
     invZoomX(x:number)
     {
-        return this.invZoom(x - this.zoomedX - this.offsetX);
+        return this.invZoom(x - this.zoomedX) ;
     }
     invZoomY(y:number)
     {
-        return this.invZoom(y - this.zoomedY - this.offsetY);
+        return this.invZoom(y - this.zoomedY);
     }
 };
 class LayeredDrawingScreen {
