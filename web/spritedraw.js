@@ -3136,8 +3136,8 @@ class LayeredDrawingScreen {
             width = this.width();
             height = this.height();
         }
-        ctx.drawImage(this.canvasTransparency, 0, 0);
         if (this.repaint()) {
+            this.ctx.drawImage(this.canvasTransparency, 0, 0);
             for (let i = 0; i < this.layers.length; i++) {
                 if (this.layersState[i]) {
                     const layer = this.layers[i];
