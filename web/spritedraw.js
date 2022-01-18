@@ -3292,7 +3292,8 @@ class SingleTouchListener {
         ++this.moveCount;
         let touchMove = event.changedTouches.item(0);
         for (let i = 0; i < event.changedTouches["length"]; i++) {
-            if (event.changedTouches.item(i).identifier === this.touchStart.identifier) {
+            console.log(this.touchStart.identifier, event.changedTouches.item(i).identifier);
+            if (event.changedTouches.item(i).identifier == this.touchStart.identifier) {
                 touchMove = event.changedTouches.item(i);
             }
         }
@@ -3392,6 +3393,54 @@ class SingleTouchListener {
     }
 }
 SingleTouchListener.mouseDown = new MouseDownTracker();
+;
+class MultiTouchListenerTypes {
+    constructor() {
+        this.pinchIn = [];
+        this.pinchOut = [];
+    }
+}
+;
+class MultiTouchListener {
+    constructor(component) {
+        this.lastDistance = 0;
+        this.listenerTypeMap = new MultiTouchListenerTypes();
+        this.registeredMultiTouchEvent = false;
+        if (isTouchSupported()) {
+            component.addEventListener('touchmove', event => this.touchMoveHandler(event), false);
+            component.addEventListener('touchend', event => { this.registeredMultiTouchEvent = false; event.preventDefault(); }, false);
+        }
+    }
+    registerCallBack(listenerType, predicate, callBack) {
+        this.listenerTypeMap[listenerType].push(new TouchHandler(predicate, callBack));
+    }
+    callHandler(type, event) {
+        const handlers = this.listenerTypeMap[type];
+        handlers.forEach(handler => {
+            if (!event.defaultPrevented && handler.pred(event)) {
+                handler.callBack(event);
+            }
+        });
+    }
+    touchMoveHandler(event) {
+        const touch1 = event.changedTouches.item(0);
+        const touch2 = event.changedTouches.item(1);
+        if (event.changedTouches.length > 1) {
+            this.registeredMultiTouchEvent = true;
+        }
+        if (this.registeredMultiTouchEvent) {
+            const newDist = Math.sqrt(Math.pow((touch1.clientX - touch2.clientX), 2) || Math.pow(touch1.clientY - touch2.clientY, 2));
+            if (this.lastDistance > newDist) {
+                this.callHandler("pinchOut", event);
+            }
+            else {
+                this.callHandler("pinchIn", event);
+            }
+            event.preventDefault();
+            this.lastDistance = newDist;
+        }
+    }
+}
 ;
 class Pallette {
     constructor(canvas, keyboardHandler, colorCount = 10, colors = null) {
@@ -4245,13 +4294,22 @@ function logToServer(data) {
     }).then(res => { console.log("Request complete! response:", data); });
 }
 async function main() {
+    const canvas = document.getElementById("screen");
+    let field;
+    const multiTouchHandler = new MultiTouchListener(canvas);
+    multiTouchHandler.registerCallBack("pinchIn", e => true, e => {
+        field.zoom.zoom += 0.1;
+    });
+    multiTouchHandler.registerCallBack("pinchOut", e => true, e => {
+        if (field.zoom.zoom > 0.1)
+            field.zoom.zoom -= 0.1;
+    });
     const keyboardHandler = new KeyboardHandler();
     const pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler);
-    const canvas = document.getElementById("screen");
     const ctx = canvas.getContext("2d");
     const canvasListener = new SingleTouchListener(canvas, true, true);
     const toolSelector = new ToolSelector(pallette, keyboardHandler, canvasListener, 50, 50);
-    const field = toolSelector.field;
+    field = toolSelector.field;
     field.toolSelector = toolSelector;
     //const field:DrawingScreen = new DrawingScreen(<HTMLCanvasElement> , keyboardHandler, pallette,[0,0], dim);
     const animationGroupSelector = new AnimationGroupsSelector(field, keyboardHandler, "animation_group_selector", "animations", "sprites_canvas", dim[0], dim[1], 128, 128);
@@ -4325,9 +4383,10 @@ async function main() {
     canvas.addEventListener("wheel", (e) => {
         e.preventDefault();
         let delta = 0.1;
-        if (keyboardHandler.keysHeld["AltLeft"] || keyboardHandler.keysHeld["AltRight"]) {
+        if (SingleTouchListener.mouseDown.mouseDown || keyboardHandler.keysHeld["AltRight"] || keyboardHandler.keysHeld["AltLeft"]) {
             field.zoom.offsetX += e.deltaX;
             field.zoom.offsetY += e.deltaY;
+            toolSelector.drawingScreenListener.registeredTouch = false;
         }
         else {
             if (field.zoom.zoom < 1.05) {

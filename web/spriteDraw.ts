@@ -4032,7 +4032,8 @@ class SingleTouchListener
         let touchMove = event.changedTouches.item(0);
         for(let i = 0; i < event.changedTouches["length"]; i++)
         {
-            if(event.changedTouches.item(i).identifier === this.touchStart.identifier){
+            console.log(this.touchStart.identifier, event.changedTouches.item(i).identifier)
+            if(event.changedTouches.item(i).identifier == this.touchStart.identifier){
                 touchMove = event.changedTouches.item(i);
             }
         }  
@@ -4146,6 +4147,67 @@ class SingleTouchListener
     dotProduct(a, b):number
     {
         return a[0]*b[0]+a[1]*b[1];
+    }
+};
+class MultiTouchListenerTypes {
+    pinchOut:Array<TouchHandler>;
+    pinchIn:Array<TouchHandler>;
+    constructor(){
+        this.pinchIn = [];
+        this.pinchOut = [];
+    }
+};
+class MultiTouchListener {
+    lastDistance:number;
+    listenerTypeMap:MultiTouchListenerTypes;
+    registeredMultiTouchEvent:boolean
+    constructor(component:HTMLElement)
+    {
+        this.lastDistance = 0;
+        this.listenerTypeMap = new MultiTouchListenerTypes();
+        this.registeredMultiTouchEvent = false;
+        if(isTouchSupported())
+        {
+            component.addEventListener('touchmove', event => this.touchMoveHandler(event), false);
+            component.addEventListener('touchend', event => {this.registeredMultiTouchEvent = false; event.preventDefault()}, false);
+        }
+    }    
+    registerCallBack(listenerType:string, predicate, callBack):void
+    {
+        this.listenerTypeMap[listenerType].push(new TouchHandler(predicate, callBack));
+    }
+    callHandler(type:string, event):void
+    {
+        const handlers = this.listenerTypeMap[type];
+        handlers.forEach(handler => {
+            if(!event.defaultPrevented && handler.pred(event))
+            {
+                handler.callBack(event);
+            }
+        });
+    }
+    touchMoveHandler(event):void
+    {
+        const touch1 = event.changedTouches.item(0);
+        const touch2 = event.changedTouches.item(1);
+        if(event.changedTouches.length > 1)
+        {
+            this.registeredMultiTouchEvent = true;
+        }
+        if(this.registeredMultiTouchEvent)
+        {
+            const newDist:number = Math.sqrt(Math.pow((touch1.clientX - touch2.clientX),2) || Math.pow(touch1.clientY - touch2.clientY, 2));
+            if(this.lastDistance > newDist)
+            {
+                this.callHandler("pinchOut", event);
+            }
+            else
+            {
+                this.callHandler("pinchIn", event);
+            }
+            event.preventDefault();
+            this.lastDistance = newDist;
+        }
     }
 };
 class Pallette {
@@ -5235,13 +5297,22 @@ function logToServer(data):void
 }
 async function main()
 {
+    const canvas:HTMLCanvasElement = <HTMLCanvasElement> document.getElementById("screen");
+    let field:LayeredDrawingScreen;
+    const multiTouchHandler:MultiTouchListener =  new MultiTouchListener(canvas);
+    multiTouchHandler.registerCallBack("pinchIn", e => true, e => {
+        field.zoom.zoom += 0.1;
+    });
+    multiTouchHandler.registerCallBack("pinchOut", e => true, e => {
+        if(field.zoom.zoom > 0.1)
+            field.zoom.zoom -= 0.1;
+    });
     const keyboardHandler:KeyboardHandler = new KeyboardHandler();
     const pallette:Pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler);
-    const canvas:HTMLCanvasElement = <HTMLCanvasElement> document.getElementById("screen");
     const ctx:CanvasRenderingContext2D = canvas.getContext("2d");
     const canvasListener:SingleTouchListener = new SingleTouchListener(canvas, true, true);
     const toolSelector:ToolSelector = new ToolSelector(pallette, keyboardHandler, canvasListener, 50, 50);
-    const field:LayeredDrawingScreen = toolSelector.field;
+    field = toolSelector.field;
     field.toolSelector = toolSelector;
     //const field:DrawingScreen = new DrawingScreen(<HTMLCanvasElement> , keyboardHandler, pallette,[0,0], dim);
     const animationGroupSelector:AnimationGroupsSelector = new AnimationGroupsSelector(field, keyboardHandler, "animation_group_selector", "animations", "sprites_canvas", dim[0], dim[1], 128, 128);
@@ -5319,10 +5390,11 @@ async function main()
     canvas.addEventListener("wheel", (e) => {
         e.preventDefault();
         let delta:number = 0.1;
-        if(keyboardHandler.keysHeld["AltLeft"] || keyboardHandler.keysHeld["AltRight"])
+        if(SingleTouchListener.mouseDown.mouseDown || keyboardHandler.keysHeld["AltRight"] || keyboardHandler.keysHeld["AltLeft"])
         {
             field.zoom.offsetX += e.deltaX;
             field.zoom.offsetY += e.deltaY;
+            toolSelector.drawingScreenListener.registeredTouch = false;
         }
         else
         {
