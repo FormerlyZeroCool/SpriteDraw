@@ -5318,7 +5318,6 @@ async function main()
     });
     canvas.addEventListener("wheel", (e) => {
         e.preventDefault();
-        console.log(e);
         if(field.zoom.zoom < 1.1)
         {
             if(e.deltaY > 0)
