@@ -4324,18 +4324,21 @@ async function main() {
     });
     canvas.addEventListener("wheel", (e) => {
         e.preventDefault();
-        if (field.zoom.zoom < 1.1) {
-            if (e.deltaY > 0)
-                field.zoom.zoom += 0.01;
-            else if (field.zoom.zoom > 0.10)
-                field.zoom.zoom -= 0.01;
+        let delta = 0.1;
+        if (field.zoom.zoom < 1.05) {
+            delta = 0.01;
         }
-        else {
-            if (e.deltaY > 0)
-                field.zoom.zoom += 0.1;
-            else if (field.zoom.zoom > 0.10)
-                field.zoom.zoom -= 0.1;
+        else if (field.zoom.zoom < 3) {
+            delta = 0.05;
         }
+        else if (field.zoom.zoom > 8 && field.zoom.zoom < 25)
+            delta = 0.2;
+        else if (field.zoom.zoom >= 25)
+            delta = 0;
+        if (e.deltaY > 0)
+            field.zoom.zoom += delta;
+        else if (field.zoom.zoom > 0.10)
+            field.zoom.zoom -= delta;
         const text = (Math.round(field.zoom.zoom * 100) / 100).toString();
         toolSelector.transformTool.textBoxZoom.setText(text);
     });
