@@ -2204,7 +2204,6 @@ class ClipBoard {
         ctx.drawImage(this.canvas, x, y);
     }
 };
-
 class CopyPasteTool extends ExtendedTool {
     blendAlpha:GuiCheckBox;
     constructor(name:string, path:string, optionPanes:SimpleGridLayoutManager[], clipBoard:ClipBoard, updateBlendAlpha: () => void) {
@@ -2305,6 +2304,20 @@ class LayerManagerTool extends Tool {
         optionPanel.draw(ctx, x, y);
     }
 };
+class ScreenTransformationTool extends ExtendedTool {
+    textBoxZoom:GuiTextBox;
+    buttonUpdateZoom:GuiButton;
+    constructor(toolName:string, toolImagePath:string, optionPanes:SimpleGridLayoutManager[], field:LayeredDrawingScreen)
+    {
+        super(toolName, toolImagePath, optionPanes, [200, 200], [1, 4]);
+        this.localLayout.addElement(new GuiLabel("Zoom:", 75));
+        this.buttonUpdateZoom = new GuiButton(() => (field.zoom.zoom = this.textBoxZoom.asNumber.get()?this.textBoxZoom.asNumber.get() : field.zoom.zoom), "Set Zoom")
+        this.textBoxZoom = new GuiTextBox(true, 99, this.buttonUpdateZoom);
+        this.textBoxZoom.setText(field.zoom.zoom.toString());
+        this.localLayout.addElement(this.textBoxZoom);
+        this.localLayout.addElement(this.buttonUpdateZoom);
+    }
+};
 // To do refactor tools to make sure they load in the same order every time
 class ToolSelector {// clean up class code remove fields made redundant by GuiToolBar
     toolBar:GuiToolBar;
@@ -2326,6 +2339,7 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
     repaint:boolean;
     lastDrawTime:number;
     copyTool:CopyPasteTool;
+    transformTool:ScreenTransformationTool;
     sprayPaint:boolean;
     field:LayeredDrawingScreen;
     constructor(pallette:Pallette, keyboardHandler:KeyboardHandler, drawingScreenListener:SingleTouchListener, imgWidth:number = 50, imgHeight:number = 50)
@@ -2455,6 +2469,11 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
         this.drawingScreenListener.registerCallBack("touchstart", 
             e => this.layersTool.list.selectedItem() && this.layersTool.list.selectedItem().checkBox.checked, 
             e => {
+            const touchPos:number[] = [this.field.zoom.invZoomX(e.touchPos[0]),this.field.zoom.invZoomY(e.touchPos[1])];
+
+            const gx:number = Math.floor((touchPos[0]-field.layer().offset.first)/field.layer().bounds.first*field.layer().dimensions.first);
+            const gy:number = Math.floor((touchPos[1]-field.layer().offset.second)/field.layer().bounds.second*field.layer().dimensions.second);
+            
             //save for undo
             if(field.layer().updatesStack.length() === 0 || field.layer().updatesStack.get(field.layer().updatesStack.length() - 1).length)
             {
@@ -2471,11 +2490,8 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
             }
             else
             {
-                field.layer().pasteRect = [e.touchPos[0] , e.touchPos[1], field.layer().clipBoard.currentDim[0] * (field.layer().bounds.first / field.layer().dimensions.first),field.layer().clipBoard.currentDim[1] * (field.layer().bounds.second / field.layer().dimensions.second)];
+                field.layer().pasteRect = [touchPos[0] , touchPos[1], field.layer().clipBoard.currentDim[0] * (field.layer().bounds.first / field.layer().dimensions.first),field.layer().clipBoard.currentDim[1] * (field.layer().bounds.second / field.layer().dimensions.second)];
             }
-
-            const gx:number = Math.floor((e.touchPos[0]-field.layer().offset.first)/field.layer().bounds.first*field.layer().dimensions.first);
-            const gy:number = Math.floor((e.touchPos[1]-field.layer().offset.second)/field.layer().bounds.second*field.layer().dimensions.second);
 
             switch (field.layer().toolSelector.selectedToolName())
             {
@@ -2510,7 +2526,7 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
                 case("oval"):
                 case("rect"):
                 case("copy"):
-                field.layer().selectionRect = [e.touchPos[0], e.touchPos[1],0,0];
+                field.layer().selectionRect = [touchPos[0], touchPos[1],0,0];
                 case("line"):
                 case("pen"):
                 {
@@ -2518,7 +2534,7 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
                 }
                 break;
                 case("paste"):                
-                field.layer().pasteRect = [e.touchPos[0] - field.layer().pasteRect[2]/2, e.touchPos[1] - field.layer().pasteRect[3]/2,field.layer().pasteRect[2],field.layer().pasteRect[3]];
+                field.layer().pasteRect = [touchPos[0] - field.layer().pasteRect[2]/2, e.touchPos[1] - field.layer().pasteRect[3]/2,field.layer().pasteRect[2],field.layer().pasteRect[3]];
                 break;
                 case("colorPicker"):
                 field.state.color.copy(field.layer().screenBuffer[gx + gy*field.layer().dimensions.first]);
@@ -2531,22 +2547,29 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
         this.drawingScreenListener.registerCallBack("touchmove",
             e => this.layersTool.list.selectedItem() && this.layersTool.list.selectedItem().checkBox.checked,
             e => {
-            const x1:number = e.touchPos[0] - e.deltaX;
-            const y1:number = e.touchPos[1] - e.deltaY;
-            const gx:number = Math.floor((e.touchPos[0]-field.layer().offset.first)/field.layer().bounds.first*field.layer().dimensions.first);
-            const gy:number = Math.floor((e.touchPos[1]-field.layer().offset.second)/field.layer().bounds.second*field.layer().dimensions.second);
+            const deltaX:number = this.field.zoom.invZoom(e.deltaX);
+            const deltaY:number = this.field.zoom.invZoom(e.deltaY);
+            const touchPos:number[] = [this.field.zoom.invZoomX(e.touchPos[0]),this.field.zoom.invZoomY(e.touchPos[1])];
+            const x1:number = touchPos[0] - deltaX;
+            const y1:number = touchPos[1] - deltaY;
+            const gx:number = Math.floor((touchPos[0])/field.layer().bounds.first*field.layer().dimensions.first);
+            const gy:number = Math.floor((touchPos[1])/field.layer().bounds.second*field.layer().dimensions.second);
             let repaint:boolean = true;
             switch (field.toolSelector.selectedToolName())
             {
+                case("move"):
+                field.zoom.offsetX -= e.deltaX;
+                field.zoom.offsetY -= e.deltaY;
+                break;
                 case("pen"):
-                field.layer().handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
+                field.layer().handleDraw(x1, touchPos[0], y1, touchPos[1]);
                 break;
                 case("eraser"):
-                field.layer().handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
+                field.layer().handleDraw(x1, touchPos[0], y1, touchPos[1]);
                 break;
                 case("drag"):
-                field.layer().dragData.first.first += (e.deltaX / field.layer().bounds.first) * field.layer().dimensions.first;
-                field.layer().dragData.first.second += (e.deltaY / field.layer().bounds.second) * field.layer().dimensions.second;
+                field.layer().dragData.first.first += (deltaX / field.layer().bounds.first) * field.layer().dimensions.first;
+                field.layer().dragData.first.second += (deltaY / field.layer().bounds.second) * field.layer().dimensions.second;
                 break;
                 case("rotate"):
                 let angle:number = Math.PI / 2;
@@ -2558,10 +2581,10 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
                 if(e.moveCount % moveCountBeforeRotation === 0)
                     if(e.deltaY > 0)
                         field.layer().rotateSelectedPixelGroup(angle, [(this.drawingScreenListener.startTouchPos[0] / field.layer().bounds.first) * field.layer().dimensions.first,
-                            (this.drawingScreenListener.startTouchPos[1] / field.layer().bounds.second) * field.layer().dimensions.second]);
+                            (this.field.zoom.invZoomY(this.drawingScreenListener.startTouchPos[1]) / field.layer().bounds.second) * field.layer().dimensions.second]);
                     else if(e.deltaY < 0)
                         field.layer().rotateSelectedPixelGroup(-angle, [(this.drawingScreenListener.startTouchPos[0] / field.layer().bounds.first) * field.layer().dimensions.first,
-                            (this.drawingScreenListener.startTouchPos[1] / field.layer().bounds.second) * field.layer().dimensions.second]);
+                            (this.field.zoom.invZoomY(this.drawingScreenListener.startTouchPos[1]) / field.layer().bounds.second) * field.layer().dimensions.second]);
                     
                     if(field.state.antiAliasRotation){
                         field.layer().dragData.second;
@@ -2572,18 +2595,18 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
                 break;
                 case("oval"):
                 case("rect"):
-                field.layer().selectionRect[2] += e.deltaX;
-                field.layer().selectionRect[3] += e.deltaY;
+                field.layer().selectionRect[2] += (deltaX);
+                field.layer().selectionRect[3] += (deltaY);
                 break;
                 case("copy"):
-                field.layer().selectionRect[2] += e.deltaX;
-                field.layer().selectionRect[3] += e.deltaY;
+                field.layer().selectionRect[2] += (deltaX);
+                field.layer().selectionRect[3] += (deltaY);
                 field.layer().pasteRect[2] = field.layer().selectionRect[2];
                 field.layer().pasteRect[3] = field.layer().selectionRect[3];
                 break;
                 case("paste"):
-                field.layer().pasteRect[0] += e.deltaX;
-                field.layer().pasteRect[1] += e.deltaY;
+                field.layer().pasteRect[0] += (deltaX);
+                field.layer().pasteRect[1] += (deltaY);
 
                 break;
                 case("colorPicker"):
@@ -2599,6 +2622,13 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
         this.drawingScreenListener.registerCallBack("touchend",
         e => this.layersTool.list.selectedItem() && this.layersTool.list.selectedItem().checkBox.checked,
         e => {
+            const deltaX:number = this.field.zoom.invZoom(e.deltaX);
+            const deltaY:number = this.field.zoom.invZoom(e.deltaY);
+            const touchPos:number[] = [this.field.zoom.invZoomX(e.touchPos[0]),this.field.zoom.invZoomY(e.touchPos[1])];
+            const x1:number = touchPos[0] - deltaX;
+            const y1:number = touchPos[1] - deltaY;
+            const gx:number = Math.floor((touchPos[0])/field.layer().bounds.first*field.layer().dimensions.first);
+            const gy:number = Math.floor((touchPos[1])/field.layer().bounds.second*field.layer().dimensions.second);
             let repaint:boolean = true;
             switch (field.layer().toolSelector.selectedToolName())
             {
@@ -2607,13 +2637,13 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
                 field.layer().selectionRect = [0,0,0,0];
                 break;
                 case("pen"):
-                if(e.deltaX === 0 && e.deltaY === 0)
+                if(deltaX === 0 && deltaY === 0)
                 {
-                    field.layer().handleTap(e.touchPos[0], e.touchPos[1], field.layer());
+                    field.layer().handleTap(touchPos[0], touchPos[1], field.layer());
                 }
                 break;
                 case("eraser"):
-                    field.layer().handleTap(e.touchPos[0], e.touchPos[1], field.layer());
+                    field.layer().handleTap(touchPos[0], touchPos[1], field.layer());
                     field.state.color.copy(colorBackup);
                 break;
                 case("rotate"):
@@ -2628,19 +2658,17 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
                     field.layer().dragData = null;
                 break;
                 case("fill"):
-                    const gx:number = Math.floor((e.touchPos[0]-field.layer().offset.first)/field.layer().bounds.first*field.layer().dimensions.first);
-                    const gy:number = Math.floor((e.touchPos[1]-field.layer().offset.second)/field.layer().bounds.second*field.layer().dimensions.second);
+                    const gx:number = Math.floor((touchPos[0]-field.layer().offset.first)/field.layer().bounds.first*field.layer().dimensions.first);
+                    const gy:number = Math.floor((touchPos[1]-field.layer().offset.second)/field.layer().bounds.second*field.layer().dimensions.second);
 
                     field.layer().fillArea(new Pair<number>(gx, gy));
                 break;
                 case("line"):
-                    const x1:number = e.touchPos[0] - e.deltaX;
-                    const y1:number = e.touchPos[1] - e.deltaY;
                     if(e.deltaX === 0 && e.deltaY === 0)
                     {
-                        field.layer().handleTap(e.touchPos[0], e.touchPos[1], field.layer());
+                        field.layer().handleTap(touchPos[0], touchPos[1], field.layer());
                     }
-                    field.layer().handleDraw(x1, e.touchPos[0], y1, e.touchPos[1]);
+                    field.layer().handleDraw(x1, touchPos[0], y1, touchPos[1]);
                 break;
                 case("copy"):
                     const bounds:Pair<number> = field.layer().saveToBuffer(field.layer().selectionRect, field.layer().clipBoard.clipBoardBuffer);
@@ -2664,6 +2692,7 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
         }
         this.layersTool = new LayerManagerTool("layers", "images/layersSprite.png", field);
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.state.slow = !field.state.slow);
+        this.transformTool = new ScreenTransformationTool("move", "images/settingsSprite.png", [this.undoTool.getOptionPanel()], field);
         this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png", [this.undoTool.getOptionPanel()]);
         this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.state.rotateOnlyOneColor = this.rotateTool.checkBox.checked, 
             () => field.state.antiAliasRotation = this.rotateTool.checkBoxAntiAlias.checked, [this.undoTool.getOptionPanel()]);
@@ -2698,6 +2727,7 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
         this.toolBar.tools.push(this.rotateTool);
         this.toolBar.tools.push(this.layersTool);
         this.toolBar.tools.push(this.settingsTool);
+        this.toolBar.tools.push(this.transformTool);
         this.toolBar.resize();
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
@@ -3622,6 +3652,33 @@ class DrawingScreen {
         ctx.drawImage(this.canvas, x, y, width, height);
     }
 };
+class ZoomState {
+    zoom:number; // 0 to 1;
+    zoomedX:number;
+    zoomedY:number;
+    offsetX:number;
+    offsetY:number;
+
+    constructor() {
+        this.zoom = 1;
+        this.zoomedX = 0;
+        this.zoomedY = 0;
+        this.offsetX = 0;
+        this.offsetY = 0;
+    }
+    invZoom(x:number = 1)
+    {
+        return (1 / this.zoom) * x;
+    }
+    invZoomX(x:number)
+    {
+        return this.invZoom(x - this.zoomedX - this.offsetX);
+    }
+    invZoomY(y:number)
+    {
+        return this.invZoom(y - this.zoomedY - this.offsetY);
+    }
+};
 class LayeredDrawingScreen {
     layers:DrawingScreen[];
     layersState:boolean[];
@@ -3637,6 +3694,7 @@ class LayeredDrawingScreen {
     pallette:Pallette;
     toolSelector:ToolSelector;
     offscreenCanvas:HTMLCanvasElement;
+    zoom:ZoomState
     constructor(keyboardHandler:KeyboardHandler, pallette:Pallette) {
         this.canvas = document.createElement("canvas");
         this.offscreenCanvas = document.createElement("canvas");
@@ -3653,6 +3711,7 @@ class LayeredDrawingScreen {
         this.keyboardHandler = keyboardHandler;
         this.pallette = pallette;
         this.setDimOnCurrent(this.dim);
+        this.zoom = new ZoomState();
         this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), keyboardHandler, 128, 128);
     }
     repaint():boolean {
@@ -3747,7 +3806,13 @@ class LayeredDrawingScreen {
             }
         }
         {
-            ctx.drawImage(this.canvas, x, y, width, height);
+            const zoomedWidth:number = width * this.zoom.zoom;
+            const zoomedHeight:number = height * this.zoom.zoom;
+            this.zoom.zoomedX = x  - this.zoom.offsetX + (width - zoomedWidth) / 2;
+            this.zoom.zoomedY = y  - this.zoom.offsetY + (height - zoomedHeight) / 2;
+            ctx.drawImage(this.canvas, this.zoom.zoomedX, this.zoom.zoomedY, zoomedWidth, zoomedHeight);
+            ctx.strokeStyle = "#000000";
+            ctx.strokeRect(this.zoom.zoomedX, this.zoom.zoomedY, zoomedWidth, zoomedHeight)
         }
     }
 };
@@ -5253,6 +5318,8 @@ async function main()
     {
         const start:number = Date.now();
         toolSelector.draw();
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         field.draw(canvas, ctx, 0, 0, canvas.width, canvas.height);
         if(animationGroupSelector.animationGroup())
             animationGroupSelector.draw();
