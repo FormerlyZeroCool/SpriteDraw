@@ -5319,25 +5319,33 @@ async function main()
     canvas.addEventListener("wheel", (e) => {
         e.preventDefault();
         let delta:number = 0.1;
-        if(field.zoom.zoom < 1.05)
+        if(keyboardHandler.keysHeld["AltLeft"] || keyboardHandler.keysHeld["AltRight"])
         {
-            delta = 0.01;
+            field.zoom.offsetX += e.deltaX;
+            field.zoom.offsetY += e.deltaY;
         }
-        else if(field.zoom.zoom < 3)
+        else
         {
-            delta = 0.05;
+            if(field.zoom.zoom < 1.05)
+            {
+                delta = 0.01;
+            }
+            else if(field.zoom.zoom < 3)
+            {
+                delta = 0.05;
+            }
+            else if(field.zoom.zoom > 8 && field.zoom.zoom < 25)
+                delta = 0.2;
+            else if(field.zoom.zoom >= 25 && e.deltaY > 0)
+                delta = 0;
+    
+            if(e.deltaY > 0)
+                field.zoom.zoom += delta;
+            else if(field.zoom.zoom > 0.10)
+                field.zoom.zoom -= delta;
+            const text:string = (Math.round(field.zoom.zoom*100) / 100).toString()
+            toolSelector.transformTool.textBoxZoom.setText(text);
         }
-        else if(field.zoom.zoom > 8 && field.zoom.zoom < 25)
-            delta = 0.2;
-        else if(field.zoom.zoom >= 25 && e.deltaY > 0)
-            delta = 0;
-
-        if(e.deltaY > 0)
-            field.zoom.zoom += delta;
-        else if(field.zoom.zoom > 0.10)
-            field.zoom.zoom -= delta;
-        const text:string = (Math.round(field.zoom.zoom*100) / 100).toString()
-        toolSelector.transformTool.textBoxZoom.setText(text);
     });
     const fps = 27;
     const goalSleep = 1000/fps;
