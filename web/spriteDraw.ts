@@ -3691,6 +3691,7 @@ class LayeredDrawingScreen {
     selected:number;
     clipBoard:ClipBoard;
     canvas:HTMLCanvasElement;
+    canvasTransparency:HTMLCanvasElement;
     spriteTest:Sprite;
     dim:number[];
     ctx:CanvasRenderingContext2D;
@@ -3703,6 +3704,23 @@ class LayeredDrawingScreen {
     constructor(keyboardHandler:KeyboardHandler, pallette:Pallette) {
         this.canvas = document.createElement("canvas");
         this.offscreenCanvas = document.createElement("canvas");
+        this.canvasTransparency = document.createElement("canvas");
+        this.canvasTransparency.width = 2000;
+        this.canvasTransparency.height = 2000;
+        const ctx:CanvasRenderingContext2D = this.canvasTransparency.getContext("2d");
+        ctx.fillStyle = "#DCDCDF";
+        ctx.fillRect(0, 0, 2000, 2000);
+        ctx.fillStyle = "#FFFFFF";
+        let i = 0;
+        for(let y = 0; y < 2000; y += 10)
+        {
+            let offset = +(i % 2 === 0);
+            for(let x = offset*10 ; x < 2000; x += 20)
+            {
+                ctx.fillRect(x,  y, 10, 10);
+            }
+            i++;
+        }
         this.state = new DrawingScreenState(3);
         this.dim = [524, 524];
         this.canvas.width = this.dim[0];
@@ -3798,9 +3816,9 @@ class LayeredDrawingScreen {
             width = this.width();
             height = this.height();
         }
+        ctx.drawImage(this.canvasTransparency, 0, 0);
         if(this.repaint())
         {
-            this.ctx.fillRect(0, 0, this.width(), this.height());
             for(let i = 0; i < this.layers.length; i++)
             {
                 if(this.layersState[i])
