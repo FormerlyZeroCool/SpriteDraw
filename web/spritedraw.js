@@ -4432,7 +4432,8 @@ async function main() {
     while (true) {
         const start = Date.now();
         toolSelector.draw();
-        if (field.repaint()) {
+        //if(field.repaint())
+        {
             ctx.fillStyle = "#000000";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             field.draw(canvas, ctx, 0, 0, canvas.width, canvas.height);

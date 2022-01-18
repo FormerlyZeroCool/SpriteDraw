@@ -5444,11 +5444,12 @@ async function main()
     const fps = 27;
     const goalSleep = 1000/fps;
     let counter = 0;
+
     while(true)
     {
         const start:number = Date.now();
         toolSelector.draw();
-        if(field.repaint())
+        //if(field.repaint())
         {
             ctx.fillStyle = "#000000";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
