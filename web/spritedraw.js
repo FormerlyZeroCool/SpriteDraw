@@ -4322,6 +4322,24 @@ async function main() {
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.layer().state.color.copy(pallette.calcColor());
     });
+    canvas.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        console.log(e);
+        if (field.zoom.zoom < 1.1) {
+            if (e.deltaY > 0)
+                field.zoom.zoom += 0.01;
+            else if (field.zoom.zoom > 0.10)
+                field.zoom.zoom -= 0.01;
+        }
+        else {
+            if (e.deltaY > 0)
+                field.zoom.zoom += 0.1;
+            else if (field.zoom.zoom > 0.10)
+                field.zoom.zoom -= 0.1;
+        }
+        const text = (Math.round(field.zoom.zoom * 100) / 100).toString();
+        toolSelector.transformTool.textBoxZoom.setText(text);
+    });
     const fps = 27;
     const goalSleep = 1000 / fps;
     let counter = 0;
