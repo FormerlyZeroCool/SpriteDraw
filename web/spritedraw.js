@@ -3122,7 +3122,13 @@ class LayeredDrawingScreen {
         this.offscreenCanvas.height = this.layer().dimensions.second;
         const ctx = this.offscreenCanvas.getContext("2d");
         //rescale main canvas with offscreen canvas
-        ctx.drawImage(this.canvas, 0, 0, this.layer().dimensions.first, this.layer().dimensions.second);
+        //ctx.drawImage(this.canvas, 0, 0, this.layer().dimensions.first, this.layer().dimensions.second);
+        for (let i = 0; i < this.layers.length; i++) {
+            if (this.layersState[i]) {
+                const layer = this.layers[i];
+                layer.drawToContext(ctx, 0, 0, this.layer().dimensions.first, this.layer().dimensions.second);
+            }
+        }
         //save rescaled offscreen canvas to sprite
         const sprite = new Sprite([], this.layer().dimensions.first, this.layer().dimensions.second, false);
         sprite.pixels = ctx.getImageData(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height).data;
