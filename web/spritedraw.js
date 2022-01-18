@@ -4432,9 +4432,11 @@ async function main() {
     while (true) {
         const start = Date.now();
         toolSelector.draw();
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        field.draw(canvas, ctx, 0, 0, canvas.width, canvas.height);
+        if (field.repaint()) {
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            field.draw(canvas, ctx, 0, 0, canvas.width, canvas.height);
+        }
         if (animationGroupSelector.animationGroup())
             animationGroupSelector.draw();
         if (counter++ % 3 === 0) {
