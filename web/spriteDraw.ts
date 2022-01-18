@@ -2311,11 +2311,12 @@ class ScreenTransformationTool extends ExtendedTool {
     {
         super(toolName, toolImagePath, optionPanes, [200, 200], [1, 4]);
         this.localLayout.addElement(new GuiLabel("Zoom:", 75));
-        this.buttonUpdateZoom = new GuiButton(() => (field.zoom.zoom = this.textBoxZoom.asNumber.get()?this.textBoxZoom.asNumber.get() : field.zoom.zoom), "Set Zoom")
-        this.textBoxZoom = new GuiTextBox(true, 99, this.buttonUpdateZoom);
+        this.buttonUpdateZoom = new GuiButton(() => (field.zoom.zoom = this.textBoxZoom.asNumber.get()?this.textBoxZoom.asNumber.get() : field.zoom.zoom), "Set Zoom", 100, 40, 16);
+        this.textBoxZoom = new GuiTextBox(true, 70, this.buttonUpdateZoom, 16, 32);
         this.textBoxZoom.setText(field.zoom.zoom.toString());
         this.localLayout.addElement(this.textBoxZoom);
         this.localLayout.addElement(this.buttonUpdateZoom);
+        this.localLayout.addElement(new GuiButton(() => {field.zoom.offsetX = 0;field.zoom.offsetY = 0;}, "Center Screen", 140, 40, 16));
     }
 };
 // To do refactor tools to make sure they load in the same order every time
@@ -2698,7 +2699,7 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
         }
         this.layersTool = new LayerManagerTool("layers", "images/layersSprite.png", field);
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.state.slow = !field.state.slow);
-        this.transformTool = new ScreenTransformationTool("move", "images/settingsSprite.png", [this.undoTool.getOptionPanel()], field);
+        this.transformTool = new ScreenTransformationTool("move", "images/favicon.ico", [this.undoTool.getOptionPanel()], field);
         this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png", [this.undoTool.getOptionPanel()]);
         this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.state.rotateOnlyOneColor = this.rotateTool.checkBox.checked, 
             () => field.state.antiAliasRotation = this.rotateTool.checkBoxAntiAlias.checked, [this.undoTool.getOptionPanel()]);
