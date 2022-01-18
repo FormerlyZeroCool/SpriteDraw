@@ -2561,6 +2561,7 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
                 case("move"):
                 field.zoom.offsetX -= e.deltaX;
                 field.zoom.offsetY -= e.deltaY;
+                repaint = false;
                 break;
                 case("pen"):
                 field.layer().handleDraw(x1, touchPos[0], y1, touchPos[1]);
