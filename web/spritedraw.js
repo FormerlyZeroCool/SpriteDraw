@@ -2503,7 +2503,9 @@ class DrawingScreen {
         }
     }
     fillArea(startCoordinate) {
-        if (this.state.screenBufUnlocked) {
+        if (this.state.screenBufUnlocked &&
+            startCoordinate.first > 0 && startCoordinate.first < this.dimensions.first &&
+            startCoordinate.second > 0 && startCoordinate.second < this.dimensions.second) {
             this.state.screenBufUnlocked = false;
             let stack;
             if (this.state.slow) //possibly more visiually appealling algo (bfs), 
@@ -2540,7 +2542,9 @@ class DrawingScreen {
     //Pair<offset point>, Map of colors encoded as numbers by location>
     getSelectedPixelGroup(startCoordinate, countColor) {
         const data = [];
-        if (this.state.screenBufUnlocked) {
+        if (this.state.screenBufUnlocked &&
+            startCoordinate.first > 0 && startCoordinate.first < this.dimensions.first &&
+            startCoordinate.second > 0 && startCoordinate.second < this.dimensions.second) {
             this.state.screenBufUnlocked = false;
             const stack = [];
             const defaultColor = this.noColor;

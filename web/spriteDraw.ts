@@ -3061,7 +3061,9 @@ class DrawingScreen {
     }
     fillArea(startCoordinate:Pair<number>):void
     {
-        if(this.state.screenBufUnlocked)
+        if(this.state.screenBufUnlocked && 
+            startCoordinate.first > 0 && startCoordinate.first < this.dimensions.first &&
+            startCoordinate.second > 0 && startCoordinate.second < this.dimensions.second)
         {
             this.state.screenBufUnlocked = false;
         
@@ -3104,7 +3106,9 @@ class DrawingScreen {
     getSelectedPixelGroup(startCoordinate:Pair<number>, countColor:boolean):Pair<Pair<number>, number[] >
     {
         const data:number[] = [];
-        if(this.state.screenBufUnlocked)
+        if(this.state.screenBufUnlocked && 
+            startCoordinate.first > 0 && startCoordinate.first < this.dimensions.first &&
+            startCoordinate.second > 0 && startCoordinate.second < this.dimensions.second)
         {
             this.state.screenBufUnlocked = false;
             const stack:number[] = [];
