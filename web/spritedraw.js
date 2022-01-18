@@ -4299,10 +4299,14 @@ async function main() {
     const multiTouchHandler = new MultiTouchListener(canvas);
     multiTouchHandler.registerCallBack("pinchIn", e => true, e => {
         field.zoom.zoom += 0.1;
+        const text = (Math.round(field.zoom.zoom * 100) / 100).toString();
+        toolSelector.transformTool.textBoxZoom.setText(text);
     });
     multiTouchHandler.registerCallBack("pinchOut", e => true, e => {
         if (field.zoom.zoom > 0.1)
             field.zoom.zoom -= 0.1;
+        const text = (Math.round(field.zoom.zoom * 100) / 100).toString();
+        toolSelector.transformTool.textBoxZoom.setText(text);
     });
     const keyboardHandler = new KeyboardHandler();
     const pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler);
