@@ -2633,15 +2633,15 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
             const gx:number = Math.floor((touchPos[0])/field.layer().bounds.first*field.layer().dimensions.first);
             const gy:number = Math.floor((touchPos[1])/field.layer().bounds.second*field.layer().dimensions.second);
             let repaint:boolean = true;
-            switch (field.layer().toolSelector.selectedToolName())
+            switch (this.selectedToolName())
             {
                 case("oval"):
                 const start_x:number = Math.min(touchPos[0] - deltaX, touchPos[0]);
                 const end_x:number = Math.max(touchPos[0] - deltaX, touchPos[0]);
                 const min_y:number = Math.min(touchPos[1] - deltaY, touchPos[1]);
                 const max_y:number = Math.max(touchPos[1] - deltaY, touchPos[1]);
-                field.layer().handleEllipse(start_x, end_x, min_y, max_y);
                 field.layer().selectionRect = [0,0,0,0];
+                field.layer().handleEllipse(start_x, end_x, min_y, max_y);
                 break;
                 case("pen"):
                 if(deltaX === 0 && deltaY === 0)
@@ -4157,6 +4157,7 @@ class SingleTouchListener
                 catch(error:any)
                 {
                     console.log(error);
+                    logToServer(error);
                     this.registeredTouch = false;
                 }
             }
@@ -5330,7 +5331,7 @@ async function main()
 {
     const canvas:HTMLCanvasElement = <HTMLCanvasElement> document.getElementById("screen");
     let field:LayeredDrawingScreen;
-    const multiTouchHandler:MultiTouchListener =  new MultiTouchListener(canvas);
+    /*const multiTouchHandler:MultiTouchListener =  new MultiTouchListener(canvas);
     multiTouchHandler.registerCallBack("pinchIn", e => true, e => {
         field.zoom.zoom += 0.1;
         const text:string = (Math.round(field.zoom.zoom*100) / 100).toString()
@@ -5341,7 +5342,7 @@ async function main()
             field.zoom.zoom -= 0.1;
         const text:string = (Math.round(field.zoom.zoom*100) / 100).toString()
         toolSelector.transformTool.textBoxZoom.setText(text);
-    });
+    });*/
     const keyboardHandler:KeyboardHandler = new KeyboardHandler();
     const pallette:Pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler);
     const ctx:CanvasRenderingContext2D = canvas.getContext("2d");

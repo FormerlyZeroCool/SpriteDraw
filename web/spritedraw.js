@@ -2157,14 +2157,14 @@ class ToolSelector {
                 const gx = Math.floor((touchPos[0]) / field.layer().bounds.first * field.layer().dimensions.first);
                 const gy = Math.floor((touchPos[1]) / field.layer().bounds.second * field.layer().dimensions.second);
                 let repaint = true;
-                switch (field.layer().toolSelector.selectedToolName()) {
+                switch (this.selectedToolName()) {
                     case ("oval"):
                         const start_x = Math.min(touchPos[0] - deltaX, touchPos[0]);
                         const end_x = Math.max(touchPos[0] - deltaX, touchPos[0]);
                         const min_y = Math.min(touchPos[1] - deltaY, touchPos[1]);
                         const max_y = Math.max(touchPos[1] - deltaY, touchPos[1]);
-                        field.layer().handleEllipse(start_x, end_x, min_y, max_y);
                         field.layer().selectionRect = [0, 0, 0, 0];
+                        field.layer().handleEllipse(start_x, end_x, min_y, max_y);
                         break;
                     case ("pen"):
                         if (deltaX === 0 && deltaY === 0) {
@@ -3397,6 +3397,7 @@ class SingleTouchListener {
                 }
                 catch (error) {
                     console.log(error);
+                    logToServer(error);
                     this.registeredTouch = false;
                 }
             }
@@ -4321,18 +4322,18 @@ function logToServer(data) {
 async function main() {
     const canvas = document.getElementById("screen");
     let field;
-    const multiTouchHandler = new MultiTouchListener(canvas);
+    /*const multiTouchHandler:MultiTouchListener =  new MultiTouchListener(canvas);
     multiTouchHandler.registerCallBack("pinchIn", e => true, e => {
         field.zoom.zoom += 0.1;
-        const text = (Math.round(field.zoom.zoom * 100) / 100).toString();
+        const text:string = (Math.round(field.zoom.zoom*100) / 100).toString()
         toolSelector.transformTool.textBoxZoom.setText(text);
     });
     multiTouchHandler.registerCallBack("pinchOut", e => true, e => {
-        if (field.zoom.zoom > 0.1)
+        if(field.zoom.zoom > 0.1)
             field.zoom.zoom -= 0.1;
-        const text = (Math.round(field.zoom.zoom * 100) / 100).toString();
+        const text:string = (Math.round(field.zoom.zoom*100) / 100).toString()
         toolSelector.transformTool.textBoxZoom.setText(text);
-    });
+    });*/
     const keyboardHandler = new KeyboardHandler();
     const pallette = new Pallette(document.getElementById("pallette_screen"), keyboardHandler);
     const ctx = canvas.getContext("2d");
