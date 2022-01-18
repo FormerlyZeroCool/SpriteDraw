@@ -4157,7 +4157,6 @@ class SingleTouchListener
                 catch(error:any)
                 {
                     console.log(error);
-                    logToServer(error);
                     this.registeredTouch = false;
                 }
             }
