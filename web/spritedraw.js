@@ -2775,16 +2775,25 @@ class DrawingScreen {
             }
             const bounds = [this.bounds.first, this.bounds.second];
             const dimensions = [this.dimensions.first, this.dimensions.second];
-            this.canvas.width = bounds[0];
-            this.canvas.height = bounds[1];
             this.undoneUpdatesStack.empty();
             this.updatesStack.empty();
             if (this.screenBuffer.length != newDim[0] * newDim[1]) {
+                this.canvas.width = newDim[0];
+                this.canvas.height = newDim[1];
+                this.ctx = this.canvas.getContext("2d");
                 this.screenBuffer = [];
-                for (let i = this.screenBuffer.length; i < newDim[0] * newDim[1]; i++)
-                    this.screenBuffer.push(new RGB(this.noColor.red(), this.noColor.green(), this.noColor.blue(), this.noColor.alpha()));
+                for (let i = 0; i < newDim[0] * newDim[1]; i++)
+                    this.screenBuffer.push(new RGB(0, 0, 0, 0));
+                this.spriteScreenBuf.refreshImage();
+                this.ctx.drawImage(this.spriteScreenBuf.image, 0, 0, newDim[0], newDim[1]);
+                const sprite = new Sprite([], newDim[0], newDim[1], false);
+                sprite.pixels = this.ctx.getImageData(0, 0, newDim[0], newDim[1]).data;
+                sprite.copyToBuffer(this.screenBuffer);
                 this.spriteScreenBuf = new Sprite([], this.bounds.first, this.bounds.second);
             }
+            this.canvas.width = bounds[0];
+            this.canvas.height = bounds[1];
+            this.ctx = this.canvas.getContext("2d");
             this.dimensions = new Pair(newDim[0], newDim[1]);
             this.clipBoard.resize(newDim);
             this.repaint = true;
