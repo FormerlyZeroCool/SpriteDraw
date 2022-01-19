@@ -5454,9 +5454,12 @@ async function main()
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.layer().state.color.copy(pallette.calcColor());
     });
+    interface FilesHaver{
+        files:FileList;
+    };
     const fileSelector = document.getElementById('file-selector');
     fileSelector.addEventListener('change', (event) => {
-      const fileList:FileList = <FileList> event.target.files;
+      const fileList:FileList = (<FilesHaver> <Object> event.target).files;
       const reader = new FileReader();
       reader.readAsDataURL(fileList[0]);
       reader.onload = (() =>
@@ -5465,10 +5468,12 @@ async function main()
             img.onload = () => {
                 toolSelector.layersTool.pushList(`layer${toolSelector.layersTool.runningId++}`)
                 field.loadImageToLayer(img);
+                toolSelector.settingsTool.dim = [img.width, img.height];
+                toolSelector.settingsTool.tbX.setText(img.width.toString());
+                toolSelector.settingsTool.tbY.setText(img.height.toString());
             };
             img.src = <string> reader.result;
         });
-      console.log(fileList);
     });
     canvas.addEventListener("wheel", (e) => {
         e.preventDefault();
@@ -5494,7 +5499,7 @@ async function main()
             else if(field.zoom.zoom >= 25 && e.deltaY > 0)
                 delta = 0;
     
-            if(e.deltaY > 0)
+            if(e.deltaY < 0)
                 field.zoom.zoom += delta;
             else if(field.zoom.zoom > 0.10)
                 field.zoom.zoom -= delta;
@@ -5506,7 +5511,7 @@ async function main()
             const centerY:number = field.zoom.invZoomY(field.height() / 2);
             const deltaX:number = delta*(touchPos[0] - centerX) * field.zoom.zoom;
             const deltaY:number = delta*(touchPos[1] - centerY) * field.zoom.zoom;            
-            if(e.deltaY > 0)
+            if(e.deltaY < 0)
             {
                 field.zoom.offsetX += deltaX;
                 field.zoom.offsetY += deltaY;
