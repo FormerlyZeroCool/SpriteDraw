@@ -3108,6 +3108,21 @@ class LayeredDrawingScreen {
         this.layersState.splice(index, 1);
         this.layer().repaint = true;
     }
+    loadImageToLayer(image) {
+        this.offscreenCanvas.height = image.height;
+        this.offscreenCanvas.width = image.width;
+        const ctx = this.offscreenCanvas.getContext("2d");
+        ctx.drawImage(image, 0, 0);
+        const sprite = new Sprite([], this.offscreenCanvas.width, this.offscreenCanvas.width, false);
+        sprite.pixels = ctx.getImageData(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height).data;
+        const layer = this.layers[this.layers.length - 1];
+        this.layers.forEach(layer => layer.setDim([image.width, image.height]));
+        const bounds = [this.layer().bounds.first, this.layer().bounds.second];
+        this.dim = [bounds[0], bounds[1]];
+        this.canvas.width = bounds[0];
+        this.canvas.height = bounds[1];
+        sprite.copyToBuffer(layer.screenBuffer);
+    }
     addBlankLayer() {
         const layer = new DrawingScreen(document.createElement("canvas"), this.keyboardHandler, this.pallette, [0, 0], [this.dim[0], this.dim[1]], this.toolSelector, this.state, this.clipBoard);
         layer.setDim(this.dim);
@@ -4406,8 +4421,9 @@ async function main() {
         animationGroupSelector.animationGroup().spriteSelector.deleteSelectedSprite();
     });
     const save_local_drawing_screenButton = document.getElementById("save_local_drawing_screen");
-    if (save_local_drawing_screenButton)
+    if (save_local_drawing_screenButton) {
         save_local_drawing_screenButton.addEventListener("mousedown", e => field.saveToFile(document.getElementById("screen_sprite_file_name").value));
+    }
     keyboardHandler.registerCallBack("keydown", e => true, e => {
         field.layer().state.color.copy(pallette.calcColor());
         if ((document.getElementById('body') === document.activeElement || document.getElementById('screen') === document.activeElement)) {
@@ -4419,6 +4435,21 @@ async function main() {
     });
     keyboardHandler.registerCallBack("keyup", e => true, e => {
         field.layer().state.color.copy(pallette.calcColor());
+    });
+    const fileSelector = document.getElementById('file-selector');
+    fileSelector.addEventListener('change', (event) => {
+        const fileList = event.target.files;
+        const reader = new FileReader();
+        reader.readAsDataURL(fileList[0]);
+        reader.onload = (() => {
+            const img = new Image();
+            img.onload = () => {
+                toolSelector.layersTool.pushList(`layer${toolSelector.layersTool.runningId++}`);
+                field.loadImageToLayer(img);
+            };
+            img.src = reader.result;
+        });
+        console.log(fileList);
     });
     canvas.addEventListener("wheel", (e) => {
         e.preventDefault();
