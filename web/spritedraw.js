@@ -3146,8 +3146,8 @@ class LayeredDrawingScreen {
             width = this.width();
             height = this.height();
         }
+        ctx.drawImage(this.canvasTransparency, 0, 0);
         if (this.repaint()) {
-            this.ctx.drawImage(this.canvasTransparency, 0, 0);
             for (let i = 0; i < this.layers.length; i++) {
                 if (this.layersState[i]) {
                     const layer = this.layers[i];
@@ -4445,7 +4445,7 @@ async function main() {
         //if(field.repaint())
         {
             ctx.fillStyle = "#000000";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            //ctx.fillRect(0, 0, canvas.width, canvas.height);
             field.draw(canvas, ctx, 0, 0, canvas.width, canvas.height);
         }
         if (animationGroupSelector.animationGroup())
