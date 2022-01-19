@@ -5465,8 +5465,6 @@ async function main()
         toolSelector.draw();
         //if(field.repaint())
         {
-            ctx.fillStyle = "#000000";
-            //ctx.fillRect(0, 0, canvas.width, canvas.height);
             field.draw(canvas, ctx, 0, 0, canvas.width, canvas.height);
         }
         if(animationGroupSelector.animationGroup())
