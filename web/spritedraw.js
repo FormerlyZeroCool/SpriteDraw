@@ -610,6 +610,7 @@ class GuiCheckList {
                     this.selectedItem().callBack(e);
                 break;
             case ("touchmove"):
+                const movesNeeded = isTouchSupported() ? 10 : 3;
                 if (e.moveCount === 10 && this.selectedItem() && this.list.length > 1) {
                     this.dragItem = this.list.splice(this.selected(), 1)[0];
                     this.dragItemInitialIndex = this.selected();
@@ -1880,10 +1881,17 @@ class ScreenTransformationTool extends ExtendedTool {
     constructor(toolName, toolImagePath, optionPanes, field) {
         super(toolName, toolImagePath, optionPanes, [200, 200], [2, 4]);
         this.localLayout.addElement(new GuiLabel("Zoom:", 75));
-        this.buttonUpdateZoom = new GuiButton(() => (field.zoom.zoom = this.textBoxZoom.asNumber.get() ? this.textBoxZoom.asNumber.get() : field.zoom.zoom), "Set Zoom", 100, 40, 16);
+        this.buttonUpdateZoom = new GuiButton(() => {
+            let ratio = 1;
+            if (this.textBoxZoom.asNumber.get()) {
+                ratio = this.textBoxZoom.asNumber.get() / field.zoom.zoomX;
+                field.zoom.zoomX = this.textBoxZoom.asNumber.get();
+                field.zoom.zoomY = field.zoom.zoomY * ratio;
+            }
+        }, "Set Zoom", 100, 40, 16);
         this.localLayout.addElement(new GuiLabel("", 50));
         this.textBoxZoom = new GuiTextBox(true, 70, this.buttonUpdateZoom, 16, 32);
-        this.textBoxZoom.setText(field.zoom.zoom.toString());
+        this.textBoxZoom.setText(field.zoom.zoomX.toString());
         this.localLayout.addElement(this.textBoxZoom);
         this.localLayout.addElement(this.buttonUpdateZoom);
         this.localLayout.addElement(new GuiButton(() => { field.zoom.offsetX = 0; field.zoom.offsetY = 0; }, "Center Screen", 140, 40, 16));
@@ -2080,8 +2088,8 @@ class ToolSelector {
                 }
             });
             this.drawingScreenListener.registerCallBack("touchmove", e => this.layersTool.list.selectedItem() && this.layersTool.list.selectedItem().checkBox.checked, e => {
-                const deltaX = this.field.zoom.invZoom(e.deltaX);
-                const deltaY = this.field.zoom.invZoom(e.deltaY);
+                const deltaX = this.field.zoom.invJustZoomX(e.deltaX);
+                const deltaY = this.field.zoom.invJustZoomY(e.deltaY);
                 const touchPos = [this.field.zoom.invZoomX(e.touchPos[0]), this.field.zoom.invZoomY(e.touchPos[1])];
                 const x1 = touchPos[0] - deltaX;
                 const y1 = touchPos[1] - deltaY;
@@ -2150,8 +2158,8 @@ class ToolSelector {
                 field.layer().repaint = repaint;
             });
             this.drawingScreenListener.registerCallBack("touchend", e => this.layersTool.list.selectedItem() && this.layersTool.list.selectedItem().checkBox.checked, e => {
-                const deltaX = this.field.zoom.invZoom(e.deltaX);
-                const deltaY = this.field.zoom.invZoom(e.deltaY);
+                const deltaX = this.field.zoom.invJustZoomX(e.deltaX);
+                const deltaY = this.field.zoom.invJustZoomY(e.deltaY);
                 const touchPos = [this.field.zoom.invZoomX(e.touchPos[0]), this.field.zoom.invZoomY(e.touchPos[1])];
                 const x1 = touchPos[0] - deltaX;
                 const y1 = touchPos[1] - deltaY;
@@ -2760,15 +2768,18 @@ class DrawingScreen {
         return x >= 0 && x < this.dimensions.first && y >= 0 && y < this.dimensions.second;
     }
     setDim(newDim) {
+        let zoom = new Pair(1, 1);
         if (newDim.length === 2) {
             if (newDim[0] < 300) {
                 this.bounds.first = newDim[0] * Math.floor(600 / newDim[0]);
+                zoom.first = 1 / Math.floor(600 / newDim[0]);
             }
             else {
                 this.bounds.first = newDim[0];
             }
             if (newDim[1] < 300) {
                 this.bounds.second = newDim[1] * Math.floor(600 / newDim[1]);
+                zoom.second = 1 / Math.floor(600 / newDim[1]);
             }
             else {
                 this.bounds.second = newDim[1];
@@ -2798,6 +2809,7 @@ class DrawingScreen {
             this.clipBoard.resize(newDim);
             this.repaint = true;
         }
+        return zoom;
     }
     lowerPixelPercentage(a) {
         const frac = a - Math.floor(a);
@@ -3030,20 +3042,24 @@ class DrawingScreen {
 ;
 class ZoomState {
     constructor() {
-        this.zoom = 1;
+        this.zoomX = 1;
+        this.zoomY = 1;
         this.zoomedX = 0;
         this.zoomedY = 0;
         this.offsetX = 0;
         this.offsetY = 0;
     }
-    invZoom(x = 1) {
-        return (1 / this.zoom) * x;
-    }
     invZoomX(x) {
-        return this.invZoom(x - this.zoomedX);
+        return (1 / this.zoomX) * (x - this.zoomedX);
     }
     invZoomY(y) {
-        return this.invZoom(y - this.zoomedY);
+        return (1 / this.zoomY) * (y - this.zoomedY);
+    }
+    invJustZoomX(x) {
+        return (1 / this.zoomX) * (x);
+    }
+    invJustZoomY(y) {
+        return (1 / this.zoomY) * (y);
     }
 }
 ;
@@ -3091,7 +3107,11 @@ class LayeredDrawingScreen {
     }
     setDimOnCurrent(dim) {
         if (this.layer()) {
-            this.layers.forEach(layer => layer.setDim(dim));
+            this.layers.forEach(layer => {
+                const zoom = layer.setDim(dim);
+                this.zoom.zoomX = zoom.first;
+                this.zoom.zoomY = zoom.second;
+            });
             const bounds = [this.layer().bounds.first, this.layer().bounds.second];
             this.dim = [bounds[0], bounds[1]];
             this.canvas.width = bounds[0];
@@ -3191,8 +3211,8 @@ class LayeredDrawingScreen {
             }
         }
         {
-            const zoomedWidth = width * this.zoom.zoom;
-            const zoomedHeight = height * this.zoom.zoom;
+            const zoomedWidth = width * this.zoom.zoomX;
+            const zoomedHeight = height * this.zoom.zoomY;
             this.zoom.zoomedX = x - this.zoom.offsetX + (width - zoomedWidth) / 2;
             this.zoom.zoomedY = y - this.zoom.offsetY + (height - zoomedHeight) / 2;
             ctx.drawImage(this.canvas, this.zoom.zoomedX, this.zoom.zoomedY, zoomedWidth, zoomedHeight);
@@ -4472,28 +4492,32 @@ async function main() {
             toolSelector.drawingScreenListener.registeredTouch = false;
         }
         else {
-            if (field.zoom.zoom < 1.05) {
+            if (field.zoom.zoomX < 1.05) {
                 delta = 0.01;
             }
-            else if (field.zoom.zoom < 3) {
+            else if (field.zoom.zoomX < 3) {
                 delta = 0.05;
             }
-            else if (field.zoom.zoom > 8 && field.zoom.zoom < 25)
+            else if (field.zoom.zoomX > 8 && field.zoom.zoomX < 25)
                 delta = 0.2;
-            else if (field.zoom.zoom >= 25 && e.deltaY < 0)
+            else if (field.zoom.zoomX >= 25 && e.deltaY < 0)
                 delta = 0;
-            if (e.deltaY < 0)
-                field.zoom.zoom += delta;
-            else if (field.zoom.zoom > 0.10)
-                field.zoom.zoom -= delta;
-            const text = (Math.round(field.zoom.zoom * 100) / 100).toString();
+            if (e.deltaY < 0) {
+                field.zoom.zoomY += delta * (field.zoom.zoomY / field.zoom.zoomX);
+                field.zoom.zoomX += delta;
+            }
+            else if (field.zoom.zoomX > 0.10) {
+                field.zoom.zoomY -= delta * (field.zoom.zoomY / field.zoom.zoomX);
+                field.zoom.zoomX -= delta;
+            }
+            const text = (Math.round(field.zoom.zoomX * 100) / 100).toString();
             toolSelector.transformTool.textBoxZoom.setText(text);
             const touchPos = [field.zoom.invZoomX(toolSelector.drawingScreenListener.touchPos[0]),
                 field.zoom.invZoomY(toolSelector.drawingScreenListener.touchPos[1])];
             const centerX = field.zoom.invZoomX(field.width() / 2);
             const centerY = field.zoom.invZoomY(field.height() / 2);
-            const deltaX = delta * (touchPos[0] - centerX) * field.zoom.zoom;
-            const deltaY = delta * (touchPos[1] - centerY) * field.zoom.zoom;
+            const deltaX = delta * (touchPos[0] - centerX) * field.zoom.zoomX;
+            const deltaY = delta * (touchPos[1] - centerY) * field.zoom.zoomY;
             if (e.deltaY < 0) {
                 field.zoom.offsetX += deltaX;
                 field.zoom.offsetY += deltaY;
