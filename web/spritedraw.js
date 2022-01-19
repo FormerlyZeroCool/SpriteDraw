@@ -4480,7 +4480,7 @@ async function main() {
             }
             else if (field.zoom.zoom > 8 && field.zoom.zoom < 25)
                 delta = 0.2;
-            else if (field.zoom.zoom >= 25 && e.deltaY > 0)
+            else if (field.zoom.zoom >= 25 && e.deltaY < 0)
                 delta = 0;
             if (e.deltaY < 0)
                 field.zoom.zoom += delta;
