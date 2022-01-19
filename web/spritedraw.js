@@ -1618,12 +1618,12 @@ class ColorPickerTool extends ExtendedTool {
     }
 }
 ;
-class DrawingScreenSettingsTool extends Tool {
-    constructor(dim = [524, 524], field, toolName, pathToImage) {
-        super(toolName, pathToImage);
+class DrawingScreenSettingsTool extends ExtendedTool {
+    constructor(dim = [524, 524], field, toolName, pathToImage, optionPanes) {
+        super(toolName, pathToImage, optionPanes, [200, 140], [2, 4]);
         this.dim = dim;
         this.field = field;
-        this.layoutManager = new SimpleGridLayoutManager([2, 4], [200, 150]);
+        //this.localLayout = new SimpleGridLayoutManager([2,4],[200,150]);
         this.tbX = new GuiTextBox(true, 70);
         this.tbX.promptText = "Enter width:";
         this.tbX.setText(String(this.dim[0]));
@@ -1633,13 +1633,13 @@ class DrawingScreenSettingsTool extends Tool {
         this.btUpdate = new GuiButton(() => this.recalcDim(), "Update", 75, 35, 16);
         this.tbX.submissionButton = this.btUpdate;
         this.tbY.submissionButton = this.btUpdate;
-        this.layoutManager.addElement(new GuiLabel("Sprite Resolution:", 200, 16, GuiTextBox.bottom));
-        this.layoutManager.addElement(new GuiLabel("Width:", 90, 16));
-        this.layoutManager.addElement(new GuiLabel("Height:", 90, 16));
-        this.layoutManager.addElement(this.tbX);
-        this.layoutManager.addElement(this.tbY);
-        this.layoutManager.addElement(new GuiLabel(" ", 85));
-        this.layoutManager.addElement(this.btUpdate);
+        this.localLayout.addElement(new GuiLabel("Sprite Resolution:", 200, 16, GuiTextBox.bottom));
+        this.localLayout.addElement(new GuiLabel("Width:", 90, 16));
+        this.localLayout.addElement(new GuiLabel("Height:", 90, 16));
+        this.localLayout.addElement(this.tbX);
+        this.localLayout.addElement(this.tbY);
+        this.localLayout.addElement(new GuiLabel(" ", 85));
+        this.localLayout.addElement(this.btUpdate);
     }
     activateOptionPanel() { this.layoutManager.activate(); }
     deactivateOptionPanel() { this.layoutManager.deactivate(); }
@@ -1878,9 +1878,10 @@ class LayerManagerTool extends Tool {
 ;
 class ScreenTransformationTool extends ExtendedTool {
     constructor(toolName, toolImagePath, optionPanes, field) {
-        super(toolName, toolImagePath, optionPanes, [200, 200], [1, 4]);
+        super(toolName, toolImagePath, optionPanes, [200, 200], [2, 4]);
         this.localLayout.addElement(new GuiLabel("Zoom:", 75));
         this.buttonUpdateZoom = new GuiButton(() => (field.zoom.zoom = this.textBoxZoom.asNumber.get() ? this.textBoxZoom.asNumber.get() : field.zoom.zoom), "Set Zoom", 100, 40, 16);
+        this.localLayout.addElement(new GuiLabel("", 50));
         this.textBoxZoom = new GuiTextBox(true, 70, this.buttonUpdateZoom, 16, 32);
         this.textBoxZoom.setText(field.zoom.zoom.toString());
         this.localLayout.addElement(this.textBoxZoom);
@@ -2224,7 +2225,7 @@ class ToolSelector {
         this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png", [this.undoTool.getOptionPanel()]);
         this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.state.rotateOnlyOneColor = this.rotateTool.checkBox.checked, () => field.state.antiAliasRotation = this.rotateTool.checkBoxAntiAlias.checked, [this.undoTool.getOptionPanel()]);
         this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.state.dragOnlyOneColor = this.dragTool.checkBox.checked, () => field.state.blendAlphaOnPutSelectedPixels = this.dragTool.checkBox_blendAlpha.checked, [this.undoTool.getOptionPanel()]);
-        this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "ScreenSettings", "images/settingsSprite.png");
+        this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "move", "images/settingsSprite.png", [this.transformTool.getOptionPanel()]);
         this.copyTool = new CopyPasteTool("copy", "images/copySprite.png", [this.undoTool.getOptionPanel()], field.layer().clipBoard, () => field.state.blendAlphaOnPaste = this.copyTool.blendAlpha.checked);
         PenTool.checkDrawCircular.checked = true;
         PenTool.checkDrawCircular.refresh();
@@ -2251,7 +2252,7 @@ class ToolSelector {
         this.toolBar.tools.push(this.rotateTool);
         this.toolBar.tools.push(this.layersTool);
         this.toolBar.tools.push(this.settingsTool);
-        this.toolBar.tools.push(this.transformTool);
+        //this.toolBar.tools.push(this.transformTool);
         this.toolBar.resize();
         this.ctx = this.canvas.getContext("2d");
         this.ctx.lineWidth = 2;
@@ -3119,6 +3120,15 @@ class LayeredDrawingScreen {
     }
     height() {
         return this.dim[1];
+    }
+    saveToFile(fileName) {
+        var a = document.createElement("a");
+        this.toSprite();
+        this.offscreenCanvas.toBlob(blob => {
+            a.href = window.URL.createObjectURL(blob);
+            a.download = fileName;
+            a.click();
+        });
     }
     toSprite() {
         //set offscreen canvas state, and get ctx for rescale
@@ -4395,9 +4405,9 @@ async function main() {
     delete_spriteButtonTouchListener.registerCallBack("touchstart", e => true, e => {
         animationGroupSelector.animationGroup().spriteSelector.deleteSelectedSprite();
     });
-    const save_serverButton = document.getElementById("save_server");
-    if (save_serverButton)
-        save_serverButton.addEventListener("mousedown", e => animationGroupSelector.save());
+    const save_local_drawing_screenButton = document.getElementById("save_local_drawing_screen");
+    if (save_local_drawing_screenButton)
+        save_local_drawing_screenButton.addEventListener("mousedown", e => field.saveToFile(document.getElementById("screen_sprite_file_name").value));
     keyboardHandler.registerCallBack("keydown", e => true, e => {
         field.layer().state.color.copy(pallette.calcColor());
         if ((document.getElementById('body') === document.activeElement || document.getElementById('screen') === document.activeElement)) {
@@ -4435,6 +4445,20 @@ async function main() {
                 field.zoom.zoom -= delta;
             const text = (Math.round(field.zoom.zoom * 100) / 100).toString();
             toolSelector.transformTool.textBoxZoom.setText(text);
+            const touchPos = [field.zoom.invZoomX(toolSelector.drawingScreenListener.touchPos[0]),
+                field.zoom.invZoomY(toolSelector.drawingScreenListener.touchPos[1])];
+            const centerX = field.zoom.invZoomX(field.width() / 2);
+            const centerY = field.zoom.invZoomY(field.height() / 2);
+            const deltaX = delta * (touchPos[0] - centerX) * field.zoom.zoom;
+            const deltaY = delta * (touchPos[1] - centerY) * field.zoom.zoom;
+            if (e.deltaY > 0) {
+                field.zoom.offsetX += deltaX;
+                field.zoom.offsetY += deltaY;
+            }
+            else {
+                field.zoom.offsetX -= deltaX;
+                field.zoom.offsetY -= deltaY;
+            }
         }
     });
     const fps = 27;
