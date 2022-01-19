@@ -2778,16 +2778,16 @@ class DrawingScreen {
             this.undoneUpdatesStack.empty();
             this.updatesStack.empty();
             if (this.screenBuffer.length != newDim[0] * newDim[1]) {
-                this.canvas.width = newDim[0];
-                this.canvas.height = newDim[1];
-                this.ctx = this.canvas.getContext("2d");
+                const canvas = document.createElement("canvas");
+                canvas.width = newDim[0];
+                canvas.height = newDim[1];
+                const ctx = canvas.getContext("2d");
                 this.screenBuffer = [];
                 for (let i = 0; i < newDim[0] * newDim[1]; i++)
                     this.screenBuffer.push(new RGB(0, 0, 0, 0));
-                this.spriteScreenBuf.refreshImage();
-                this.ctx.drawImage(this.spriteScreenBuf.image, 0, 0, newDim[0], newDim[1]);
+                ctx.drawImage(this.canvas, 0, 0, newDim[0], newDim[1]);
                 const sprite = new Sprite([], newDim[0], newDim[1], false);
-                sprite.pixels = this.ctx.getImageData(0, 0, newDim[0], newDim[1]).data;
+                sprite.pixels = ctx.getImageData(0, 0, newDim[0], newDim[1]).data;
                 sprite.copyToBuffer(this.screenBuffer);
                 this.spriteScreenBuf = new Sprite([], this.bounds.first, this.bounds.second);
             }
@@ -3091,7 +3091,7 @@ class LayeredDrawingScreen {
     }
     setDimOnCurrent(dim) {
         if (this.layer()) {
-            this.layer().setDim(dim);
+            this.layers.forEach(layer => layer.setDim(dim));
             const bounds = [this.layer().bounds.first, this.layer().bounds.second];
             this.dim = [bounds[0], bounds[1]];
             this.canvas.width = bounds[0];
