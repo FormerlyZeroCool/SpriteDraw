@@ -4463,16 +4463,41 @@ class Sprite {
     }
     putPixels(ctx:CanvasRenderingContext2D, idata:ImageData = ctx.getImageData(0, 0, this.width, this.height)):void
     {
-        for(let i = 0; i < idata.data.length;)
+        if((idata.data.length >> 4) % 2 == 0)
         {
-            idata.data[i] = this.pixels[i];
-            ++i;
-            idata.data[i] = this.pixels[i];
-            ++i;
-            idata.data[i] = this.pixels[i];
-            ++i;
-            idata.data[i] = this.pixels[i];
-            ++i;
+            for(let i = 0; i < idata.data.length;)
+            {
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+            }
+        }
+        else
+        {
+            for(let i = 0; i < idata.data.length;)
+            {
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+            }
         }
         ctx.putImageData(idata, 0, 0);
     }
