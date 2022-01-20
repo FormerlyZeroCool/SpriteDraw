@@ -2797,10 +2797,6 @@ class DrawingScreen {
                 this.screenBuffer = [];
                 for (let i = 0; i < newDim[0] * newDim[1]; i++)
                     this.screenBuffer.push(new RGB(0, 0, 0, 0));
-                this.repaint = true;
-                this.pasteRect = [0, 0, 0, 0];
-                this.selectionRect = [0, 0, 0, 0];
-                this.draw();
                 ctx.drawImage(this.canvas, 0, 0, newDim[0], newDim[1]);
                 const sprite = new Sprite([], newDim[0], newDim[1], false);
                 sprite.pixels = ctx.getImageData(0, 0, newDim[0], newDim[1]).data;
@@ -2957,7 +2953,7 @@ class DrawingScreen {
                 }
                 ;
             }
-            if (this.pasteRect[3] !== 0 && this.toolSelector.drawingScreenListener.registeredTouch && this.toolSelector.selectedToolName() === "paste") {
+            if (this.pasteRect[3] !== 0 && this.toolSelector.drawingScreenListener && this.toolSelector.drawingScreenListener.registeredTouch && this.toolSelector.selectedToolName() === "paste") {
                 const dest_x = Math.floor((this.pasteRect[0] - this.offset.first) / this.bounds.first * this.dimensions.first);
                 const dest_y = Math.floor((this.pasteRect[1] - this.offset.second) / this.bounds.second * this.dimensions.second);
                 const width = this.clipBoard.currentDim[0];
@@ -2980,7 +2976,7 @@ class DrawingScreen {
                 }
             }
             spriteScreenBuf.putPixels(ctx);
-            if (this.toolSelector.drawingScreenListener.registeredTouch && this.toolSelector.selectedToolName() === "line") {
+            if (this.toolSelector.drawingScreenListener && this.toolSelector.drawingScreenListener.registeredTouch && this.toolSelector.selectedToolName() === "line") {
                 let touchStart = [this.selectionRect[0], this.selectionRect[1]];
                 ctx.lineWidth = 6;
                 ctx.beginPath();
@@ -2989,7 +2985,7 @@ class DrawingScreen {
                 ctx.lineTo(this.selectionRect[2] + touchStart[0], this.selectionRect[3] + touchStart[1]);
                 ctx.stroke();
             }
-            else if (this.selectionRect[3] !== 0) {
+            else if (this.toolSelector.drawingScreenListener && this.toolSelector.drawingScreenListener.registeredTouch && this.selectionRect[3] !== 0) {
                 ctx.lineWidth = 6;
                 const xr = Math.abs(this.selectionRect[2] / 2);
                 const yr = Math.abs(this.selectionRect[3] / 2);
@@ -3030,7 +3026,7 @@ class DrawingScreen {
                     ctx.stroke();
                 }
             }
-            if (this.pasteRect[3] !== 0) {
+            if (this.toolSelector.drawingScreenListener && this.toolSelector.drawingScreenListener.registeredTouch && this.pasteRect[3] !== 0) {
                 ctx.lineWidth = 6;
                 ctx.strokeStyle = "#FFFFFF";
                 ctx.strokeRect(this.pasteRect[0] + 2, this.pasteRect[1] + 2, this.pasteRect[2] - 4, this.pasteRect[3] - 4);
