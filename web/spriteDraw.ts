@@ -2854,6 +2854,7 @@ class DrawingScreen {
     dragDataMaxPoint:number;
     dragDataMinPoint:number;
     state:DrawingScreenState;
+    imageDataBuffer:ImageData;
 
     constructor(canvas:HTMLCanvasElement, keyboardHandler:KeyboardHandler, palette:Pallette, offset:Array<number>, dimensions:Array<number>, toolSelector:ToolSelector, state:DrawingScreenState, clipBoard:ClipBoard)
     {
@@ -3406,6 +3407,7 @@ class DrawingScreen {
             this.canvas.width = bounds[0];
             this.canvas.height = bounds[1];
             this.ctx = this.canvas.getContext("2d");
+            this.imageDataBuffer = this.ctx.getImageData(0,0,bounds[0],bounds[1]);
             this.dimensions = new Pair(newDim[0], newDim[1]);
             this.clipBoard.resize(newDim);
             this.repaint = true;
@@ -3542,11 +3544,12 @@ class DrawingScreen {
         
             if(this.dimensions.first === this.canvas.width && this.dimensions.second === this.canvas.height)
             {//if drawing screen dimensions, and canvas dimensions are the same just update per pixel
+                let index:number;
                 for(let y = 0; y < this.dimensions.second; y++)
                 {
                     for(let x = 0; x < this.dimensions.first; x++)
                     {
-                        const index:number = (x + y*this.dimensions.first);
+                        index = (x + y*this.dimensions.first);
                         spriteScreenBuf.pixels[(index<<2)] = this.screenBuffer[index].red();  
                         spriteScreenBuf.pixels[(index<<2) + 1] = this.screenBuffer[index].green();   
                         spriteScreenBuf.pixels[(index<<2) + 2] = this.screenBuffer[index].blue();   
@@ -3606,7 +3609,7 @@ class DrawingScreen {
                 }
             }
             
-            spriteScreenBuf.putPixels(ctx);
+            spriteScreenBuf.putPixels(ctx, this.imageDataBuffer);
             if(this.toolSelector.drawingScreenListener && this.toolSelector.drawingScreenListener.registeredTouch && this.toolSelector.selectedToolName() === "line")
             {
                 let touchStart = [this.selectionRect[0], this.selectionRect[1]];
@@ -3733,7 +3736,7 @@ class LayeredDrawingScreen {
     pallette:Pallette;
     toolSelector:ToolSelector;
     offscreenCanvas:HTMLCanvasElement;
-    zoom:ZoomState
+    zoom:ZoomState;
     constructor(keyboardHandler:KeyboardHandler, pallette:Pallette) {
         this.canvas = document.createElement("canvas");
         this.offscreenCanvas = document.createElement("canvas");
@@ -4458,10 +4461,19 @@ class Sprite {
         if(pixels.length)
             this.refreshImage();
     }
-    putPixels(ctx:CanvasRenderingContext2D):void
+    putPixels(ctx:CanvasRenderingContext2D, idata:ImageData = ctx.getImageData(0, 0, this.width, this.height)):void
     {
-        const idata = ctx.createImageData(this.width, this.height);
-        idata.data.set(this.pixels);
+        for(let i = 0; i < idata.data.length;)
+        {
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+        }
         ctx.putImageData(idata, 0, 0);
     }
     fillRect(color:RGB, x:number, y:number, width:number, height:number)
@@ -4618,6 +4630,24 @@ class SpriteAnimation {
         let size:number = 2;
         this.sprites.forEach(sprite => size += sprite.binaryFileSize());
         return size;
+    }
+    toGifBlob(callBack:(blob:Blob) => void):void
+    {
+        var gif = new GIF({
+            workers: 2,
+            quality: 10
+          });
+          
+          // add an image element
+          for(let i = 0; i < this.sprites.length; i++)
+            gif.addFrame(this.sprites[i].image);
+          
+          gif.on('finished', function(blob) {
+            window.open(URL.createObjectURL(blob));
+            callBack(blob);
+          });
+          
+          gif.render();
     }
     saveToUint32Buffer(buf:Uint32Array, index:number):number
     {
@@ -5566,7 +5596,7 @@ async function main()
             }
         }
     });
-    const fps = 27;
+    const fps = 35;
     const goalSleep = 1000/fps;
     let counter = 0;
 
