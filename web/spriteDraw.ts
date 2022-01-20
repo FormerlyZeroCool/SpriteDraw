@@ -3750,8 +3750,8 @@ class LayeredDrawingScreen {
         this.layersState = [];
         this.keyboardHandler = keyboardHandler;
         this.pallette = pallette;
-        this.resizeTransparencyCanvas(this.dim);
-        this.setDimOnCurrent([4000,4000]);
+        this.resizeTransparencyCanvas([4000,4000]);
+        this.setDimOnCurrent(this.dim);
         this.zoom = new ZoomState();
         this.clipBoard = new ClipBoard(<HTMLCanvasElement> document.getElementById("clipboard_canvas"), keyboardHandler, 128, 128);
     }
@@ -3777,11 +3777,11 @@ class LayeredDrawingScreen {
             this.canvas.width = bounds[0];
             this.canvas.height = bounds[1];
         }
-        this.resizeTransparencyCanvas(this.dim);
+        //this.resizeTransparencyCanvas(this.dim);
     }
     resizeTransparencyCanvas(bounds:number[]):void
     {
-        if(!(this.canvasTransparency.width === bounds[0] && this.canvasTransparency.height === bounds[1]))
+        if((this.canvasTransparency.width !== bounds[0] || this.canvasTransparency.height !== bounds[1]))
         {
             this.canvasTransparency.width = bounds[0];
             this.canvasTransparency.height = bounds[0];
