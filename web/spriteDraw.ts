@@ -4463,9 +4463,9 @@ class Sprite {
     }
     putPixels(ctx:CanvasRenderingContext2D, idata:ImageData = ctx.getImageData(0, 0, this.width, this.height)):void
     {
-        if((idata.data.length >> 4) % 2 == 0)
-        {
-            for(let i = 0; i < idata.data.length;)
+        
+        let i = 0;
+        for(; i < idata.data.length - 16;)
             {
                 idata.data[i] = this.pixels[i];
                 ++i;
@@ -4483,22 +4483,35 @@ class Sprite {
                 ++i;
                 idata.data[i] = this.pixels[i];
                 ++i;
-            }
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
         }
-        else
+        for(; i < idata.data.length;)
         {
-            for(let i = 0; i < idata.data.length;)
-            {
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-            }
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
         }
+        
         ctx.putImageData(idata, 0, 0);
     }
     fillRect(color:RGB, x:number, y:number, width:number, height:number)

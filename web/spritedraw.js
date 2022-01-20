@@ -3646,37 +3646,50 @@ class Sprite {
             this.refreshImage();
     }
     putPixels(ctx, idata = ctx.getImageData(0, 0, this.width, this.height)) {
-        if ((idata.data.length >> 4) % 2 == 0) {
-            for (let i = 0; i < idata.data.length;) {
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-            }
+        let i = 0;
+        for (; i < idata.data.length - 16;) {
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
         }
-        else {
-            for (let i = 0; i < idata.data.length;) {
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-            }
+        for (; i < idata.data.length;) {
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
         }
         ctx.putImageData(idata, 0, 0);
     }
