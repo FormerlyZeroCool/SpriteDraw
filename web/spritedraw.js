@@ -1410,7 +1410,7 @@ class GenericTool extends Tool {
 }
 ;
 class ExtendedTool extends ViewLayoutTool {
-    constructor(name, path, optionPanes, dim, matrixDim = [24, 24], parentMatrixDim = [24, 24]) {
+    constructor(name, path, optionPanes, dim, matrixDim = [24, 24], parentMatrixDim = [24, 48]) {
         super(new SimpleGridLayoutManager([parentMatrixDim[0], parentMatrixDim[1]], [dim[0], dim[1]]), name, path);
         this.localLayout = new SimpleGridLayoutManager([matrixDim[0], matrixDim[1]], [dim[0], dim[1]]);
         const parentPanel = this.getOptionPanel();
@@ -1518,7 +1518,7 @@ class UndoRedoTool extends SingleCheckBoxTool {
 ;
 class FillTool extends ExtendedTool {
     constructor(name, path, optionPanes, updateIgnoreSameColorBoundaries) {
-        super(name, path, optionPanes, [200, 150], [30, 10]);
+        super(name, path, optionPanes, [200, 100], [30, 10]);
         this.checkIgnoreAlpha = new GuiCheckBox(updateIgnoreSameColorBoundaries);
         this.localLayout.addElement(new GuiLabel("Fill Options:", 200, 16, GuiTextBox.bottom, 35));
         this.localLayout.addElement(new GuiLabel("Ignore Alpha:", 130, 16, GuiTextBox.bottom, 35));
@@ -1535,7 +1535,8 @@ class PenViewTool extends ViewLayoutTool {
 ;
 class PenTool extends ExtendedTool {
     constructor(strokeWith, toolName = "pen", pathToImage = "images/penSprite.png", optionPanes) {
-        super(toolName, pathToImage, optionPanes, [200, 130], [2, 8]);
+        super(toolName, pathToImage, optionPanes, [200, 110], [2, 30], [1, 50]);
+        this.layoutManager.pixelDim = [200, 500];
         this.lineWidth = strokeWith;
         this.tbSize = new GuiTextBox(true, 80);
         this.tbSize.promptText = "Enter line width:";
@@ -1794,7 +1795,7 @@ class ClipBoard {
 ;
 class CopyPasteTool extends ExtendedTool {
     constructor(name, path, optionPanes, clipBoard, updateBlendAlpha) {
-        super(name, path, optionPanes, [200, clipBoard.height() + 200], [2, 8], [1, 5]);
+        super(name, path, optionPanes, [200, clipBoard.height() + 130], [2, 20], [1, 30]);
         this.blendAlpha = new GuiCheckBox(updateBlendAlpha, 40, 40);
         this.blendAlpha.checked = true;
         this.blendAlpha.refresh();
@@ -1879,7 +1880,7 @@ class LayerManagerTool extends Tool {
 ;
 class ScreenTransformationTool extends ExtendedTool {
     constructor(toolName, toolImagePath, optionPanes, field) {
-        super(toolName, toolImagePath, optionPanes, [200, 200], [2, 4]);
+        super(toolName, toolImagePath, optionPanes, [200, 120], [2, 30]);
         this.localLayout.addElement(new GuiLabel("Zoom:", 75));
         this.buttonUpdateZoom = new GuiButton(() => {
             let ratio = 1;
@@ -2230,18 +2231,18 @@ class ToolSelector {
         this.layersTool = new LayerManagerTool("layers", "images/layersSprite.png", field);
         this.undoTool = new UndoRedoTool(this, "undo", "images/undoSprite.png", () => field.state.slow = !field.state.slow);
         this.transformTool = new ScreenTransformationTool("move", "images/favicon.ico", [this.undoTool.getOptionPanel()], field);
-        this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png", [this.undoTool.getOptionPanel()]);
-        this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.state.rotateOnlyOneColor = this.rotateTool.checkBox.checked, () => field.state.antiAliasRotation = this.rotateTool.checkBoxAntiAlias.checked, [this.undoTool.getOptionPanel()]);
-        this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.state.dragOnlyOneColor = this.dragTool.checkBox.checked, () => field.state.blendAlphaOnPutSelectedPixels = this.dragTool.checkBox_blendAlpha.checked, [this.undoTool.getOptionPanel()]);
+        this.colorPickerTool = new ColorPickerTool(field, "colorPicker", "images/colorPickerSprite.png", [this.transformTool.localLayout, this.undoTool.getOptionPanel()]);
+        this.rotateTool = new RotateTool("rotate", "images/rotateSprite.png", () => field.state.rotateOnlyOneColor = this.rotateTool.checkBox.checked, () => field.state.antiAliasRotation = this.rotateTool.checkBoxAntiAlias.checked, [this.undoTool.getOptionPanel(), this.transformTool.localLayout]);
+        this.dragTool = new DragTool("drag", "images/dragSprite.png", () => field.state.dragOnlyOneColor = this.dragTool.checkBox.checked, () => field.state.blendAlphaOnPutSelectedPixels = this.dragTool.checkBox_blendAlpha.checked, [this.transformTool.localLayout, this.undoTool.getOptionPanel()]);
         this.settingsTool = new DrawingScreenSettingsTool([524, 524], field, "move", "images/settingsSprite.png", [this.transformTool.getOptionPanel()]);
-        this.copyTool = new CopyPasteTool("copy", "images/copySprite.png", [this.undoTool.getOptionPanel()], field.layer().clipBoard, () => field.state.blendAlphaOnPaste = this.copyTool.blendAlpha.checked);
+        this.copyTool = new CopyPasteTool("copy", "images/copySprite.png", [this.transformTool.localLayout], field.layer().clipBoard, () => field.state.blendAlphaOnPaste = this.copyTool.blendAlpha.checked);
         PenTool.checkDrawCircular.checked = true;
         PenTool.checkDrawCircular.refresh();
-        this.penTool = new PenTool(field.layer().suggestedLineWidth(), "pen", "images/penSprite.png", [this.colorPickerTool.getOptionPanel()]);
+        this.penTool = new PenTool(field.layer().suggestedLineWidth(), "pen", "images/penSprite.png", [this.colorPickerTool.localLayout, this.transformTool.localLayout, this.undoTool.getOptionPanel()]);
         this.penTool.activateOptionPanel();
-        this.eraserTool = new PenTool(field.layer().suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png", [this.undoTool.getOptionPanel()]);
+        this.eraserTool = new PenTool(field.layer().suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png", [this.transformTool.localLayout, this.undoTool.getOptionPanel()]);
         PenTool.checkDrawCircular.callback = () => field.state.drawCircular = PenTool.checkDrawCircular.checked;
-        this.fillTool = new FillTool("fill", "images/fillSprite.png", [this.colorPickerTool.getOptionPanel()], () => {
+        this.fillTool = new FillTool("fill", "images/fillSprite.png", [this.transformTool.localLayout, this.colorPickerTool.localLayout, this.undoTool.getOptionPanel()], () => {
             field.layer().state.ignoreAlphaInFill = this.fillTool.checkIgnoreAlpha.checked;
         });
         this.toolBar.tools = [];
@@ -3068,20 +3069,6 @@ class LayeredDrawingScreen {
         this.canvas = document.createElement("canvas");
         this.offscreenCanvas = document.createElement("canvas");
         this.canvasTransparency = document.createElement("canvas");
-        this.canvasTransparency.width = 2000;
-        this.canvasTransparency.height = 2000;
-        const ctx = this.canvasTransparency.getContext("2d");
-        ctx.fillStyle = "#DCDCDF";
-        ctx.fillRect(0, 0, 2000, 2000);
-        ctx.fillStyle = "#FFFFFF";
-        let i = 0;
-        for (let y = 0; y < 2000; y += 10) {
-            let offset = +(i % 2 === 0);
-            for (let x = offset * 10; x < 2000; x += 20) {
-                ctx.fillRect(x, y, 10, 10);
-            }
-            i++;
-        }
         this.state = new DrawingScreenState(3);
         this.dim = [524, 524];
         this.canvas.width = this.dim[0];
@@ -3094,6 +3081,7 @@ class LayeredDrawingScreen {
         this.layersState = [];
         this.keyboardHandler = keyboardHandler;
         this.pallette = pallette;
+        this.resizeTransparencyCanvas(this.dim);
         this.setDimOnCurrent(this.dim);
         this.zoom = new ZoomState();
         this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), keyboardHandler, 128, 128);
@@ -3116,7 +3104,23 @@ class LayeredDrawingScreen {
             this.dim = [bounds[0], bounds[1]];
             this.canvas.width = bounds[0];
             this.canvas.height = bounds[1];
-            this.ctx.fillStyle = "#FFFFFF";
+        }
+        this.resizeTransparencyCanvas(this.dim);
+    }
+    resizeTransparencyCanvas(bounds) {
+        this.canvasTransparency.width = bounds[0];
+        this.canvasTransparency.height = bounds[0];
+        const ctx = this.canvasTransparency.getContext("2d");
+        ctx.fillStyle = "#DCDCDF";
+        ctx.fillRect(0, 0, bounds[0], bounds[1]);
+        ctx.fillStyle = "#FFFFFF";
+        let i = 0;
+        for (let y = 0; y < bounds[1] + 10; y += 10) {
+            let offset = +(i % 2 === 0);
+            for (let x = offset * 10; x < bounds[0] + 20; x += 20) {
+                ctx.fillRect(x, y, 10, 10);
+            }
+            i++;
         }
     }
     swapLayers(x1, x2) {
@@ -4514,10 +4518,10 @@ async function main() {
             toolSelector.transformTool.textBoxZoom.setText(text);
             const touchPos = [field.zoom.invZoomX(toolSelector.drawingScreenListener.touchPos[0]),
                 field.zoom.invZoomY(toolSelector.drawingScreenListener.touchPos[1])];
-            const centerX = field.zoom.invZoomX(field.width() / 2);
-            const centerY = field.zoom.invZoomY(field.height() / 2);
-            const deltaX = delta * (touchPos[0] - centerX) * field.zoom.zoomX;
-            const deltaY = delta * (touchPos[1] - centerY) * field.zoom.zoomY;
+            const centerX = (field.width() / 2);
+            const centerY = (field.height() / 2);
+            const deltaX = delta * (touchPos[0] - centerX);
+            const deltaY = delta * (touchPos[1] - centerY);
             if (e.deltaY < 0) {
                 field.zoom.offsetX += deltaX;
                 field.zoom.offsetY += deltaY;
