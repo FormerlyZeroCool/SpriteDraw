@@ -2797,6 +2797,10 @@ class DrawingScreen {
                 this.screenBuffer = [];
                 for (let i = 0; i < newDim[0] * newDim[1]; i++)
                     this.screenBuffer.push(new RGB(0, 0, 0, 0));
+                this.repaint = true;
+                this.pasteRect = [0, 0, 0, 0];
+                this.selectionRect = [0, 0, 0, 0];
+                this.draw();
                 ctx.drawImage(this.canvas, 0, 0, newDim[0], newDim[1]);
                 const sprite = new Sprite([], newDim[0], newDim[1], false);
                 sprite.pixels = ctx.getImageData(0, 0, newDim[0], newDim[1]).data;
