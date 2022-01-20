@@ -3082,7 +3082,7 @@ class LayeredDrawingScreen {
         this.keyboardHandler = keyboardHandler;
         this.pallette = pallette;
         this.resizeTransparencyCanvas(this.dim);
-        this.setDimOnCurrent(this.dim);
+        this.setDimOnCurrent([4000, 4000]);
         this.zoom = new ZoomState();
         this.clipBoard = new ClipBoard(document.getElementById("clipboard_canvas"), keyboardHandler, 128, 128);
     }
@@ -3108,22 +3108,21 @@ class LayeredDrawingScreen {
         this.resizeTransparencyCanvas(this.dim);
     }
     resizeTransparencyCanvas(bounds) {
-        if (this.canvasTransparency.width === bounds[0] && this.canvasTransparency.height === bounds[1]) {
-            return;
-        }
-        this.canvasTransparency.width = bounds[0];
-        this.canvasTransparency.height = bounds[0];
-        const ctx = this.canvasTransparency.getContext("2d");
-        ctx.fillStyle = "#DCDCDF";
-        ctx.fillRect(0, 0, bounds[0], bounds[1]);
-        ctx.fillStyle = "#FFFFFF";
-        let i = 0;
-        for (let y = 0; y < bounds[1] + 100; y += 10) {
-            let offset = +(i % 2 === 0);
-            for (let x = offset * 10; x < bounds[0] + 200; x += 20) {
-                ctx.fillRect(x, y, 10, 10);
+        if (!(this.canvasTransparency.width === bounds[0] && this.canvasTransparency.height === bounds[1])) {
+            this.canvasTransparency.width = bounds[0];
+            this.canvasTransparency.height = bounds[0];
+            const ctx = this.canvasTransparency.getContext("2d");
+            ctx.fillStyle = "#DCDCDF";
+            ctx.fillRect(0, 0, bounds[0], bounds[1]);
+            ctx.fillStyle = "#FFFFFF";
+            let i = 0;
+            for (let y = 0; y < bounds[1] + 100; y += 10) {
+                let offset = +(i % 2 === 0);
+                for (let x = offset * 10; x < bounds[0] + 200; x += 20) {
+                    ctx.fillRect(x, y, 10, 10);
+                }
+                i++;
             }
-            i++;
         }
     }
     swapLayers(x1, x2) {
@@ -4543,7 +4542,6 @@ async function main() {
         toolSelector.draw();
         //if(field.repaint())
         {
-            field.resizeTransparencyCanvas([canvas.width, canvas.height]);
             field.draw(canvas, ctx, 0, 0, canvas.width, canvas.height);
         }
         if (animationGroupSelector.animationGroup())
