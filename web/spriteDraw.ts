@@ -4559,11 +4559,6 @@ class Sprite {
                 this.pixels[++index] = green;
                 this.pixels[++index] = blue;
                 this.pixels[++index] = alpha;
-                xi += +(xi < x+width);
-                this.pixels[++index] = red;
-                this.pixels[++index] = green;
-                this.pixels[++index] = blue;
-                this.pixels[++index] = alpha;
             }
         }
     }
