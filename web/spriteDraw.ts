@@ -784,14 +784,14 @@ class GuiCheckList implements GuiElement {
             break;
             case("touchmove"):
             const movesNeeded:number = isTouchSupported()?10:3;
-            if(e.moveCount === 10 && this.selectedItem() && this.list.length > 1)
+            if(e.moveCount === movesNeeded && this.selectedItem() && this.list.length > 1)
             {
                 this.dragItem = this.list.splice(this.selected(), 1)[0];
                 this.dragItemInitialIndex = this.selected();
                 this.dragItemLocation[0] = e.touchPos[0];
                 this.dragItemLocation[1] = e.touchPos[1];
             }
-            else if(e.moveCount > 10)
+            else if(e.moveCount > movesNeeded)
             {
                 this.dragItemLocation[0] += e.deltaX;
                 this.dragItemLocation[1] += e.deltaY;
@@ -4466,82 +4466,81 @@ class Sprite {
     putPixels(ctx:CanvasRenderingContext2D, idata:ImageData = ctx.getImageData(0, 0, this.width, this.height)):void
     {
         let i = 0;
-        for(; i < idata.data.length - 32;)
+        const pview:Uint32Array = new Uint32Array(this.pixels.buffer);
+        const iview:Uint32Array = new Uint32Array(idata.data.buffer);
+        const limit:number = this.pixels.length >> 2;
+        const offsetLimit:number = limit - (32)
+        for(; i < offsetLimit;)
             {
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
-                idata.data[i] = this.pixels[i];
+                iview[i] = pview[i];
                 ++i;
+                
         }
-        for(; i < idata.data.length;)
+        for(; i < limit;)
         {
-            idata.data[i] = this.pixels[i];
-            ++i;
-            idata.data[i] = this.pixels[i];
-            ++i;
-            idata.data[i] = this.pixels[i];
-            ++i;
-            idata.data[i] = this.pixels[i];
+            iview[i] = pview[i];
             ++i;
         }
         ctx.putImageData(idata, 0, 0);
