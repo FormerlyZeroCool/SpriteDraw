@@ -784,14 +784,14 @@ class GuiCheckList implements GuiElement {
             break;
             case("touchmove"):
             const movesNeeded:number = isTouchSupported()?10:3;
-            if(e.moveCount === 10 && this.selectedItem() && this.list.length > 1)
+            if(e.moveCount === movesNeeded && this.selectedItem() && this.list.length > 1)
             {
                 this.dragItem = this.list.splice(this.selected(), 1)[0];
                 this.dragItemInitialIndex = this.selected();
                 this.dragItemLocation[0] = e.touchPos[0];
                 this.dragItemLocation[1] = e.touchPos[1];
             }
-            else if(e.moveCount > 10)
+            else if(e.moveCount > movesNeeded)
             {
                 this.dragItemLocation[0] += e.deltaX;
                 this.dragItemLocation[1] += e.deltaY;
@@ -3858,7 +3858,7 @@ class LayeredDrawingScreen {
         return this.dim[1];
     }
     saveToFile(fileName:string):void {
-        var a = document.createElement("a");
+        const a:HTMLAnchorElement = document.createElement("a");
         this.toSprite();
         this.offscreenCanvas.toBlob(blob => {
             a.href = window.URL.createObjectURL(blob);
@@ -4434,6 +4434,7 @@ class Pallette {
 };
 class Sprite {
     pixels:Uint8ClampedArray;
+    view:Uint32Array;
     image:HTMLImageElement;
     fillBackground:boolean;
     width:number;
@@ -4447,6 +4448,7 @@ class Sprite {
     {
         if(!this.pixels || this.pixels.length !== pixels.length){
             this.pixels = new Uint8ClampedArray(width * height * 4);
+            this.view = new Uint32Array(this.pixels.buffer);
             this.width = width;
             this.height = height;
 
@@ -4464,83 +4466,47 @@ class Sprite {
     putPixels(ctx:CanvasRenderingContext2D, idata:ImageData = ctx.getImageData(0, 0, this.width, this.height)):void
     {
         let i = 0;
-        for(; i < idata.data.length - 32;)
-            {
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-                idata.data[i] = this.pixels[i];
-                ++i;
-        }
-        for(; i < idata.data.length;)
+        const view:Uint32Array = new Uint32Array(idata.data.buffer);
+        const limit:number = idata.data.length >> 2;
+        const firstLimit:number = limit - (limit & 15);
+        for(; i < firstLimit;)
         {
-            idata.data[i] = this.pixels[i];
+            view[i] = this.view[i];
             ++i;
-            idata.data[i] = this.pixels[i];
+            view[i] = this.view[i];
             ++i;
-            idata.data[i] = this.pixels[i];
+            view[i] = this.view[i];
             ++i;
-            idata.data[i] = this.pixels[i];
+            view[i] = this.view[i];
             ++i;
+            view[i] = this.view[i];
+            ++i;
+            view[i] = this.view[i];
+            ++i;
+            view[i] = this.view[i];
+            ++i;
+            view[i] = this.view[i];
+            ++i;
+            view[i] = this.view[i];
+            ++i;
+            view[i] = this.view[i];
+            ++i;
+            view[i] = this.view[i];
+            ++i;
+            view[i] = this.view[i];
+            ++i;
+            view[i] = this.view[i];
+            ++i;
+            view[i] = this.view[i];
+            ++i;
+            view[i] = this.view[i];
+            ++i;
+            view[i] = this.view[i];
+            ++i;
+        }
+        for(; i < limit; ++i)
+        {
+            view[i] = this.view[i];
         }
         ctx.putImageData(idata, 0, 0);
     }
@@ -4555,10 +4521,10 @@ class Sprite {
             for(let xi = x; xi < x+width; xi++)
             {
                 let index:number = (xi<<2) + (yi*this.width<<2);
-                this.pixels[index] = red;
-                this.pixels[++index] = green;
-                this.pixels[++index] = blue;
-                this.pixels[++index] = alpha;
+                this.pixels[index] = color.red();
+                this.pixels[++index] = color.green();
+                this.pixels[++index] = color.blue();
+                this.pixels[++index] = color.alpha();
             }
         }
     }
@@ -4703,19 +4669,18 @@ class SpriteAnimation {
         this.sprites.forEach(sprite => size += sprite.binaryFileSize());
         return size;
     }
-    toGifBlob(callBack:(blob:Blob) => void):void
+    toGifBlob(callBack:(blob:Blob) => void, fps:number = 30):void
     {
-        var gif = new GIF({
-            workers: 2,
+        const frameTime:number = 1000/fps;
+        const gif = new GIF({
+            workers: 3,
             quality: 10
           });
-          
           // add an image element
           for(let i = 0; i < this.sprites.length; i++)
-            gif.addFrame(this.sprites[i].image);
+            gif.addFrame(this.sprites[i].image, {delay:Math.ceil(frameTime)});
           
           gif.on('finished', function(blob) {
-            window.open(URL.createObjectURL(blob));
             callBack(blob);
           });
           
@@ -5307,7 +5272,8 @@ class AnimationGroupsSelector {
     binaryFileSize():number {
         let size:number = 2;
         this.animationGroups.forEach(el =>
-            size += el.first.binaryFileSize());
+            size += el.first.binaryFileSize()
+            );
         return size;
     }
     buildFromBinary(binary:Uint32Array):void
@@ -5435,7 +5401,7 @@ class AnimationGroupsSelector {
         {
             this.animationGroup().draw();
         }
-        const position = this.canvas.getBoundingClientRect();
+        const position:DOMRect = this.canvas.getBoundingClientRect();
         if(position.top < window.innerHeight && position.bottom >= 0) 
         {
             const ctx:CanvasRenderingContext2D = this.ctx;
@@ -5495,6 +5461,12 @@ function logToServer(data):void
         body: JSON.stringify(data)
       }).then(res => {console.log("Request complete! response:", data);});
 
+}
+function saveBlob(blob:Blob, fileName:string){
+    const a:HTMLAnchorElement = document.createElement("a");
+    a.href = window.URL.createObjectURL(blob);
+    a.download = fileName;
+    a.click();
 }
 async function main()
 {
@@ -5579,9 +5551,20 @@ async function main()
     const save_local_drawing_screenButton = document.getElementById("save_local_drawing_screen");
     if(save_local_drawing_screenButton)
     {
-        save_local_drawing_screenButton.addEventListener("mousedown", e => field.saveToFile((<HTMLInputElement>document.getElementById("screen_sprite_file_name")).value));
+        save_local_drawing_screenButton.addEventListener("mousedown", e => {field.saveToFile((<HTMLInputElement>document.getElementById("screen_sprite_file_name")).value);
+        
+        });
     }
-    
+    const saveAnimation = document.getElementById("save_local_selected_animation");
+
+    if(saveAnimation)
+    {
+        saveAnimation.addEventListener("mousedown", e => {
+        animationGroupSelector.selectedAnimation().toGifBlob(blob => {
+            saveBlob(blob, (<HTMLInputElement>document.getElementById("animation_file_name")).value);
+        });
+        });
+    }
     keyboardHandler.registerCallBack("keydown", e=> true, e => {
         field.layer().state.color.copy(pallette.calcColor());
         if((document.getElementById('body') === document.activeElement || document.getElementById('screen') === document.activeElement)){
