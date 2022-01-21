@@ -2942,8 +2942,8 @@ class DrawingScreen {
                 }
             if (this.dragData) {
                 const dragDataColors = this.dragData.second;
-                const offsetX = this.dragData.first.first;
-                const offsetY = this.dragData.first.second;
+                const offsetX = Math.floor(this.dragData.first.first);
+                const offsetY = Math.floor(this.dragData.first.second);
                 for (let i = 0; i < dragDataColors.length; i += 9) {
                     const bx = Math.floor(dragDataColors[i] + offsetX);
                     const by = Math.floor(dragDataColors[i + 1] + offsetY);
