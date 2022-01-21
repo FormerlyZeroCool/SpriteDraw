@@ -1,0 +1,3 @@
+[submodule "web/--name"]
+	path = web/--name
+	url = https://github.com/andrewrubinstein/gif.js.git
