@@ -784,14 +784,14 @@ class GuiCheckList implements GuiElement {
             break;
             case("touchmove"):
             const movesNeeded:number = isTouchSupported()?10:3;
-            if(e.moveCount === movesNeeded && this.selectedItem() && this.list.length > 1)
+            if(e.moveCount === 10 && this.selectedItem() && this.list.length > 1)
             {
                 this.dragItem = this.list.splice(this.selected(), 1)[0];
                 this.dragItemInitialIndex = this.selected();
                 this.dragItemLocation[0] = e.touchPos[0];
                 this.dragItemLocation[1] = e.touchPos[1];
             }
-            else if(e.moveCount > movesNeeded)
+            else if(e.moveCount > 10)
             {
                 this.dragItemLocation[0] += e.deltaX;
                 this.dragItemLocation[1] += e.deltaY;
@@ -3568,11 +3568,11 @@ class DrawingScreen {
             if(this.dragData)
             {
                 const dragDataColors:number[] = this.dragData.second;
-                const offsetX:number = Math.floor(this.dragData.first.first);
-                const offsetY:number = Math.floor(this.dragData.first.second);
-                for(let i:number = 0; i < dragDataColors.length; i += 9){
-                    const bx:number = Math.floor(dragDataColors[i] + offsetX);
-                    const by:number = Math.floor(dragDataColors[i+1] + offsetY);
+                const dragDataOffsetX:number = Math.floor(this.dragData.first.first);
+                const dragDataOffsetY:number = Math.floor(this.dragData.first.second);
+                for(let i:number = 0; i < this.dragData.second.length; i += 9){
+                    const bx:number = Math.floor(dragDataColors[i] + dragDataOffsetX);
+                    const by:number = Math.floor(dragDataColors[i+1] + dragDataOffsetY);
                     let key:number = this.reboundKey(bx + by * this.dimensions.first);
                     toCopy.color = dragDataColors[i + 8];
                     source.color = this.screenBuffer[key].color;
@@ -4436,7 +4436,6 @@ class Pallette {
 };
 class Sprite {
     pixels:Uint8ClampedArray;
-    view:Uint32Array;
     image:HTMLImageElement;
     fillBackground:boolean;
     width:number;
@@ -4450,7 +4449,6 @@ class Sprite {
     {
         if(!this.pixels || this.pixels.length !== pixels.length){
             this.pixels = new Uint8ClampedArray(width * height * 4);
-            this.view = new Uint32Array(this.pixels.buffer);
             this.width = width;
             this.height = height;
 
@@ -4468,47 +4466,83 @@ class Sprite {
     putPixels(ctx:CanvasRenderingContext2D, idata:ImageData = ctx.getImageData(0, 0, this.width, this.height)):void
     {
         let i = 0;
-        const view:Uint32Array = new Uint32Array(idata.data.buffer);
-        const limit:number = idata.data.length >> 2;
-        const firstLimit:number = limit - (limit & 15);
-        for(; i < firstLimit;)
-        {
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
-            view[i] = this.view[i];
-            ++i;
+        for(; i < idata.data.length - 32;)
+            {
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
         }
-        for(; i < limit; ++i)
+        for(; i < idata.data.length;)
         {
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
         }
         ctx.putImageData(idata, 0, 0);
     }
@@ -4523,10 +4557,10 @@ class Sprite {
             for(let xi = x; xi < x+width; xi++)
             {
                 let index:number = (xi<<2) + (yi*this.width<<2);
-                this.pixels[index] = color.red();
-                this.pixels[++index] = color.green();
-                this.pixels[++index] = color.blue();
-                this.pixels[++index] = color.alpha();
+                this.pixels[index] = red;
+                this.pixels[++index] = green;
+                this.pixels[++index] = blue;
+                this.pixels[++index] = alpha;
             }
         }
     }
@@ -4675,7 +4709,7 @@ class SpriteAnimation {
     {
         const frameTime:number = 1000/fps;
         const gif = new GIF({
-            workers: 3,
+            workers: 2,
             quality: 10
           });
           // add an image element

@@ -611,13 +611,13 @@ class GuiCheckList {
                 break;
             case ("touchmove"):
                 const movesNeeded = isTouchSupported() ? 10 : 3;
-                if (e.moveCount === movesNeeded && this.selectedItem() && this.list.length > 1) {
+                if (e.moveCount === 10 && this.selectedItem() && this.list.length > 1) {
                     this.dragItem = this.list.splice(this.selected(), 1)[0];
                     this.dragItemInitialIndex = this.selected();
                     this.dragItemLocation[0] = e.touchPos[0];
                     this.dragItemLocation[1] = e.touchPos[1];
                 }
-                else if (e.moveCount > movesNeeded) {
+                else if (e.moveCount > 10) {
                     this.dragItemLocation[0] += e.deltaX;
                     this.dragItemLocation[1] += e.deltaY;
                 }
@@ -2942,11 +2942,11 @@ class DrawingScreen {
                 }
             if (this.dragData) {
                 const dragDataColors = this.dragData.second;
-                const offsetX = Math.floor(this.dragData.first.first);
-                const offsetY = Math.floor(this.dragData.first.second);
-                for (let i = 0; i < dragDataColors.length; i += 9) {
-                    const bx = Math.floor(dragDataColors[i] + offsetX);
-                    const by = Math.floor(dragDataColors[i + 1] + offsetY);
+                const dragDataOffsetX = Math.floor(this.dragData.first.first);
+                const dragDataOffsetY = Math.floor(this.dragData.first.second);
+                for (let i = 0; i < this.dragData.second.length; i += 9) {
+                    const bx = Math.floor(dragDataColors[i] + dragDataOffsetX);
+                    const by = Math.floor(dragDataColors[i + 1] + dragDataOffsetY);
                     let key = this.reboundKey(bx + by * this.dimensions.first);
                     toCopy.color = dragDataColors[i + 8];
                     source.color = this.screenBuffer[key].color;
@@ -3635,7 +3635,6 @@ class Sprite {
     copy(pixels, width, height) {
         if (!this.pixels || this.pixels.length !== pixels.length) {
             this.pixels = new Uint8ClampedArray(width * height * 4);
-            this.view = new Uint32Array(this.pixels.buffer);
             this.width = width;
             this.height = height;
         }
@@ -3650,45 +3649,81 @@ class Sprite {
     }
     putPixels(ctx, idata = ctx.getImageData(0, 0, this.width, this.height)) {
         let i = 0;
-        const view = new Uint32Array(idata.data.buffer);
-        const limit = idata.data.length >> 2;
-        const firstLimit = limit - (limit & 15);
-        for (; i < firstLimit;) {
-            view[i] = this.view[i];
+        for (; i < idata.data.length - 32;) {
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
             ++i;
-            view[i] = this.view[i];
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
             ++i;
         }
-        for (; i < limit; ++i) {
-            view[i] = this.view[i];
+        for (; i < idata.data.length;) {
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
+            idata.data[i] = this.pixels[i];
+            ++i;
         }
         ctx.putImageData(idata, 0, 0);
     }
@@ -3700,10 +3735,10 @@ class Sprite {
         for (let yi = y; yi < y + height; yi++) {
             for (let xi = x; xi < x + width; xi++) {
                 let index = (xi << 2) + (yi * this.width << 2);
-                this.pixels[index] = color.red();
-                this.pixels[++index] = color.green();
-                this.pixels[++index] = color.blue();
-                this.pixels[++index] = color.alpha();
+                this.pixels[index] = red;
+                this.pixels[++index] = green;
+                this.pixels[++index] = blue;
+                this.pixels[++index] = alpha;
             }
         }
     }
@@ -3825,7 +3860,7 @@ class SpriteAnimation {
     toGifBlob(callBack, fps = 30) {
         const frameTime = 1000 / fps;
         const gif = new GIF({
-            workers: 3,
+            workers: 2,
             quality: 10
         });
         // add an image element
