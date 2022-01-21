@@ -3726,13 +3726,22 @@ class Sprite {
         ctx.putImageData(idata, 0, 0);
     }
     fillRect(color, x, y, width, height) {
+        const red = color.red();
+        const green = color.green();
+        const blue = color.blue();
+        const alpha = color.alpha();
         for (let yi = y; yi < y + height; yi++) {
             for (let xi = x; xi < x + width; xi++) {
                 let index = (xi << 2) + (yi * this.width << 2);
-                this.pixels[index] = color.red();
-                this.pixels[++index] = color.green();
-                this.pixels[++index] = color.blue();
-                this.pixels[++index] = color.alpha();
+                this.pixels[index] = red;
+                this.pixels[++index] = green;
+                this.pixels[++index] = blue;
+                this.pixels[++index] = alpha;
+                xi += +(xi < x + width);
+                this.pixels[++index] = red;
+                this.pixels[++index] = green;
+                this.pixels[++index] = blue;
+                this.pixels[++index] = alpha;
             }
         }
     }

@@ -4463,7 +4463,6 @@ class Sprite {
     }
     putPixels(ctx:CanvasRenderingContext2D, idata:ImageData = ctx.getImageData(0, 0, this.width, this.height)):void
     {
-        
         let i = 0;
         for(; i < idata.data.length - 32;)
             {
@@ -4543,20 +4542,28 @@ class Sprite {
             idata.data[i] = this.pixels[i];
             ++i;
         }
-        
         ctx.putImageData(idata, 0, 0);
     }
     fillRect(color:RGB, x:number, y:number, width:number, height:number)
     {
+        const red:number = color.red();
+        const green:number = color.green();
+        const blue:number = color.blue();
+        const alpha:number = color.alpha();
         for(let yi = y; yi < y+height; yi++)
         {
             for(let xi = x; xi < x+width; xi++)
             {
                 let index:number = (xi<<2) + (yi*this.width<<2);
-                this.pixels[index] = color.red();
-                this.pixels[++index] = color.green();
-                this.pixels[++index] = color.blue();
-                this.pixels[++index] = color.alpha();
+                this.pixels[index] = red;
+                this.pixels[++index] = green;
+                this.pixels[++index] = blue;
+                this.pixels[++index] = alpha;
+                xi += +(xi < x+width);
+                this.pixels[++index] = red;
+                this.pixels[++index] = green;
+                this.pixels[++index] = blue;
+                this.pixels[++index] = alpha;
             }
         }
     }
