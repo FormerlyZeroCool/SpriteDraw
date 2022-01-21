@@ -4465,8 +4465,40 @@ class Sprite {
     {
         
         let i = 0;
-        for(; i < idata.data.length - 16;)
+        for(; i < idata.data.length - 32;)
             {
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
+                idata.data[i] = this.pixels[i];
+                ++i;
                 idata.data[i] = this.pixels[i];
                 ++i;
                 idata.data[i] = this.pixels[i];
