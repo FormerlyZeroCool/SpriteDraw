@@ -2942,9 +2942,11 @@ class DrawingScreen {
                 }
             if (this.dragData) {
                 const dragDataColors = this.dragData.second;
-                for (let i = 0; i < this.dragData.second.length; i += 9) {
-                    const bx = Math.floor(dragDataColors[i] + this.dragData.first.first);
-                    const by = Math.floor(dragDataColors[i + 1] + this.dragData.first.second);
+                const offsetX = this.dragData.first.first;
+                const offsetY = this.dragData.first.second;
+                for (let i = 0; i < dragDataColors.length; i += 9) {
+                    const bx = Math.floor(dragDataColors[i] + offsetX);
+                    const by = Math.floor(dragDataColors[i + 1] + offsetY);
                     let key = this.reboundKey(bx + by * this.dimensions.first);
                     toCopy.color = dragDataColors[i + 8];
                     source.color = this.screenBuffer[key].color;
