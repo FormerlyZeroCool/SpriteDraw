@@ -1534,8 +1534,8 @@ class PenViewTool extends ViewLayoutTool {
 }
 ;
 class PenTool extends ExtendedTool {
-    constructor(strokeWith, toolName = "pen", pathToImage = "images/penSprite.png", optionPanes) {
-        super(toolName, pathToImage, optionPanes, [200, 110], [2, 30], [1, 50]);
+    constructor(strokeWith, toolName = "pen", pathToImage = "images/penSprite.png", optionPanes, dimLocal = [200, 110]) {
+        super(toolName, pathToImage, optionPanes, dimLocal, [2, 30], [1, 50]);
         this.layoutManager.pixelDim = [200, 500];
         this.lineWidth = strokeWith;
         this.tbSize = new GuiTextBox(true, 80);
@@ -1578,6 +1578,21 @@ class PenTool extends ExtendedTool {
 }
 PenTool.checkboxSprayPaint = new GuiCheckBox(null, 40, 40);
 PenTool.checkDrawCircular = new GuiCheckBox(null, 40, 40);
+;
+class SprayCanTool extends PenTool {
+    constructor(strokeWidth, toolName, pathToImage, callBack, optionPanes) {
+        super(strokeWidth, toolName, pathToImage, optionPanes, [200, 150]);
+        this.tbProbability = new GuiTextBox(true, 99, this.btUpdate, 16);
+        this.btUpdate.callback = () => {
+            this.lineWidth = this.tbSize.asNumber.get() ? (this.tbSize.asNumber.get() <= 128 ? this.tbSize.asNumber.get() : 128) : this.lineWidth;
+            this.tbSize.setText(String(this.lineWidth));
+            callBack(this.tbProbability);
+        };
+        this.tbProbability.setText(0.5.toString());
+        this.localLayout.addElement(new GuiLabel("Spray\nprob:", 99, 16, GuiTextBox.bottom | GuiTextBox.left, 40));
+        this.localLayout.addElement(this.tbProbability);
+    }
+}
 ;
 class ColorPickerTool extends ExtendedTool {
     constructor(field, toolName = "colorPicker", pathToImage = "images/colorPickerSprite.png", optionPanes = []) {
@@ -2040,6 +2055,10 @@ class ToolSelector {
                     field.layer().pasteRect = [touchPos[0], touchPos[1], field.layer().clipBoard.currentDim[0] * (field.layer().bounds.first / field.layer().dimensions.first), field.layer().clipBoard.currentDim[1] * (field.layer().bounds.second / field.layer().dimensions.second)];
                 }
                 switch (field.layer().toolSelector.selectedToolName()) {
+                    case ("spraycan"):
+                        this.field.layer().state.lineWidth = this.sprayCanTool.tbSize.asNumber.get() ? this.sprayCanTool.tbSize.asNumber.get() : this.field.layer().state.lineWidth;
+                        field.layer().handleTapSprayPaint(touchPos[0], touchPos[1]);
+                        break;
                     case ("eraser"):
                         colorBackup.copy(field.layer().state.color);
                         {
@@ -2103,6 +2122,9 @@ class ToolSelector {
                         field.zoom.offsetX -= e.deltaX;
                         field.zoom.offsetY -= e.deltaY;
                         repaint = false;
+                        break;
+                    case ("spraycan"):
+                        field.layer().handleDraw(x1, touchPos[0], y1, touchPos[1], (x, y, screen) => screen.handleTapSprayPaint(x, y));
                         break;
                     case ("pen"):
                         field.layer().handleDraw(x1, touchPos[0], y1, touchPos[1]);
@@ -2239,6 +2261,10 @@ class ToolSelector {
         this.copyTool = new CopyPasteTool("copy", "images/copySprite.png", [this.transformTool.localLayout], field.layer().clipBoard, () => field.state.blendAlphaOnPaste = this.copyTool.blendAlpha.checked);
         PenTool.checkDrawCircular.checked = true;
         PenTool.checkDrawCircular.refresh();
+        this.sprayCanTool = new SprayCanTool(field.layer().suggestedLineWidth(), "spraycan", "images/spraycanSprite.png", (tbprob) => {
+            this.field.layer().sprayProbability = tbprob.asNumber.get() ? tbprob.asNumber.get() : this.field.layer().sprayProbability;
+            this.field.layer().state.lineWidth = this.sprayCanTool.tbSize.asNumber.get() ? this.sprayCanTool.tbSize.asNumber.get() : this.field.layer().state.lineWidth;
+        }, [this.colorPickerTool.localLayout, this.transformTool.localLayout]);
         this.penTool = new PenTool(field.layer().suggestedLineWidth(), "pen", "images/penSprite.png", [this.colorPickerTool.localLayout, this.transformTool.localLayout, this.undoTool.getOptionPanel()]);
         this.penTool.activateOptionPanel();
         this.eraserTool = new PenTool(field.layer().suggestedLineWidth() * 3, "eraser", "images/eraserSprite.png", [this.transformTool.localLayout, this.undoTool.getOptionPanel()]);
@@ -2248,6 +2274,7 @@ class ToolSelector {
         });
         this.toolBar.tools = [];
         this.toolBar.tools.push(this.penTool);
+        this.toolBar.tools.push(this.sprayCanTool);
         this.toolBar.tools.push(this.fillTool);
         this.toolBar.tools.push(new PenViewTool(this.penTool, "line", "images/LineDrawSprite.png"));
         this.toolBar.tools.push(new PenViewTool(this.penTool, "rect", "images/rectSprite.png"));
@@ -2336,6 +2363,7 @@ class DrawingScreenState {
 class DrawingScreen {
     constructor(canvas, keyboardHandler, palette, offset, dimensions, toolSelector, state, clipBoard) {
         const bounds = [dim[0], dim[1]];
+        this.sprayProbability = 0.5;
         this.clipBoard = clipBoard;
         this.palette = palette;
         this.noColor = new RGB(255, 255, 255, 0);
@@ -2488,7 +2516,7 @@ class DrawingScreen {
                         const dx = ngx - gx;
                         const dy = ngy - gy;
                         const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
-                        if (pixel && !pixel.compare(this.state.color) && Math.sqrt(dx * dx + dy * dy) <= radius) {
+                        if (pixel && !pixel.compare(this.state.color) && Math.sqrt(dx * dx + dy * dy) <= radius && Math.random() < this.sprayProbability) {
                             this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
                             pixel.copy(this.state.color);
                         }
@@ -2502,7 +2530,7 @@ class DrawingScreen {
                         const ngx = gx + Math.round(j);
                         const ngy = (gy + Math.round(i));
                         const pixel = this.screenBuffer[ngx + ngy * this.dimensions.first];
-                        if (pixel && !pixel.compare(this.state.color)) {
+                        if (pixel && !pixel.compare(this.state.color) && Math.random() < this.sprayProbability) {
                             this.updatesStack.get(this.updatesStack.length() - 1).push(new Pair(ngx + ngy * this.dimensions.first, new RGB(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha())));
                             pixel.copy(this.state.color);
                         }
