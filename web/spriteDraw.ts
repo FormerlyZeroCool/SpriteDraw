@@ -783,7 +783,7 @@ class GuiCheckList implements GuiElement {
                 this.selectedItem().callBack(e);
             break;
             case("touchmove"):
-            const movesNeeded:number = isTouchSupported()?10:3;
+            const movesNeeded:number = isTouchSupported()?7:2;
             if(e.moveCount === movesNeeded && this.selectedItem() && this.list.length > 1)
             {
                 this.dragItem = this.list.splice(this.selected(), 1)[0];
@@ -2568,6 +2568,7 @@ class ToolSelector {// clean up class code remove fields made redundant by GuiTo
             let repaint:boolean = true;
             switch (field.toolSelector.selectedToolName())
             {
+                case("layers"):
                 case("move"):
                 field.zoom.offsetX -= e.deltaX;
                 field.zoom.offsetY -= e.deltaY;
@@ -3448,7 +3449,7 @@ class DrawingScreen {
                 let key:number = this.reboundKey(x + y * this.dimensions.first);
                 color.color = dragDataColors[i + 8];
                 this.updatesStack.get(this.updatesStack.length()-1).push(new Pair(key, new RGB(this.screenBuffer[key].red(), this.screenBuffer[key].green(), this.screenBuffer[key].blue(), this.screenBuffer[key].alpha())));
-                if(color.alpha() != 255 && this.state.blendAlphaOnPutSelectedPixels)
+                if(color.alpha() !== 255 && this.state.blendAlphaOnPutSelectedPixels)
                     this.screenBuffer[key].blendAlphaCopy(color);
                 else
                     this.screenBuffer[key].color = color.color;
@@ -3544,17 +3545,38 @@ class DrawingScreen {
         
             if(this.dimensions.first === this.canvas.width && this.dimensions.second === this.canvas.height)
             {//if drawing screen dimensions, and canvas dimensions are the same just update per pixel
-                let index:number;
-                for(let y = 0; y < this.dimensions.second; y++)
+                let index = 0
+                for(; index < this.screenBuffer.length - 4;)
                 {
-                    for(let x = 0; x < this.dimensions.first; x++)
-                    {
-                        index = (x + y*this.dimensions.first);
-                        spriteScreenBuf.pixels[(index<<2)] = this.screenBuffer[index].red();  
-                        spriteScreenBuf.pixels[(index<<2) + 1] = this.screenBuffer[index].green();   
-                        spriteScreenBuf.pixels[(index<<2) + 2] = this.screenBuffer[index].blue();   
-                        spriteScreenBuf.pixels[(index<<2) + 3] = this.screenBuffer[index].alpha();   
-                    }
+                    spriteScreenBuf.pixels[(index<<2)] = this.screenBuffer[index].red();  
+                    spriteScreenBuf.pixels[(index<<2) + 1] = this.screenBuffer[index].green();   
+                    spriteScreenBuf.pixels[(index<<2) + 2] = this.screenBuffer[index].blue();   
+                    spriteScreenBuf.pixels[(index<<2) + 3] = this.screenBuffer[index].alpha();   
+                    ++index;
+                    spriteScreenBuf.pixels[(index<<2)] = this.screenBuffer[index].red();  
+                    spriteScreenBuf.pixels[(index<<2) + 1] = this.screenBuffer[index].green();   
+                    spriteScreenBuf.pixels[(index<<2) + 2] = this.screenBuffer[index].blue();   
+                    spriteScreenBuf.pixels[(index<<2) + 3] = this.screenBuffer[index].alpha(); 
+                    ++index;
+                    spriteScreenBuf.pixels[(index<<2)] = this.screenBuffer[index].red();  
+                    spriteScreenBuf.pixels[(index<<2) + 1] = this.screenBuffer[index].green();   
+                    spriteScreenBuf.pixels[(index<<2) + 2] = this.screenBuffer[index].blue();   
+                    spriteScreenBuf.pixels[(index<<2) + 3] = this.screenBuffer[index].alpha(); 
+                    ++index;
+                    spriteScreenBuf.pixels[(index<<2)] = this.screenBuffer[index].red();  
+                    spriteScreenBuf.pixels[(index<<2) + 1] = this.screenBuffer[index].green();   
+                    spriteScreenBuf.pixels[(index<<2) + 2] = this.screenBuffer[index].blue();   
+                    spriteScreenBuf.pixels[(index<<2) + 3] = this.screenBuffer[index].alpha(); 
+                    ++index;
+                }
+
+                for(; index < this.screenBuffer.length; )
+                {
+                    spriteScreenBuf.pixels[(index<<2)] = this.screenBuffer[index].red();  
+                    spriteScreenBuf.pixels[(index<<2) + 1] = this.screenBuffer[index].green();   
+                    spriteScreenBuf.pixels[(index<<2) + 2] = this.screenBuffer[index].blue();   
+                    spriteScreenBuf.pixels[(index<<2) + 3] = this.screenBuffer[index].alpha();
+                    index++; 
                 }
             }
             else//use fill rect method to fill rectangle the size of pixels(more branch mispredicts, but more general)
@@ -3599,7 +3621,7 @@ class DrawingScreen {
                     const x:number = destIndex % this.dimensions.first;
                     const y:number = Math.floor(destIndex/this.dimensions.first);
                     source.color = this.clipBoard.clipBoardBuffer[i].first.color;
-                    if(this.screenBuffer[destIndex])
+                    if(this.screenBuffer[destIndex] && source.alpha() > 0)
                     {
                         toCopy.color = this.screenBuffer[destIndex].color;
                         if(this.state.blendAlphaOnPaste)
@@ -3919,6 +3941,10 @@ class LayeredDrawingScreen {
             const zoomedHeight:number = height * this.zoom.zoomY;
             this.zoom.zoomedX = x  - this.zoom.offsetX + (width - zoomedWidth) / 2;
             this.zoom.zoomedY = y  - this.zoom.offsetY + (height - zoomedHeight) / 2;
+            ctx.fillRect(0,0,this.zoom.zoomedX, height);
+            ctx.fillRect(0,0,width, this.zoom.zoomedY);
+            ctx.fillRect(this.zoom.zoomedX + zoomedWidth, 0, width, height);
+            ctx.fillRect(0, this.zoom.zoomedY + zoomedHeight, width, height);
             ctx.drawImage(this.canvas, this.zoom.zoomedX, this.zoom.zoomedY, zoomedWidth, zoomedHeight);
             ctx.strokeStyle = "#000000";
             ctx.strokeRect(this.zoom.zoomedX, this.zoom.zoomedY, zoomedWidth, zoomedHeight)
@@ -5587,8 +5613,7 @@ async function main()
     if(save_local_drawing_screenButton)
     {
         save_local_drawing_screenButton.addEventListener("mousedown", e => {field.saveToFile((<HTMLInputElement>document.getElementById("screen_sprite_file_name")).value);
-        
-        });
+            });
     }
     const saveAnimation = document.getElementById("save_local_selected_animation");
 
@@ -5706,7 +5731,7 @@ async function main()
         }
         const adjustment:number = Date.now() - start <= 30 ? Date.now() - start : 30;
         await sleep(goalSleep - adjustment);
-        if(1000/(Date.now() - start) < fps - 10){
+        if(1000/(Date.now() - start) < fps - 5){
             console.log("avgfps:",Math.floor(1000/(Date.now() - start)))
             if(1000/(Date.now() - start) < 1)
                 console.log("frame time:",1000/(Date.now() - start));
